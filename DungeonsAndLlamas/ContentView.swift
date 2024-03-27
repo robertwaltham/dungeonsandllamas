@@ -40,11 +40,19 @@ struct ContentView: View {
                     .frame(maxWidth: 100, maxHeight: 100)
                 }
                 
-                Button("Accelerometer") {
-                    viewModel.nextLink(.accelerometer)
+                HStack {
+                    Button("Accelerometer") {
+                        viewModel.nextLink(.accelerometer)
+                    }
+                    .frame(width: 200, height: 200)
+                    .buttonStyle(.bordered)
+                    
+                    Button("API Test") {
+                        viewModel.nextLink(.apiTest)
+                    }
+                    .frame(width: 200, height: 200)
+                    .buttonStyle(.bordered)
                 }
-                .frame(width: 200, height: 200)
-                .buttonStyle(.bordered)
 
                 
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -75,6 +83,8 @@ extension ContentFlowCoordinator {
         
         if link == .accelerometer {
             AccelerometerView(contentViewModel: flowState)
+        } else if link == .apiTest {
+            APITestView(contentViewModel: flowState)
         } else {
             VStack {
                 Text("Link Destination \(link.id)")
@@ -192,6 +202,7 @@ enum ContentLink: Identifiable, Hashable {
     case firstLink(text: String)
     case secondLink(text: String)
     case accelerometer
+    case apiTest
 }
 
 #Preview {
