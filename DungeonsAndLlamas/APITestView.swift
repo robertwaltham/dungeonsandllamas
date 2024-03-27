@@ -14,10 +14,24 @@ struct APITestView: View {
 
     var body: some View {
         VStack {
-            Text("Test")
-            Button("Stream Generate") {
-                viewModel.testStream()
-            }.buttonStyle(.bordered)
+            HStack {
+                Button("Stream Generate") {
+                    viewModel.testStream()
+                }.buttonStyle(.bordered)
+                
+                Button("Generate Image") {
+                    viewModel.testImage()
+                }.buttonStyle(.bordered)
+                
+                Button("Styles") {
+                    viewModel.imagePromptStyles()
+                }.buttonStyle(.bordered)
+            }
+            HStack {
+                ForEach(viewModel.images, id: \.self) { image in
+                    Image(uiImage: image)
+                }
+            }
             Text(viewModel.result)
         }
     }
@@ -28,6 +42,8 @@ class ViewModel {
     let client = APIClient()
     
     var result = ""
+    
+    var images = [UIImage]()
     
     func testStream() {
         result = ""
@@ -42,6 +58,29 @@ class ViewModel {
                 print(error)
             }
         }
+    }
+    
+    func testImage()  {
+        images = []
+        
+        Task.init {
+            do {
+                let strings = try await client.generateImage(prompt: "a cat in a fancy hat", negative: "")
+                
+                for string in strings {
+                    if let data = Data(base64Encoded: string), let image = UIImage(data: data) {
+                        images.append(image)
+                    }
+                }
+            } catch {
+                print(error)
+            }
+        }
+
+    }
+    
+    func imagePromptStyles() {
+        client.imagePromptStyles()
     }
 }
 

@@ -18,6 +18,8 @@ class APIClient {
         case test = ""
         case testSD = "/sd"
         case generate = "/api/generate"
+        case generateSD = "/sd/sdapi/v1/txt2img"
+        case promptStyles = "/sd/sdapi/v1/prompt-styles"
     }
     
     enum APIMethod: String {
@@ -30,14 +32,14 @@ class APIClient {
     var decoder: JSONDecoder {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
-
+        
         d.dateDecodingStrategy = .iso8601
         return d
     }
     
     fileprivate var dataResponse: ((_ result: Result<String, Error>) -> Void)?
     fileprivate var completion: ((_ result: Error?) -> Void)?
-
+    
     init () {
         delegate = TaskDelegate()
         session = URLSession(configuration: URLSessionConfiguration.default, delegate: delegate, delegateQueue: nil)
@@ -53,7 +55,7 @@ class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.addValue(Secrets.authorization, forHTTPHeaderField: "Authorization")
-
+        
         return request
     }
     
@@ -151,7 +153,7 @@ class APIClient {
     }
     
     
-
+    
     
     func asyncStreamGenerate(prompt: String) -> AsyncThrowingStream<OllamaResult, Error> {
         return AsyncThrowingStream<OllamaResult, Error> { continuation in
@@ -166,7 +168,7 @@ class APIClient {
                 """.data(using: .utf8)
                 
                 do {
-                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    let (bytes, response) = try await session.bytes(for: request)
                     guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                         throw APIError.requestError("api error")
                     }
@@ -187,7 +189,97 @@ class APIClient {
             }
         }
     }
-
+    
+    func generateImage(prompt: String, negative: String) async throws -> [String] {
+        
+        var request = APIClient.request(endpoint: .generateSD, method: .post)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = stableRequestBody(prompt: prompt, negative: negative).data(using: .utf8)
+                
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw APIError.requestError("api error")
+        }
+        
+        let responseObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let images = responseObject?["images"] as? [String] else {
+            throw APIError.requestError("no images")
+        }
+        
+        return images
+        
+    }
+    
+    func imagePromptStyles() {
+        
+        let request = APIClient.request(endpoint: .promptStyles, method: .get)
+//        request.httpBody =  """
+//        {
+//          "prompt": "\(prompt)",
+//          "negative_prompt": "\(negative)",
+//          "styles": [
+//            "string"
+//          ]
+//        }
+//        """.data(using: .utf8)
+        
+        let task = session.dataTask(with: request)
+        task.resume()
+    }
+    
+    func stableRequestBody(prompt: String, negative: String) -> String {
+        return """
+        {
+            "init_images": [],
+            "resize_mode": 0,
+            "denoising_strength": 0.75,
+            "image_cfg_scale": 0,
+            "mask_blur": 0,
+            "mask_blur_x": 0,
+            "mask_blur_y": 0,
+            "inpainting_fill": 0,
+            "inpaint_full_res": true,
+            "inpaint_full_res_padding": 0,
+            "inpainting_mask_invert": 0,
+            "initial_noise_multiplier": 0,
+            "prompt": "\(prompt)",
+            "styles": [],
+            "seed": -1,
+            "subseed": -1,
+            "subseed_strength": 0,
+            "seed_resize_from_h": -1,
+            "seed_resize_from_w": -1,
+            "sampler_name": "",
+            "batch_size": 1,
+            "n_iter": 1,
+            "steps": 20,
+            "cfg_scale": 7,
+            "width": 512,
+            "height": 512,
+            "restore_faces": false,
+            "tiling": false,
+            "do_not_save_samples": false,
+            "do_not_save_grid": false,
+            "negative_prompt": "\(negative)",
+            "eta": 0,
+            "s_min_uncond": 0,
+            "s_churn": 0,
+            "s_tmax": 0,
+            "s_tmin": 0,
+            "s_noise": 1,
+            "override_settings": {},
+            "override_settings_restore_afterwards": true,
+            "script_args": [],
+            "sampler_index": "DPM2",
+            "include_init_images": false,
+            "script_name": "",
+            "send_images": true,
+            "save_images": true,
+            "alwayson_scripts": {}
+        }
+        """
+    }
+    
     
     class TaskDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate {
         
@@ -205,14 +297,13 @@ class APIClient {
                 client?.dataResponse?(.failure(APIError.requestError("failed to decode")))
                 return
             }
-            
             client?.dataResponse?(.success(string))
         }
         
         func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
             if let response = task.response as? HTTPURLResponse {
                 print(response.statusCode)
- 
+                
                 if response.statusCode == 200 {
                     client?.completion?(nil)
                 } else {
