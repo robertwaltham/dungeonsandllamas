@@ -10,11 +10,11 @@ import SwiftData
 import Observation
 
 struct ContentView: View {
-    @State var viewModel = ContentViewModel()
+    @State var viewModel = ContentFlowState()
     
     var body: some View {
         ContentFlowCoordinator(flowState: viewModel) {
-           LandingView(viewModel: viewModel)
+           LandingView(flowState: viewModel)
         }
     }
 }

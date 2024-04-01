@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct LandingView: View {    
-    @State var viewModel: ContentViewModel
+    @State var flowState: ContentFlowState
 
     var body: some View {
         VStack {
@@ -18,21 +18,32 @@ struct LandingView: View {
             
             Spacer().frame(maxHeight: 200)
             
-            Button(action: {
-                viewModel.nextLink(.itemGenerator)
-            }, label: {
-                Text("Items")
-            })
-            .frame(width: 200, height: 200)
-            .background(Color(white: 0.7))
-            .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+            HStack {
+                Button(action: {
+                    flowState.nextLink(.itemGenerator)
+                }, label: {
+                    Text("Items")
+                })
+                .frame(width: 200, height: 200)
+                .background(Color(white: 0.7))
+                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+                
+                Button(action: {
+                    flowState.nextLink(.apiTest)
+                }, label: {
+                    Text("APITest")
+                })
+                .frame(width: 200, height: 200)
+                .background(Color(white: 0.7))
+                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+            }
         }
     }
 }
 
 #Preview {
-    let viewModel = ContentViewModel()
-    return ContentFlowCoordinator(flowState: viewModel) {
-        LandingView(viewModel: viewModel)
+    let flowState = ContentFlowState()
+    return ContentFlowCoordinator(flowState: flowState) {
+        LandingView(flowState: flowState)
     }
 }

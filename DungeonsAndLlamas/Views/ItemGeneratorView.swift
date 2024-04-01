@@ -9,7 +9,7 @@ import SwiftUI
 import Observation
 
 struct ItemGeneratorView: View {
-    @State var contentViewModel: ContentViewModel
+    @State var flowState: ContentFlowState
     @State var viewModel = ItemGeneratorViewModel()
 
     var body: some View {
@@ -169,8 +169,8 @@ enum Quality: String, CaseIterable {
 }
 
 #Preview {
-    let viewModel = ContentViewModel()
-    return ContentFlowCoordinator(flowState: viewModel) {
-        ItemGeneratorView(contentViewModel: viewModel)
+    let flowState = ContentFlowState()
+    return ContentFlowCoordinator(flowState: flowState) {
+        ItemGeneratorView(flowState: flowState)
     }
 }

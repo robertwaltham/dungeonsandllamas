@@ -10,7 +10,7 @@ import CoreMotion
 
 struct AccelerometerView: View {
     @State var viewModel = AccelerometerViewModel()
-    @State var contentViewModel: ContentViewModel
+    @State var flowState: ContentFlowState
     
     var body: some View {
         VStack {
@@ -22,11 +22,11 @@ struct AccelerometerView: View {
                 .shadow(radius: 10, x: viewModel.roll * 20, y: viewModel.pitch * 20)
 
             Button("Cover") {
-                contentViewModel.cover(.firstLink(text: "cover"))
+                flowState.cover(.firstLink(text: "cover"))
             }.buttonStyle(.bordered)
             
             Button("next") {
-                contentViewModel.nextLink(.accelerometer)
+                flowState.nextLink(.accelerometer)
             }.buttonStyle(.bordered)
         }
     }
@@ -52,8 +52,8 @@ class AccelerometerViewModel {
 }
 
 #Preview {
-    let viewModel = ContentViewModel()
-    return ContentFlowCoordinator(flowState: viewModel) {
-        AccelerometerView(contentViewModel: viewModel)
+    let flowState = ContentFlowState()
+    return ContentFlowCoordinator(flowState: flowState) {
+        AccelerometerView(flowState: flowState)
     }
 }

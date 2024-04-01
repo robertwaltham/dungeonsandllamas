@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct NavigationTestView: View {
-    @State var viewModel: ContentViewModel
+    @State var viewModel: ContentFlowState
 
     var body: some View {
         VStack {
@@ -63,8 +63,8 @@ struct NavigationTestView: View {
 }
 
 #Preview {
-    let viewModel = ContentViewModel()
-    return ContentFlowCoordinator(flowState: viewModel) {
-        NavigationTestView(viewModel: viewModel)
+    let flowState = ContentFlowState()
+    return ContentFlowCoordinator(flowState: flowState) {
+        NavigationTestView(viewModel: flowState)
     }
 }

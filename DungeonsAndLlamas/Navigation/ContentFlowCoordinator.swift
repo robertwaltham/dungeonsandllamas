@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 
 struct ContentFlowCoordinator<Content: View>: View {
-    @State var flowState: ContentViewModel
+    @State var flowState: ContentFlowState
     let content: () -> Content
 
     var body: some View {
@@ -31,11 +31,11 @@ extension ContentFlowCoordinator {
         
         switch link {
         case .accelerometer:
-            AccelerometerView(contentViewModel: flowState)
+            AccelerometerView(flowState: flowState)
         case .apiTest:
-            APITestView(contentViewModel: flowState)
+            APITestView(flowState: flowState)
         case .itemGenerator:
-            ItemGeneratorView(contentViewModel: flowState)
+            ItemGeneratorView(flowState: flowState)
         default:
             VStack {
                 Text("Link Destination \(link.id)")
@@ -101,9 +101,6 @@ class ContentFlowState {
     func closePopover() {
         popoverItem = nil
     }
-}
-
-class ContentViewModel: ContentFlowState {
     
     func sheet(_ link: ContentLink) {
         guard coverItem == nil && presentedItem == nil else {
