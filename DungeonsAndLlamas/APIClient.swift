@@ -153,8 +153,6 @@ class APIClient {
     }
     
     
-    
-    
     func asyncStreamGenerate(prompt: String) -> AsyncThrowingStream<OllamaResult, Error> {
         return AsyncThrowingStream<OllamaResult, Error> { continuation in
             Task.init {
@@ -190,11 +188,47 @@ class APIClient {
         }
     }
     
-    func generateImage(prompt: String, negative: String) async throws -> [String] {
+    func asyncStreamGenerate(prompt: String, base64Image: String) -> AsyncThrowingStream<OllamaResult, Error> {
+        return AsyncThrowingStream<OllamaResult, Error> { continuation in
+            Task.init {
+                var request = APIClient.request(endpoint: .generate, method: .post)
+                request.httpBody = """
+                {
+                    "model": "llava",
+                    "prompt": "\(prompt)",
+                    "stream": true,
+                    "images": ["\(base64Image)"]
+                }
+                """.data(using: .utf8)
+                
+                do {
+                    let (bytes, response) = try await session.bytes(for: request)
+                    guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                        throw APIError.requestError("api error")
+                    }
+                    for try await line in bytes.lines {
+                        do {
+                            let obj = try decoder.decode(OllamaResult.self, from: line.data(using: .utf8)!)
+                            print(obj.response)
+                            continuation.yield(obj)
+                        } catch {
+                            print(error)
+                        }
+                    }
+                    print("done")
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+    
+    func generateImage(_ options: StableDiffusionOptions) async throws -> [String] {
         
         var request = APIClient.request(endpoint: .generateSD, method: .post)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = stableRequestBody(prompt: prompt, negative: negative).data(using: .utf8)
+        request.httpBody = stableRequestBody(options).data(using: .utf8)
                 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
@@ -227,7 +261,9 @@ class APIClient {
         task.resume()
     }
     
-    func stableRequestBody(prompt: String, negative: String) -> String {
+
+    
+    private func stableRequestBody(_ options: StableDiffusionOptions) -> String {
         return """
         {
             "init_images": [],
@@ -242,7 +278,7 @@ class APIClient {
             "inpaint_full_res_padding": 0,
             "inpainting_mask_invert": 0,
             "initial_noise_multiplier": 0,
-            "prompt": "\(prompt)",
+            "prompt": "\(options.prompt)",
             "styles": [],
             "seed": -1,
             "subseed": -1,
@@ -250,17 +286,17 @@ class APIClient {
             "seed_resize_from_h": -1,
             "seed_resize_from_w": -1,
             "sampler_name": "",
-            "batch_size": 1,
+            "batch_size": \(options.batchSize),
             "n_iter": 1,
-            "steps": 20,
+            "steps": \(options.steps),
             "cfg_scale": 7,
-            "width": 512,
-            "height": 512,
+            "width": \(options.size),
+            "height": \(options.size),
             "restore_faces": false,
             "tiling": false,
             "do_not_save_samples": false,
             "do_not_save_grid": false,
-            "negative_prompt": "\(negative)",
+            "negative_prompt": "\(options.negativePrompt)",
             "eta": 0,
             "s_min_uncond": 0,
             "s_churn": 0,
@@ -323,4 +359,20 @@ struct OllamaResult: Codable {
     var createdAt: String // not actually an iso8601 date
     var response: String
     var done: Bool
+}
+
+struct StableDiffusionOptions {
+    let prompt: String
+    let negativePrompt: String
+    let size: Int
+    let steps: Int
+    let batchSize: Int
+    
+    init(prompt: String, negativePrompt: String = "", size: Int = 512, steps: Int = 20, batchSize: Int = 1) {
+        self.prompt = prompt
+        self.negativePrompt = negativePrompt
+        self.size = size
+        self.steps = steps
+        self.batchSize = batchSize
+    }
 }

@@ -52,6 +52,12 @@ struct ContentView: View {
                     }
                     .frame(width: 200, height: 200)
                     .buttonStyle(.bordered)
+                    
+                    Button("Item Generator") {
+                        viewModel.nextLink(.itemGenerator)
+                    }
+                    .frame(width: 200, height: 200)
+                    .buttonStyle(.bordered)
                 }
 
                 
@@ -81,11 +87,14 @@ extension ContentFlowCoordinator {
     
     @ViewBuilder private func destination(link: ContentLink) -> some View {
         
-        if link == .accelerometer {
+        switch link {
+        case .accelerometer:
             AccelerometerView(contentViewModel: flowState)
-        } else if link == .apiTest {
+        case .apiTest:
             APITestView(contentViewModel: flowState)
-        } else {
+        case .itemGenerator:
+            ItemGeneratorView(contentViewModel: flowState)
+        default:
             VStack {
                 Text("Link Destination \(link.id)")
                 HStack {
@@ -105,9 +114,9 @@ extension ContentFlowCoordinator {
                         flowState.closePopover()
                     }.buttonStyle(.bordered)
                 }
-
             }
         }
+
     }
     
     @ViewBuilder private func linkDestination(link: ContentLink) -> some View {
@@ -203,6 +212,7 @@ enum ContentLink: Identifiable, Hashable {
     case secondLink(text: String)
     case accelerometer
     case apiTest
+    case itemGenerator
 }
 
 #Preview {

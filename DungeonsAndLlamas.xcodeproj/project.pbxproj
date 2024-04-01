@@ -15,6 +15,7 @@
 		D16CAE5B2BB3C06700ECA710 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE5A2BB3C06700ECA710 /* APIClient.swift */; };
 		D16CAE5D2BB3C09B00ECA710 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE5C2BB3C09B00ECA710 /* Secrets.swift */; };
 		D16CAE5F2BB3C59E00ECA710 /* APITestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */; };
+		D16CAE622BB4C04E00ECA710 /* ItemGeneratorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 		D16CAE5C2BB3C09B00ECA710 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
 		D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APITestView.swift; sourceTree = "<group>"; };
 		D16CAE602BB3C7DF00ECA710 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemGeneratorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +68,7 @@
 				D16CAE582BB3AD0600ECA710 /* AccelerometerView.swift */,
 				D16CAE5A2BB3C06700ECA710 /* APIClient.swift */,
 				D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */,
+				D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */,
 				D16CAE5C2BB3C09B00ECA710 /* Secrets.swift */,
 				D16CAE4E2BB3724100ECA710 /* Assets.xcassets */,
 				D16CAE502BB3724100ECA710 /* Preview Content */,
@@ -156,6 +159,7 @@
 				D16CAE4B2BB3724000ECA710 /* ContentView.swift in Sources */,
 				D16CAE5B2BB3C06700ECA710 /* APIClient.swift in Sources */,
 				D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */,
+				D16CAE622BB4C04E00ECA710 /* ItemGeneratorView.swift in Sources */,
 				D16CAE5F2BB3C59E00ECA710 /* APITestView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

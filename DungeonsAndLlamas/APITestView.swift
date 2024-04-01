@@ -65,7 +65,7 @@ class ViewModel {
         
         Task.init {
             do {
-                let strings = try await client.generateImage(prompt: "a cat in a fancy hat", negative: "")
+                let strings = try await client.generateImage(StableDiffusionOptions(prompt: "a cat in a fancy hat"))
                 
                 for string in strings {
                     if let data = Data(base64Encoded: string), let image = UIImage(data: data) {
