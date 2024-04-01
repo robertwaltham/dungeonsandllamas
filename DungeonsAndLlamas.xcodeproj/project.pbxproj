@@ -16,6 +16,10 @@
 		D16CAE5D2BB3C09B00ECA710 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE5C2BB3C09B00ECA710 /* Secrets.swift */; };
 		D16CAE5F2BB3C59E00ECA710 /* APITestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */; };
 		D16CAE622BB4C04E00ECA710 /* ItemGeneratorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */; };
+		D17058A72BBB1919003E6668 /* ContentFlowCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058A62BBB1919003E6668 /* ContentFlowCoordinator.swift */; };
+		D17058A92BBB1956003E6668 /* ContentLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058A82BBB1956003E6668 /* ContentLink.swift */; };
+		D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058AB2BBB198C003E6668 /* NavigationTestView.swift */; };
+		D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058AD2BBB1A14003E6668 /* LandingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +34,10 @@
 		D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APITestView.swift; sourceTree = "<group>"; };
 		D16CAE602BB3C7DF00ECA710 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemGeneratorView.swift; sourceTree = "<group>"; };
+		D17058A62BBB1919003E6668 /* ContentFlowCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentFlowCoordinator.swift; sourceTree = "<group>"; };
+		D17058A82BBB1956003E6668 /* ContentLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentLink.swift; sourceTree = "<group>"; };
+		D17058AB2BBB198C003E6668 /* NavigationTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationTestView.swift; sourceTree = "<group>"; };
+		D17058AD2BBB1A14003E6668 /* LandingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,12 +72,9 @@
 			children = (
 				D16CAE602BB3C7DF00ECA710 /* Info.plist */,
 				D16CAE482BB3724000ECA710 /* DungeonsAndLlamasApp.swift */,
-				D16CAE4A2BB3724000ECA710 /* ContentView.swift */,
-				D16CAE582BB3AD0600ECA710 /* AccelerometerView.swift */,
-				D16CAE5A2BB3C06700ECA710 /* APIClient.swift */,
-				D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */,
-				D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */,
-				D16CAE5C2BB3C09B00ECA710 /* Secrets.swift */,
+				D17058AA2BBB196D003E6668 /* Navigation */,
+				D17058A52BBB18D1003E6668 /* Views */,
+				D17058A42BBB18C6003E6668 /* API */,
 				D16CAE4E2BB3724100ECA710 /* Assets.xcassets */,
 				D16CAE502BB3724100ECA710 /* Preview Content */,
 			);
@@ -82,6 +87,37 @@
 				D16CAE512BB3724100ECA710 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		D17058A42BBB18C6003E6668 /* API */ = {
+			isa = PBXGroup;
+			children = (
+				D16CAE5A2BB3C06700ECA710 /* APIClient.swift */,
+				D16CAE5C2BB3C09B00ECA710 /* Secrets.swift */,
+			);
+			path = API;
+			sourceTree = "<group>";
+		};
+		D17058A52BBB18D1003E6668 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				D16CAE4A2BB3724000ECA710 /* ContentView.swift */,
+				D16CAE582BB3AD0600ECA710 /* AccelerometerView.swift */,
+				D17058AD2BBB1A14003E6668 /* LandingView.swift */,
+				D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */,
+				D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */,
+				D17058AB2BBB198C003E6668 /* NavigationTestView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		D17058AA2BBB196D003E6668 /* Navigation */ = {
+			isa = PBXGroup;
+			children = (
+				D17058A62BBB1919003E6668 /* ContentFlowCoordinator.swift */,
+				D17058A82BBB1956003E6668 /* ContentLink.swift */,
+			);
+			path = Navigation;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -160,7 +196,11 @@
 				D16CAE5B2BB3C06700ECA710 /* APIClient.swift in Sources */,
 				D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */,
 				D16CAE622BB4C04E00ECA710 /* ItemGeneratorView.swift in Sources */,
+				D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */,
+				D17058A72BBB1919003E6668 /* ContentFlowCoordinator.swift in Sources */,
 				D16CAE5F2BB3C59E00ECA710 /* APITestView.swift in Sources */,
+				D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */,
+				D17058A92BBB1956003E6668 /* ContentLink.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

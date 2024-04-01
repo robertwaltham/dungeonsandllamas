@@ -40,9 +40,7 @@ struct APITestView: View {
 @Observable
 class ViewModel {
     let client = APIClient()
-    
     var result = ""
-    
     var images = [UIImage]()
     
     func testStream() {
