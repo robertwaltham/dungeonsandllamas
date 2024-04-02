@@ -31,7 +31,7 @@ extension ContentFlowCoordinator {
         
         switch link {
         case .accelerometer:
-            AccelerometerView(flowState: flowState)
+            AccelerometerTestView(flowState: flowState)
         case .apiTest:
             APITestView(flowState: flowState)
         case .itemGenerator:

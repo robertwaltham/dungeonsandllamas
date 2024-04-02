@@ -9,8 +9,9 @@ import SwiftUI
 import Observation
 
 struct APITestView: View {
-    @State var viewModel = ViewModel()
+    @State var viewModel: ViewModel = ViewModel()
     @State var flowState: ContentFlowState
+    
 
     var body: some View {
         VStack {
@@ -22,10 +23,7 @@ struct APITestView: View {
                 Button("Generate Image") {
                     viewModel.testImage()
                 }.buttonStyle(.bordered)
-                
-                Button("Styles") {
-                    viewModel.imagePromptStyles()
-                }.buttonStyle(.bordered)
+
             }
             HStack {
                 ForEach(viewModel.images, id: \.self) { image in
@@ -38,16 +36,20 @@ struct APITestView: View {
 }
 
 @Observable
+@MainActor
 class ViewModel {
     let client = APIClient()
     var result = ""
     var images = [UIImage]()
     
+    // SwiftUI will create the state object in a non-isolated context
+    nonisolated init() {}
+    
     func testStream() {
         result = ""
         Task.init {
             do {
-                for try await obj in client.asyncStreamGenerate(prompt: "What is the meaning of life in 30 words or less") {
+                for try await obj in await client.asyncStreamGenerate(prompt: "What is the meaning of life in 30 words or less") {
                     if !obj.done {
                         result += obj.response
                     }
@@ -60,7 +62,6 @@ class ViewModel {
     
     func testImage()  {
         images = []
-        
         Task.init {
             do {
                 let strings = try await client.generateImage(StableDiffusionOptions(prompt: "a cat in a fancy hat"))
@@ -76,10 +77,7 @@ class ViewModel {
         }
 
     }
-    
-    func imagePromptStyles() {
-        client.imagePromptStyles()
-    }
+
 }
 
 #Preview {

@@ -74,6 +74,7 @@ struct ItemGeneratorView: View {
 }
 
 @Observable
+@MainActor
 class ItemGeneratorViewModel {
     var prompt = "A cat in a fancy hat"
     var itemDescription = ""
@@ -82,6 +83,9 @@ class ItemGeneratorViewModel {
     var images = [UIImage]()
     let client = APIClient()
     var loading = false
+    
+    // SwiftUI will create the state object in a non-isolated context
+    nonisolated init() {}
     
     func updatePrompt() {
         prompt = "((\(weaponType.rawValue))), ((\(quality.rawValue) quality)), fantasy"
@@ -93,6 +97,8 @@ class ItemGeneratorViewModel {
             return
         }
         loading = true
+        let prompt = prompt
+        let client = client
         Task.init {
             do {
                 let size = 256
@@ -124,7 +130,7 @@ class ItemGeneratorViewModel {
         }
         Task.init {
             do {
-                for try await obj in client.asyncStreamGenerate(prompt: "Describe the item in this image in 50 words or less", base64Image: imageData){
+                for try await obj in await client.asyncStreamGenerate(prompt: "Describe the item in this image in 50 words or less", base64Image: imageData){
                     if !obj.done {
                         itemDescription += obj.response
                     }

@@ -8,7 +8,7 @@
 import SwiftUI
 import CoreMotion
 
-struct AccelerometerView: View {
+struct AccelerometerTestView: View {
     @State var viewModel = AccelerometerViewModel()
     @State var flowState: ContentFlowState
     
@@ -54,6 +54,6 @@ class AccelerometerViewModel {
 #Preview {
     let flowState = ContentFlowState()
     return ContentFlowCoordinator(flowState: flowState) {
-        AccelerometerView(flowState: flowState)
+        AccelerometerTestView(flowState: flowState)
     }
 }

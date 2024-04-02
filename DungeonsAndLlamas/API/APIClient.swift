@@ -7,8 +7,7 @@
 
 import Foundation
 
-class APIClient {
-    static let shared = APIClient()
+actor APIClient {
     
     enum APIError: Error {
         case requestError(String)
@@ -27,31 +26,27 @@ class APIClient {
         case post = "POST"
     }
     
-    let delegate: TaskDelegate
+    enum Service {
+        case stableDiffusion
+        case largeLanguageModel
+    }
+    
     let session: URLSession
     var decoder: JSONDecoder {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
-        
         d.dateDecodingStrategy = .iso8601
         return d
     }
     
-    fileprivate var dataResponse: ((_ result: Result<String, Error>) -> Void)?
-    fileprivate var completion: ((_ result: Error?) -> Void)?
-    
     init () {
-        delegate = TaskDelegate()
-        session = URLSession(configuration: URLSessionConfiguration.default, delegate: delegate, delegateQueue: nil)
+        session = URLSession(configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: nil)
     }
     
     static func request(endpoint: APIEndpoint, method: APIMethod) -> URLRequest {
         guard let url = URL(string: "\(Secrets.host)\(endpoint.rawValue)") else {
             fatalError("can't create url")
         }
-        
-        print(url.description)
-        
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.addValue(Secrets.authorization, forHTTPHeaderField: "Authorization")
@@ -59,54 +54,20 @@ class APIClient {
         return request
     }
     
-    func setHandlers(dataResponse: @escaping (_ result: Result<String, Error>) -> Void, completion: @escaping (_ result: Error?) -> Void) {
-        delegate.client = self
-        self.dataResponse = dataResponse
-        self.completion = completion
-    }
-    
-    func testConnection(completion: @escaping (_ success: Bool) -> Void) {
-        let request = APIClient.request(endpoint: .test, method: .get)
-        
-        let task = session.dataTask(with: request) { data, response, error in
-            
-            guard let response = response as? HTTPURLResponse else {
-                print("No response: \(String(describing: error))")
-                completion(false)
-                return
-            }
-            if let data = data {
-                print("Data: \(String(data: data, encoding: .utf8) ?? "none")")
-            } else {
-                print("No data in response: \(String(describing: error))")
-            }
-            
-            completion(response.statusCode == 200)
-            
+    func testConnection(service: Service) async throws -> Bool {
+        let request = switch service {
+        case .stableDiffusion:
+            APIClient.request(endpoint: .testSD, method: .get)
+        case .largeLanguageModel:
+            APIClient.request(endpoint: .test, method: .get)
         }
-        task.resume()
-    }
-    
-    func testSDConnection(completion: @escaping (_ success: Bool) -> Void) {
-        let request = APIClient.request(endpoint: .testSD, method: .get)
         
-        let task = session.dataTask(with: request) { data, response, error in
-            
-            guard let response = response as? HTTPURLResponse else {
-                print("No response: \(String(describing: error))")
-                completion(false)
-                return
-            }
-            if let data = data {
-                print("Data: \(String(data: data, encoding: .utf8) ?? "none")")
-            } else {
-                print("No data in response: \(String(describing: error))")
-            }
-            
-            completion(response.statusCode == 200)
-            
+        let (_, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("api error")
         }
-        task.resume()
+        
+        return httpResponse.statusCode == 200
     }
     
     func generate(prompt: String) {
@@ -166,7 +127,7 @@ class APIClient {
                 """.data(using: .utf8)
                 
                 do {
-                    let (bytes, response) = try await session.bytes(for: request)
+                    let (bytes, response) = try await session.bytes(for: request, delegate: DelegateToSupressWarning())
                     guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                         throw APIError.requestError("api error")
                     }
@@ -202,7 +163,7 @@ class APIClient {
                 """.data(using: .utf8)
                 
                 do {
-                    let (bytes, response) = try await session.bytes(for: request)
+                    let (bytes, response) = try await session.bytes(for: request, delegate: DelegateToSupressWarning())
                     guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                         throw APIError.requestError("api error")
                     }
@@ -230,7 +191,7 @@ class APIClient {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = stableRequestBody(options).data(using: .utf8)
                 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             throw APIError.requestError("api error")
         }
@@ -315,42 +276,6 @@ class APIClient {
         }
         """
     }
-    
-    
-    class TaskDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate {
-        
-        weak var client: APIClient?
-        
-        func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
-            if let task = task as? URLSessionDataTask {
-                print("\(task.originalRequest?.description ?? "none")")
-            }
-        }
-        
-        func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-            
-            guard let string = String(data: data, encoding: .utf8) else {
-                client?.dataResponse?(.failure(APIError.requestError("failed to decode")))
-                return
-            }
-            client?.dataResponse?(.success(string))
-        }
-        
-        func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-            if let response = task.response as? HTTPURLResponse {
-                print(response.statusCode)
-                
-                if response.statusCode == 200 {
-                    client?.completion?(nil)
-                } else {
-                    client?.completion?(APIError.requestError("got status code: \(response.statusCode.description)"))
-                }
-                
-            } else {
-                client?.completion?(error)
-            }
-        }
-    }
 }
 
 
@@ -376,3 +301,6 @@ struct StableDiffusionOptions {
         self.batchSize = batchSize
     }
 }
+
+// (any URLSessionTaskDelegate)? is not sendable??? use this to surpress warning
+final class DelegateToSupressWarning: NSObject, URLSessionTaskDelegate, Sendable {}
