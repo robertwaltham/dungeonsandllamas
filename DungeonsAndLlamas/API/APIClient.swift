@@ -19,6 +19,8 @@ actor APIClient {
         case generate = "/api/generate"
         case generateSD = "/sd/sdapi/v1/txt2img"
         case progress = "/sd/sdapi/v1/progress"
+        case options = "/sd/sdapi/v1/options"
+        case sdModels = "/sd/sdapi/v1/sd-models"
     }
     
     enum APIMethod: String {
@@ -64,56 +66,15 @@ actor APIClient {
         
         let (_, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.requestError("api error")
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)")
         }
         
         return httpResponse.statusCode == 200
     }
-    
-//    func generate(prompt: String) {
-//        var request = APIClient.request(endpoint: .generate, method: .post)
-//        request.httpBody = """
-//        {
-//            "model": "llama2",
-//            "prompt": "\(prompt)",
-//            "stream": false
-//        }
-//        """.data(using: .utf8)
-//        
-//        let task = session.dataTask(with: request)
-//        task.resume()
-//    }
-//    
-//    func streamGenerate(prompt: String) {
-//        var request = APIClient.request(endpoint: .generate, method: .post)
-//        request.httpBody = """
-//        {
-//            "model": "llama2",
-//            "prompt": "\(prompt)",
-//            "stream": true
-//        }
-//        """.data(using: .utf8)
-//        
-//        let task = session.dataTask(with: request)
-//        task.resume()
-//    }
-//    
-//    func streamGenerate(prompt: String, base64Image: String) {
-//        var request = APIClient.request(endpoint: .generate, method: .post)
-//        request.httpBody = """
-//        {
-//            "model": "llava",
-//            "prompt": "\(prompt)",
-//            "stream": true,
-//            "images": ["\(base64Image)"]
-//        }
-//        """.data(using: .utf8)
-//        
-//        let task = session.dataTask(with: request)
-//        task.resume()
-//    }
-    
-    
+ 
     func asyncStreamGenerate(prompt: String) -> AsyncThrowingStream<OllamaResult, Error> {
         return AsyncThrowingStream<OllamaResult, Error> { continuation in
             Task.detached {
@@ -128,8 +89,11 @@ actor APIClient {
                 
                 do {
                     let (bytes, response) = try await self.session.bytes(for: request, delegate: DelegateToSupressWarning())
-                    guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                        throw APIError.requestError("api error")
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        throw APIError.requestError("no request")
+                    }
+                    guard httpResponse.statusCode == 200 else {
+                        throw APIError.requestError("status code: \(httpResponse.statusCode)")
                     }
                     for try await line in bytes.lines {
                         do {
@@ -163,8 +127,11 @@ actor APIClient {
                 
                 do {
                     let (bytes, response) = try await session.bytes(for: request, delegate: DelegateToSupressWarning())
-                    guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                        throw APIError.requestError("api error")
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        throw APIError.requestError("no request")
+                    }
+                    guard httpResponse.statusCode == 200 else {
+                        throw APIError.requestError("status code: \(httpResponse.statusCode)")
                     }
                     for try await line in bytes.lines {
                         do {
@@ -190,8 +157,11 @@ actor APIClient {
         request.httpBody = stableRequestBody(options).data(using: .utf8)
                 
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw APIError.requestError("api error")
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
         
         let responseObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -207,11 +177,60 @@ actor APIClient {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw APIError.requestError("api error")
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
         
         return try decoder.decode(StableDiffusionProgress.self, from: data)
+    }
+    
+    func imageGenerationOptions() async throws -> String {
+        var request = APIClient.request(endpoint: .options, method: .get)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
+        }
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+    
+    func imageGenerationModels() async throws -> [StableDiffusionModel] {
+        var request = APIClient.request(endpoint: .sdModels, method: .get)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
+        }
+        return try decoder.decode([StableDiffusionModel].self, from: data)
+    }
+    
+    func setImageGenerationModel(model: StableDiffusionModel) async throws {
+        var request = APIClient.request(endpoint: .options, method: .post)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = """
+        {
+            "sd_model_checkpoint": "\(model.title)"
+        }
+        """.data(using: .utf8)
+        
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
+        }
     }
     
     private func stableRequestBody(_ options: StableDiffusionOptions) -> String {
@@ -309,6 +328,18 @@ struct StableDiffusionProgress: Codable {
         var skipped: Bool
         var stoppingGeneration: Bool
     }
+}
+
+struct StableDiffusionModel: Codable, Identifiable, Hashable {
+    var id: String {
+        sha256
+    }
+    
+    var title: String
+    var modelName: String
+    var hash: String
+    var sha256: String
+    var filename: String
 }
 
 // (any URLSessionTaskDelegate)? is not sendable??? use this to surpress warning

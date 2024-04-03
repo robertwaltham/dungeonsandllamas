@@ -32,11 +32,13 @@ struct APITestView: View {
                 .padding()
 
             HStack {
-                Button("Generate Image") {
-                    viewModel.testImage()
-                }                
-                .buttonStyle(.bordered)
-                .disabled(viewModel.loading)
+                VStack {
+                    Button("Generate Image") {
+                        viewModel.testImage()
+                    }                
+                    .buttonStyle(.bordered)
+                    .disabled(viewModel.loading)
+                }
                 
                 VStack {
                     TextField("Image Prompt", text: $viewModel.sdOptions.prompt, prompt: Text("Prompt"))
@@ -63,6 +65,34 @@ struct APITestView: View {
                     }
                 }
                 
+            }.padding()
+            
+            HStack {
+                Button("Get Options") {
+                    viewModel.getOptions()
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.loading)
+                
+                Spacer()
+                
+                Button("Get Models") {
+                    viewModel.getModels()
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.loading)
+                
+                Picker("Model", selection: $viewModel.selectedModel) {
+                    ForEach(viewModel.models, id:\.self) { model in
+                        Text(model.modelName)
+                    }
+                }.frame(minWidth: 300)
+                
+                Button("Set Model") {
+                    viewModel.setModel()
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.loading)
             }.padding()
             
             if viewModel.loading {
@@ -99,8 +129,10 @@ class ViewModel {
     var inProgressImage: UIImage?
     var llmPrompt = "What is the meaning of life in 30 words or less"
     var loading = false
-    var sdOptions = StableDiffusionOptions(prompt: "a cat in a fancy hat", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
-    
+    var sdOptions = StableDiffusionOptions(prompt: "a large wizard staff that is presented formally, lying horizontally on a fancy table", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
+    var selectedModel = StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")
+    var models = [StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")]
+
     var batchSizeProxy: Binding<Double>{
         Binding<Double>(get: {
             return Double(self.sdOptions.batchSize)
@@ -149,6 +181,43 @@ class ViewModel {
                 }
             } catch {
                 print(error)
+            }
+            loading = false
+        }
+    }
+    
+    func getOptions() {
+        loading = true
+        Task.init {
+            do {
+                let options = try await client.imageGenerationOptions()
+                print(options)
+            } catch {
+                print(error)
+            }
+            loading = false
+        }
+    }
+    
+    func getModels() {
+        loading = true
+        Task.init {
+            do {
+                models = try await client.imageGenerationModels()
+            } catch {
+               print(error)
+            }
+            loading = false
+        }
+    }
+    
+    func setModel() {
+        loading = true
+        Task.init {
+            do {
+                try await client.setImageGenerationModel(model: selectedModel)
+            } catch {
+               print(error)
             }
             loading = false
         }
