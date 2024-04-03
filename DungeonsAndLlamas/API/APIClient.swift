@@ -18,7 +18,7 @@ actor APIClient {
         case testSD = "/sd"
         case generate = "/api/generate"
         case generateSD = "/sd/sdapi/v1/txt2img"
-        case promptStyles = "/sd/sdapi/v1/prompt-styles"
+        case progress = "/sd/sdapi/v1/progress"
     }
     
     enum APIMethod: String {
@@ -202,6 +202,18 @@ actor APIClient {
         return images
     }
     
+    func imageGenerationProgress() async throws -> StableDiffusionProgress {
+        var request = APIClient.request(endpoint: .progress, method: .get)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw APIError.requestError("api error")
+        }
+        
+        return try decoder.decode(StableDiffusionProgress.self, from: data)
+    }
+    
     private func stableRequestBody(_ options: StableDiffusionOptions) -> String {
         return """
         {
@@ -265,11 +277,11 @@ struct OllamaResult: Codable {
 }
 
 struct StableDiffusionOptions {
-    let prompt: String
-    let negativePrompt: String
-    let size: Int
-    let steps: Int
-    let batchSize: Int
+    var prompt: String
+    var negativePrompt: String
+    var size: Int
+    var steps: Int
+    var batchSize: Int
     
     init(prompt: String, negativePrompt: String = "", size: Int = 512, steps: Int = 20, batchSize: Int = 1) {
         self.prompt = prompt
@@ -277,6 +289,25 @@ struct StableDiffusionOptions {
         self.size = size
         self.steps = steps
         self.batchSize = batchSize
+    }
+}
+
+struct StableDiffusionProgress: Codable {
+    var progress: Double
+    var etaRelative: Double
+    var state: StableDiffusionState
+    var currentImage: String?
+    
+    struct StableDiffusionState: Codable {
+        var interrupted: Bool
+        var job: String
+        var jobCount: Int
+        var jobNo: Int
+        var jobTimestamp: String
+        var samplingStep: Int
+        var samplingSteps: Int
+        var skipped: Bool
+        var stoppingGeneration: Bool
     }
 }
 

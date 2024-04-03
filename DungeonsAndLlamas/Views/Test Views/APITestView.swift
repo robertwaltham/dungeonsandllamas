@@ -38,17 +38,54 @@ struct APITestView: View {
                 .buttonStyle(.bordered)
                 .disabled(viewModel.loading)
                 
-                TextField("Image Prompt", text: $viewModel.sdPrompt, prompt: Text("Prompt"))
-                    .frame(minHeight: 30)
-                    .padding()
+                VStack {
+                    TextField("Image Prompt", text: $viewModel.sdOptions.prompt, prompt: Text("Prompt"))
+                        .frame(minHeight: 30)
+                        .padding()
                     .background(Color(white: 0.9))
+                    
+                    TextField("Negative Prompt", text: $viewModel.sdOptions.negativePrompt, prompt: Text("Negative Prompt"))
+                        .frame(minHeight: 30)
+                        .padding()
+                    .background(Color(white: 0.9))
+                    
+                    HStack {
+                        Text("Batch Size \(viewModel.sdOptions.batchSize)")
+                        Slider(value: viewModel.batchSizeProxy, in: 1...5)
+                    }
+                    HStack {
+                        Text("Steps \(viewModel.sdOptions.steps)")
+                        Slider(value: viewModel.stepsProxy, in: 10...50)
+                    }
+                    HStack {
+                        Text("Size \(viewModel.sdOptions.size)")
+                        Slider(value: viewModel.sizeProxy, in: 64...512, step: 64)
+                    }
+                }
+                
             }.padding()
             
-            HStack {
-                ForEach(viewModel.images, id: \.self) { image in
+            if viewModel.loading {
+                HStack {
+                    Text("\(viewModel.steps)/\(viewModel.stepGoal)")
+                    ProgressView(value: viewModel.progress)
+                    Text("\(viewModel.eta)")
+                }.padding()
+                
+                if let image = viewModel.inProgressImage {
                     Image(uiImage: image)
                 }
-            }.padding()
+            } else {
+                ScrollView(.horizontal) {
+                    HStack {
+                        ForEach(viewModel.images, id: \.self) { image in
+                            Image(uiImage: image)
+                        }
+                    }.padding()
+                }
+            }
+
+            Spacer()
         }
     }
 }
@@ -59,9 +96,39 @@ class ViewModel {
     let client = APIClient()
     var result = ""
     var images = [UIImage]()
+    var inProgressImage: UIImage?
     var llmPrompt = "What is the meaning of life in 30 words or less"
-    var sdPrompt = "a cat in a fancy hat"
     var loading = false
+    var sdOptions = StableDiffusionOptions(prompt: "a cat in a fancy hat", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
+    
+    var batchSizeProxy: Binding<Double>{
+        Binding<Double>(get: {
+            return Double(self.sdOptions.batchSize)
+        }, set: {
+            self.sdOptions.batchSize = Int($0)
+        })
+    }
+    
+    var stepsProxy: Binding<Double>{
+        Binding<Double>(get: {
+            return Double(self.sdOptions.steps)
+        }, set: {
+            self.sdOptions.steps = Int($0)
+        })
+    }
+    
+    var sizeProxy: Binding<Double>{
+        Binding<Double>(get: {
+            return Double(self.sdOptions.size)
+        }, set: {
+            self.sdOptions.size = Int($0)
+        })
+    }
+    
+    var eta = 0.0
+    var progress = 0.0
+    var steps = 0
+    var stepGoal = 0
     
     // SwiftUI will create the state object in a non-isolated context
     nonisolated init() {}
@@ -94,12 +161,19 @@ class ViewModel {
         }
         images = []
         loading = true
+        steps = 0
+        eta = 0
+        stepGoal = sdOptions.steps
+        inProgressImage = nil
+        
         Task.init {
             do {
-                let strings = try await client.generateBase64EncodedImages(StableDiffusionOptions(prompt: sdPrompt))
+                let strings = try await client.generateBase64EncodedImages(sdOptions)
                 
                 for string in strings {
-                    if let data = Data(base64Encoded: string), let image = UIImage(data: data) {
+                    if let data = Data(base64Encoded: string), 
+                        let image = UIImage(data: data),
+                        Int(image.size.width) <= sdOptions.size { // skip combined image
                         images.append(image)
                     }
                 }
@@ -108,7 +182,29 @@ class ViewModel {
             }
             loading = false
         }
-
+        
+        Task.init {
+            do {
+                while loading == true {
+                    let progress = try await self.client.imageGenerationProgress()
+                    
+                    eta = progress.etaRelative
+                    self.progress = progress.progress
+                    steps = progress.state.samplingStep
+                    stepGoal = progress.state.samplingSteps
+                    
+                    if let currentImage = progress.currentImage,
+                        let data = Data(base64Encoded: currentImage),
+                        let image = UIImage(data: data) {
+                        inProgressImage = image
+                    }
+                    
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                }
+            } catch {
+                print(error)
+            }
+        }
     }
 
 }
