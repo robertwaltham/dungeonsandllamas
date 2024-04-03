@@ -12,9 +12,7 @@ class GenerationService {
     var sharedInstance = GenerationService()
     var apiClient = APIClient()
     
-    public init() {
-        
-    }
+    public init() {}
     
     struct ConnectionStatus {
         var connected: Bool

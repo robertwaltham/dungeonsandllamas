@@ -62,14 +62,12 @@ struct ItemGeneratorView: View {
             .background(Color(white: 0.9))
             
             VStack {
-                TextField("Description", text: $viewModel.itemDescription, prompt: Text("Item Description"))
+                TextField("Description", text: $viewModel.itemDescription, prompt: Text("Item Description"), axis:.vertical)
                     .frame(minHeight: 100)
                     .padding()
                     .background(Color(white: 0.9))
             }
-
-            
-        }
+        }.padding()
     }
 }
 
@@ -101,10 +99,10 @@ class ItemGeneratorViewModel {
         let client = client
         Task.init {
             do {
-                let size = 256
-                let options = StableDiffusionOptions(prompt: prompt, size: size, steps: 30, batchSize: 3)
+                let size = 512
+                let options = StableDiffusionOptions(prompt: prompt, size: size, steps: 20, batchSize: 1)
 
-                let strings = try await client.generateImage(options)
+                let strings = try await client.generateBase64EncodedImages(options)
                 
                 for string in strings {
                     if let data = Data(base64Encoded: string), let image = UIImage(data: data), Int(image.size.width) <= size {

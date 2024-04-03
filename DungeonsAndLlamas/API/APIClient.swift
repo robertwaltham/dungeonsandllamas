@@ -43,7 +43,7 @@ actor APIClient {
         session = URLSession(configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: nil)
     }
     
-    static func request(endpoint: APIEndpoint, method: APIMethod) -> URLRequest {
+    private static func request(endpoint: APIEndpoint, method: APIMethod) -> URLRequest {
         guard let url = URL(string: "\(Secrets.host)\(endpoint.rawValue)") else {
             fatalError("can't create url")
         }
@@ -70,53 +70,53 @@ actor APIClient {
         return httpResponse.statusCode == 200
     }
     
-    func generate(prompt: String) {
-        var request = APIClient.request(endpoint: .generate, method: .post)
-        request.httpBody = """
-        {
-            "model": "llama2",
-            "prompt": "\(prompt)",
-            "stream": false
-        }
-        """.data(using: .utf8)
-        
-        let task = session.dataTask(with: request)
-        task.resume()
-    }
-    
-    func streamGenerate(prompt: String) {
-        var request = APIClient.request(endpoint: .generate, method: .post)
-        request.httpBody = """
-        {
-            "model": "llama2",
-            "prompt": "\(prompt)",
-            "stream": true
-        }
-        """.data(using: .utf8)
-        
-        let task = session.dataTask(with: request)
-        task.resume()
-    }
-    
-    func streamGenerate(prompt: String, base64Image: String) {
-        var request = APIClient.request(endpoint: .generate, method: .post)
-        request.httpBody = """
-        {
-            "model": "llava",
-            "prompt": "\(prompt)",
-            "stream": true,
-            "images": ["\(base64Image)"]
-        }
-        """.data(using: .utf8)
-        
-        let task = session.dataTask(with: request)
-        task.resume()
-    }
+//    func generate(prompt: String) {
+//        var request = APIClient.request(endpoint: .generate, method: .post)
+//        request.httpBody = """
+//        {
+//            "model": "llama2",
+//            "prompt": "\(prompt)",
+//            "stream": false
+//        }
+//        """.data(using: .utf8)
+//        
+//        let task = session.dataTask(with: request)
+//        task.resume()
+//    }
+//    
+//    func streamGenerate(prompt: String) {
+//        var request = APIClient.request(endpoint: .generate, method: .post)
+//        request.httpBody = """
+//        {
+//            "model": "llama2",
+//            "prompt": "\(prompt)",
+//            "stream": true
+//        }
+//        """.data(using: .utf8)
+//        
+//        let task = session.dataTask(with: request)
+//        task.resume()
+//    }
+//    
+//    func streamGenerate(prompt: String, base64Image: String) {
+//        var request = APIClient.request(endpoint: .generate, method: .post)
+//        request.httpBody = """
+//        {
+//            "model": "llava",
+//            "prompt": "\(prompt)",
+//            "stream": true,
+//            "images": ["\(base64Image)"]
+//        }
+//        """.data(using: .utf8)
+//        
+//        let task = session.dataTask(with: request)
+//        task.resume()
+//    }
     
     
     func asyncStreamGenerate(prompt: String) -> AsyncThrowingStream<OllamaResult, Error> {
         return AsyncThrowingStream<OllamaResult, Error> { continuation in
-            Task.init {
+            Task.detached {
                 var request = APIClient.request(endpoint: .generate, method: .post)
                 request.httpBody = """
                 {
@@ -127,20 +127,19 @@ actor APIClient {
                 """.data(using: .utf8)
                 
                 do {
-                    let (bytes, response) = try await session.bytes(for: request, delegate: DelegateToSupressWarning())
+                    let (bytes, response) = try await self.session.bytes(for: request, delegate: DelegateToSupressWarning())
                     guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                         throw APIError.requestError("api error")
                     }
                     for try await line in bytes.lines {
                         do {
-                            let obj = try decoder.decode(OllamaResult.self, from: line.data(using: .utf8)!)
+                            let obj = try await self.decoder.decode(OllamaResult.self, from: line.data(using: .utf8)!)
                             print(obj.response)
                             continuation.yield(obj)
                         } catch {
                             print(error)
                         }
                     }
-                    print("done")
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -176,7 +175,6 @@ actor APIClient {
                             print(error)
                         }
                     }
-                    print("done")
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -185,7 +183,7 @@ actor APIClient {
         }
     }
     
-    func generateImage(_ options: StableDiffusionOptions) async throws -> [String] {
+    func generateBase64EncodedImages(_ options: StableDiffusionOptions) async throws -> [String] {
         
         var request = APIClient.request(endpoint: .generateSD, method: .post)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -202,27 +200,7 @@ actor APIClient {
         }
         
         return images
-        
     }
-    
-    func imagePromptStyles() {
-        
-        let request = APIClient.request(endpoint: .promptStyles, method: .get)
-//        request.httpBody =  """
-//        {
-//          "prompt": "\(prompt)",
-//          "negative_prompt": "\(negative)",
-//          "styles": [
-//            "string"
-//          ]
-//        }
-//        """.data(using: .utf8)
-        
-        let task = session.dataTask(with: request)
-        task.resume()
-    }
-    
-
     
     private func stableRequestBody(_ options: StableDiffusionOptions) -> String {
         return """
