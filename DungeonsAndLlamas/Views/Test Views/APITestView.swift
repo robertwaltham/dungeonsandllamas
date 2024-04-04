@@ -129,7 +129,7 @@ class ViewModel {
     var inProgressImage: UIImage?
     var llmPrompt = "What is the meaning of life in 30 words or less"
     var loading = false
-    var sdOptions = StableDiffusionOptions(prompt: "a large wizard staff that is presented formally, lying horizontally on a fancy table", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
+    var sdOptions = StableDiffusionGenerationOptions(prompt: "a large wizard staff that is presented formally, lying horizontally on a fancy table", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
     var selectedModel = StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")
     var models = [StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")]
 

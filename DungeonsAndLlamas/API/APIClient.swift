@@ -15,7 +15,7 @@ actor APIClient {
     
     enum APIEndpoint: String {
         case test = ""
-        case testSD = "/sd"
+        case testSD = "/sd/sdapi/v1/memory"
         case generate = "/api/generate"
         case generateSD = "/sd/sdapi/v1/txt2img"
         case progress = "/sd/sdapi/v1/progress"
@@ -45,11 +45,11 @@ actor APIClient {
         session = URLSession(configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: nil)
     }
     
-    private static func request(endpoint: APIEndpoint, method: APIMethod) -> URLRequest {
+    private static func request(endpoint: APIEndpoint, method: APIMethod, timeout: TimeInterval = 120.0) -> URLRequest {
         guard let url = URL(string: "\(Secrets.host)\(endpoint.rawValue)") else {
             fatalError("can't create url")
         }
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = method.rawValue
         request.addValue(Secrets.authorization, forHTTPHeaderField: "Authorization")
         
@@ -59,9 +59,9 @@ actor APIClient {
     func testConnection(service: Service) async throws -> Bool {
         let request = switch service {
         case .stableDiffusion:
-            APIClient.request(endpoint: .testSD, method: .get)
+            APIClient.request(endpoint: .testSD, method: .get, timeout: 2.0)
         case .largeLanguageModel:
-            APIClient.request(endpoint: .test, method: .get)
+            APIClient.request(endpoint: .test, method: .get, timeout: 2.0)
         }
         
         let (_, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
@@ -150,7 +150,7 @@ actor APIClient {
         }
     }
     
-    func generateBase64EncodedImages(_ options: StableDiffusionOptions) async throws -> [String] {
+    func generateBase64EncodedImages(_ options: StableDiffusionGenerationOptions) async throws -> [String] {
         
         var request = APIClient.request(endpoint: .generateSD, method: .post)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -187,7 +187,7 @@ actor APIClient {
         return try decoder.decode(StableDiffusionProgress.self, from: data)
     }
     
-    func imageGenerationOptions() async throws -> String {
+    func imageGenerationOptions() async throws -> StableDiffusionOptions {
         var request = APIClient.request(endpoint: .options, method: .get)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
@@ -198,7 +198,7 @@ actor APIClient {
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
-        return String(data: data, encoding: .utf8) ?? ""
+        return try decoder.decode(StableDiffusionOptions.self, from: data)
     }
     
     func imageGenerationModels() async throws -> [StableDiffusionModel] {
@@ -233,7 +233,7 @@ actor APIClient {
         }
     }
     
-    private func stableRequestBody(_ options: StableDiffusionOptions) -> String {
+    private func stableRequestBody(_ options: StableDiffusionGenerationOptions) -> String {
         return """
         {
             "init_images": [],
@@ -287,7 +287,6 @@ actor APIClient {
     }
 }
 
-
 struct OllamaResult: Codable {
     var model: String
     var createdAt: String // not actually an iso8601 date
@@ -295,7 +294,7 @@ struct OllamaResult: Codable {
     var done: Bool
 }
 
-struct StableDiffusionOptions {
+struct StableDiffusionGenerationOptions {
     var prompt: String
     var negativePrompt: String
     var size: Int
@@ -309,6 +308,11 @@ struct StableDiffusionOptions {
         self.steps = steps
         self.batchSize = batchSize
     }
+}
+
+struct StableDiffusionOptions: Codable {
+    var sdModelCheckpoint: String
+    var sdCheckpointHash: String
 }
 
 struct StableDiffusionProgress: Codable {

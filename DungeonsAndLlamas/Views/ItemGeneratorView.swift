@@ -100,7 +100,7 @@ class ItemGeneratorViewModel {
         Task.init {
             do {
                 let size = 512
-                let options = StableDiffusionOptions(prompt: prompt, size: size, steps: 20, batchSize: 1)
+                let options = StableDiffusionGenerationOptions(prompt: prompt, size: size, steps: 20, batchSize: 1)
 
                 let strings = try await client.generateBase64EncodedImages(options)
                 
