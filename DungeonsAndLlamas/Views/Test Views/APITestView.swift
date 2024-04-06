@@ -25,17 +25,20 @@ struct APITestView: View {
                     .frame(minHeight: 30)
                     .padding()
                     .background(Color(white: 0.9))
-
+                
             }.padding()
             
             Text(viewModel.result)
                 .padding()
-
+                .onTapGesture {
+                    viewModel.sdOptions.prompt += viewModel.result
+                }
+            
             HStack {
                 VStack {
                     Button("Generate Image") {
                         viewModel.testImage()
-                    }                
+                    }
                     .buttonStyle(.bordered)
                     .disabled(viewModel.loading)
                     
@@ -45,21 +48,26 @@ struct APITestView: View {
                     .buttonStyle(.bordered)
                     .disabled(viewModel.loading)
                     
-                    Image("lighthouse")
-                        .resizable()
-                        .frame(width: 100, height: 100).clipped()
+                    if let image = UIImage(named: "lighthouse") {
+                        Image(uiImage: image)
+                            .resizable()
+                            .frame(width: 100, height: 100).clipped()
+                            .onTapGesture {
+                                viewModel.describe(image: image)
+                            }
+                    }
                 }
                 
                 VStack {
                     TextField("Image Prompt", text: $viewModel.sdOptions.prompt, prompt: Text("Prompt"))
                         .frame(minHeight: 30)
                         .padding()
-                    .background(Color(white: 0.9))
+                        .background(Color(white: 0.9))
                     
                     TextField("Negative Prompt", text: $viewModel.sdOptions.negativePrompt, prompt: Text("Negative Prompt"))
                         .frame(minHeight: 30)
                         .padding()
-                    .background(Color(white: 0.9))
+                        .background(Color(white: 0.9))
                     
                     HStack {
                         Text("Batch Size \(viewModel.sdOptions.batchSize)")
@@ -119,12 +127,14 @@ struct APITestView: View {
                 ScrollView(.horizontal) {
                     HStack {
                         ForEach(viewModel.images, id: \.self) { image in
-                            Image(uiImage: image)
+                            Image(uiImage: image).onTapGesture {
+                                viewModel.describe(image: image)
+                            }
                         }
                     }.padding()
                 }
             }
-
+            
             Spacer()
         }
     }
@@ -137,13 +147,13 @@ class ViewModel {
     var result = ""
     var images = [UIImage]()
     var inProgressImage: UIImage?
-    var llmPrompt = "What is the meaning of life in 30 words or less"
+    var llmPrompt = "Describe the image in 30 words or less. Respond only with a comma separated list of the contents"
     var loading = false
     let dndprompt = "modelshoot style, (extremely detailed CG unity 8k wallpaper), full shot body photo of the most beautiful artwork in the world, english medieval pink (dragonborn druid) witch, black silk robe, nature magic, medieval era, painting by Ed Blinkey, Atey Ghailan, Studio Ghibli, by Jeremy Mann, Greg Manchess, Antonio Moro, trending on ArtStation, trending on CGSociety, Intricate, High Detail, Sharp focus, dramatic, painting art by midjourney and greg rutkowski, teal and gold, petals, countryside, action pose, casting a spell, green swirling magic"
-    var sdOptions = StableDiffusionGenerationOptions(prompt: "watercolor, painting", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
+    var sdOptions = StableDiffusionGenerationOptions(prompt: "oil painting, painting, ", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
     var selectedModel = StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")
     var models = [StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")]
-
+    
     var batchSizeProxy: Binding<Double>{
         Binding<Double>(get: {
             return Double(self.sdOptions.batchSize)
@@ -216,7 +226,7 @@ class ViewModel {
             do {
                 models = try await client.imageGenerationModels()
             } catch {
-               print(error)
+                print(error)
             }
             loading = false
         }
@@ -228,7 +238,7 @@ class ViewModel {
             do {
                 try await client.setImageGenerationModel(model: selectedModel)
             } catch {
-               print(error)
+                print(error)
             }
             loading = false
         }
@@ -251,9 +261,9 @@ class ViewModel {
                 let strings = try await client.generateBase64EncodedImages(sdOptions)
                 
                 for string in strings {
-                    if let data = Data(base64Encoded: string), 
+                    if let data = Data(base64Encoded: string),
                         let image = UIImage(data: data),
-                        Int(image.size.width) <= sdOptions.size { // skip combined image
+                       Int(image.size.width) <= sdOptions.size { // skip combined image
                         images.append(image)
                     }
                 }
@@ -274,8 +284,8 @@ class ViewModel {
                     stepGoal = progress.state.samplingSteps
                     
                     if let currentImage = progress.currentImage,
-                        let data = Data(base64Encoded: currentImage),
-                        let image = UIImage(data: data) {
+                       let data = Data(base64Encoded: currentImage),
+                       let image = UIImage(data: data) {
                         inProgressImage = image
                     }
                     
@@ -302,16 +312,16 @@ class ViewModel {
         guard let base64Image = image.pngData()?.base64EncodedString() else {
             return
         }
-
-    
+        
+        
         Task.init {
             do {
                 let strings = try await client.generateBase64EncodedImages(sdOptions, base64EncodedSourceImages: [base64Image])
                 
                 for string in strings {
                     if let data = Data(base64Encoded: string),
-                        let image = UIImage(data: data),
-                        Int(image.size.width) <= sdOptions.size { // skip combined image
+                       let image = UIImage(data: data),
+                       Int(image.size.width) <= sdOptions.size { // skip combined image
                         images.append(image)
                     }
                 }
@@ -332,8 +342,8 @@ class ViewModel {
                     stepGoal = progress.state.samplingSteps
                     
                     if let currentImage = progress.currentImage,
-                        let data = Data(base64Encoded: currentImage),
-                        let image = UIImage(data: data) {
+                       let data = Data(base64Encoded: currentImage),
+                       let image = UIImage(data: data) {
                         inProgressImage = image
                     }
                     
@@ -344,8 +354,29 @@ class ViewModel {
             }
         }
     }
-
-
+    
+    func describe(image: UIImage) {
+        guard !loading else {
+            return
+        }
+        loading = true
+        result = ""
+        guard let imageData = image.jpegData(compressionQuality: 0.8)?.base64EncodedString() else {
+            return
+        }
+        Task.init {
+            do {
+                for try await obj in await client.asyncStreamGenerate(prompt: llmPrompt, base64Image: imageData){
+                    if !obj.done {
+                        result += obj.response
+                    }
+                }
+            } catch {
+                print(error)
+            }
+            loading = false
+        }
+    }
 }
 
 #Preview {

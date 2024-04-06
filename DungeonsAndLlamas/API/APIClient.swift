@@ -153,7 +153,7 @@ actor APIClient {
     
     func generateBase64EncodedImages(_ options: StableDiffusionGenerationOptions) async throws -> [String] {
         
-        var request = APIClient.request(endpoint: .generateSDtxt2img, method: .post)
+        var request = APIClient.request(endpoint: .generateSDtxt2img, method: .post, timeout: 300)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = stableRequestBody(options).data(using: .utf8)
                 
@@ -175,7 +175,7 @@ actor APIClient {
     
     func generateBase64EncodedImages(_ options: StableDiffusionGenerationOptions, base64EncodedSourceImages: [String]) async throws -> [String] {
         
-        var request = APIClient.request(endpoint: .generateSDimg2img, method: .post)
+        var request = APIClient.request(endpoint: .generateSDimg2img, method: .post, timeout: 300)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = stableRequestBody(options, base64EncodedSourceImages: base64EncodedSourceImages).data(using: .utf8)
 

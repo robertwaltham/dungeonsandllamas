@@ -137,8 +137,7 @@ class ItemGeneratorViewModel {
                 print(error)
             }
             loading = false
-        }
-        
+        } 
     }
 }
 
