@@ -17,7 +17,8 @@ actor APIClient {
         case test = ""
         case testSD = "/sd/sdapi/v1/memory"
         case generate = "/api/generate"
-        case generateSD = "/sd/sdapi/v1/txt2img"
+        case generateSDtxt2img = "/sd/sdapi/v1/txt2img"
+        case generateSDimg2img = "/sd/sdapi/v1/img2img"
         case progress = "/sd/sdapi/v1/progress"
         case options = "/sd/sdapi/v1/options"
         case sdModels = "/sd/sdapi/v1/sd-models"
@@ -152,7 +153,7 @@ actor APIClient {
     
     func generateBase64EncodedImages(_ options: StableDiffusionGenerationOptions) async throws -> [String] {
         
-        var request = APIClient.request(endpoint: .generateSD, method: .post)
+        var request = APIClient.request(endpoint: .generateSDtxt2img, method: .post)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = stableRequestBody(options).data(using: .utf8)
                 
@@ -162,6 +163,29 @@ actor APIClient {
         }
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
+        }
+        
+        let responseObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let images = responseObject?["images"] as? [String] else {
+            throw APIError.requestError("no images")
+        }
+        
+        return images
+    }
+    
+    func generateBase64EncodedImages(_ options: StableDiffusionGenerationOptions, base64EncodedSourceImages: [String]) async throws -> [String] {
+        
+        var request = APIClient.request(endpoint: .generateSDimg2img, method: .post)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = stableRequestBody(options, base64EncodedSourceImages: base64EncodedSourceImages).data(using: .utf8)
+
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            print(String(data: data, encoding: .utf8) ?? "")
+            throw APIError.requestError("status code: \(httpResponse.statusCode)")
         }
         
         let responseObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -282,6 +306,76 @@ actor APIClient {
             "send_images": true,
             "save_images": true,
             "alwayson_scripts": {}
+        }
+        """
+    }
+    
+    private func stableRequestBody(_ options: StableDiffusionGenerationOptions, base64EncodedSourceImages: [String]) -> String {
+//        return """
+//        {
+//            "init_images": [
+//            "\(base64EncodedSourceImages.joined(separator: "\",\""))"
+//            ],
+//            "resize_mode": 0,
+//            "denoising_strength": 0.75,
+//            "image_cfg_scale": 0,
+//            "mask_blur": 0,
+//            "mask_blur_x": 0,
+//            "mask_blur_y": 0,
+//            "inpainting_fill": 0,
+//            "inpaint_full_res": true,
+//            "inpaint_full_res_padding": 0,
+//            "inpainting_mask_invert": 0,
+//            "initial_noise_multiplier": 0,
+//            "prompt": "\(options.prompt)",
+//            "styles": [],
+//            "seed": -1,
+//            "subseed": -1,
+//            "subseed_strength": 0,
+//            "seed_resize_from_h": -1,
+//            "seed_resize_from_w": -1,
+//            "sampler_name": "",
+//            "batch_size": \(options.batchSize),
+//            "n_iter": 1,
+//            "steps": \(options.steps),
+//            "cfg_scale": 7,
+//            "width": \(options.size),
+//            "height": \(options.size),
+//            "restore_faces": false,
+//            "tiling": false,
+//            "do_not_save_samples": false,
+//            "do_not_save_grid": false,
+//            "negative_prompt": "\(options.negativePrompt)",
+//            "eta": 0,
+//            "s_min_uncond": 0,
+//            "s_churn": 0,
+//            "s_tmax": 0,
+//            "s_tmin": 0,
+//            "s_noise": 1,
+//            "override_settings": {},
+//            "override_settings_restore_afterwards": true,
+//            "script_args": [],
+//            "sampler_index": "DPM2",
+//            "include_init_images": false,
+//            "script_name": "",
+//            "send_images": true,
+//            "save_images": true,
+//            "alwayson_scripts": {}
+//        }
+//        """
+        
+        return """
+        {
+          "prompt": "\(options.prompt)",
+          "negative_prompt": "\(options.negativePrompt)",
+          "batch_size": \(options.batchSize),
+          "steps": \(options.steps),
+          "width": \(options.size),
+          "height": \(options.size),
+          "init_images": [
+            "\(base64EncodedSourceImages.joined(separator: "\",\""))"
+          ],
+          "sampler_name": "DPM++ 2M Karras"
         }
         """
     }

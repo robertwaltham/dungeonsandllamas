@@ -38,6 +38,16 @@ struct APITestView: View {
                     }                
                     .buttonStyle(.bordered)
                     .disabled(viewModel.loading)
+                    
+                    Button("Generate From") {
+                        viewModel.testImage2Image()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(viewModel.loading)
+                    
+                    Image("lighthouse")
+                        .resizable()
+                        .frame(width: 100, height: 100).clipped()
                 }
                 
                 VStack {
@@ -57,7 +67,7 @@ struct APITestView: View {
                     }
                     HStack {
                         Text("Steps \(viewModel.sdOptions.steps)")
-                        Slider(value: viewModel.stepsProxy, in: 10...50)
+                        Slider(value: viewModel.stepsProxy, in: 1...50)
                     }
                     HStack {
                         Text("Size \(viewModel.sdOptions.size)")
@@ -129,7 +139,8 @@ class ViewModel {
     var inProgressImage: UIImage?
     var llmPrompt = "What is the meaning of life in 30 words or less"
     var loading = false
-    var sdOptions = StableDiffusionGenerationOptions(prompt: "a large wizard staff that is presented formally, lying horizontally on a fancy table", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
+    let dndprompt = "modelshoot style, (extremely detailed CG unity 8k wallpaper), full shot body photo of the most beautiful artwork in the world, english medieval pink (dragonborn druid) witch, black silk robe, nature magic, medieval era, painting by Ed Blinkey, Atey Ghailan, Studio Ghibli, by Jeremy Mann, Greg Manchess, Antonio Moro, trending on ArtStation, trending on CGSociety, Intricate, High Detail, Sharp focus, dramatic, painting art by midjourney and greg rutkowski, teal and gold, petals, countryside, action pose, casting a spell, green swirling magic"
+    var sdOptions = StableDiffusionGenerationOptions(prompt: "watercolor, painting", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
     var selectedModel = StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")
     var models = [StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")]
 
@@ -275,6 +286,65 @@ class ViewModel {
             }
         }
     }
+    
+    func testImage2Image()  {
+        
+        guard !loading else {
+            return
+        }
+        images = []
+        loading = true
+        steps = 0
+        eta = 0
+        stepGoal = sdOptions.steps
+        inProgressImage = nil
+        let image = UIImage(named: "lighthouse")!
+        guard let base64Image = image.pngData()?.base64EncodedString() else {
+            return
+        }
+
+    
+        Task.init {
+            do {
+                let strings = try await client.generateBase64EncodedImages(sdOptions, base64EncodedSourceImages: [base64Image])
+                
+                for string in strings {
+                    if let data = Data(base64Encoded: string),
+                        let image = UIImage(data: data),
+                        Int(image.size.width) <= sdOptions.size { // skip combined image
+                        images.append(image)
+                    }
+                }
+            } catch {
+                print(error)
+            }
+            loading = false
+        }
+        
+        Task.init {
+            do {
+                while loading == true {
+                    let progress = try await self.client.imageGenerationProgress()
+                    
+                    eta = progress.etaRelative
+                    self.progress = progress.progress
+                    steps = progress.state.samplingStep
+                    stepGoal = progress.state.samplingSteps
+                    
+                    if let currentImage = progress.currentImage,
+                        let data = Data(base64Encoded: currentImage),
+                        let image = UIImage(data: data) {
+                        inProgressImage = image
+                    }
+                    
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                }
+            } catch {
+                print(error)
+            }
+        }
+    }
+
 
 }
 
