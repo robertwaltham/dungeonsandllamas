@@ -33,3 +33,10 @@ This requires two services running on the target machine (or however your servic
 - https://website.tld/ -> [Ollama](https://ollama.com/) 
 - https://website.tld/sd/ -> [stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 
+A sample nginx config for a server can be found at [here](sample.conf)
+
+Setting up SSH tunnel on the host machine running the AI models
+- `ssh -R N:localhost:K yourdomain`
+- N = remote port
+- K = port of your service
+
