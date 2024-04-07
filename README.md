@@ -20,6 +20,10 @@ Goals
 - Do so in a way that is secure 
 - Optimize for cost
 
+Features
+- SSH tunnel to provide a secure connection from my home PC to a remote server, in a way that penetrates the local NAT
+- Authorization to the remote server via HTTP Basic authorization + HTTPS encryption 
+
 <img width="783" alt="Screenshot 2024-04-06 at 8 44 44 PM" src="https://github.com/robertwaltham/dungeonsandllamas/assets/438673/aec1c92f-8634-4b66-af39-2bbeb88c4048">
 
 ### Building
