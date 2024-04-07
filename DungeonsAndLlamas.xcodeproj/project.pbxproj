@@ -33,7 +33,6 @@
 		D16CAE5A2BB3C06700ECA710 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		D16CAE5C2BB3C09B00ECA710 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
 		D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APITestView.swift; sourceTree = "<group>"; };
-		D16CAE602BB3C7DF00ECA710 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemGeneratorView.swift; sourceTree = "<group>"; };
 		D17058A62BBB1919003E6668 /* ContentFlowCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentFlowCoordinator.swift; sourceTree = "<group>"; };
 		D17058A82BBB1956003E6668 /* ContentLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentLink.swift; sourceTree = "<group>"; };
@@ -72,7 +71,6 @@
 		D16CAE472BB3724000ECA710 /* DungeonsAndLlamas */ = {
 			isa = PBXGroup;
 			children = (
-				D16CAE602BB3C7DF00ECA710 /* Info.plist */,
 				D16CAE482BB3724000ECA710 /* DungeonsAndLlamasApp.swift */,
 				D17058AA2BBB196D003E6668 /* Navigation */,
 				D17058A52BBB18D1003E6668 /* Views */,
