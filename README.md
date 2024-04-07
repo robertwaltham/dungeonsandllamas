@@ -5,6 +5,13 @@ This is a project to explore the capabilties of modern LLM and Stable Diffusion 
 
 The goal of the app is to build a Dungeon Master's companion that enables the generation of artwork and descriptions for characters, items, maps, etc by leveraging AI tools. 
 
+### App Architecture
+
+The app is designed to leverage modern App development patterns including
+- SwiftUI + Observation
+- Swift Concurrency
+- Coordinator pattern for navigation
+
 ### Service Architecture
 
 Goals
