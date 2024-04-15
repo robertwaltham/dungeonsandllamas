@@ -79,7 +79,6 @@ struct PencilCanvasView: UIViewRepresentable {
     
     var image: Binding<UIImage?>
     
-    
     func makeUIView(context: Context) -> PKCanvasView {
         let view = PKCanvasView()
         view.drawingPolicy = .anyInput
@@ -100,6 +99,7 @@ struct PencilCanvasView: UIViewRepresentable {
     
     func updateUIView(_ uiView: PKCanvasView, context: Context) {
         if image.wrappedValue == nil {
+            context.coordinator.skipUpdate = true
             uiView.drawing = PKDrawing()
         }
     }
@@ -107,7 +107,9 @@ struct PencilCanvasView: UIViewRepresentable {
     func makeCoordinator() -> PencilCanvasViewCoordinator {
         let coordinator = PencilCanvasViewCoordinator()
         coordinator.dataChanged = { image in
-            self.image.wrappedValue = image
+            DispatchQueue.main.async {
+                self.image.wrappedValue = image
+            }
         }
         return coordinator
     }
@@ -118,9 +120,14 @@ struct PencilCanvasView: UIViewRepresentable {
         
         var dataChanged: ((UIImage) -> Void)?
         var picker: PKToolPicker?
+        var skipUpdate = true
 
         // TODO: figure out why this throws concurrency warnings
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+            guard !skipUpdate else {
+                skipUpdate = false
+                return
+            }
             dataChanged?(canvasView.drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0))
         }
     }
