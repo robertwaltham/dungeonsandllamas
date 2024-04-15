@@ -63,7 +63,6 @@ class GenerationService {
             }
             
             statusTask = nil
-            print("Status | SD - \(sdStatus.connected) | LLM - \(llmStatus.connected)")
         }
     }
     
@@ -157,6 +156,46 @@ class GenerationService {
             history.end = Date.now
             loading.wrappedValue = false
             LLMHistory.append(history)
+        }
+    }
+    
+    func image(prompt: String, negativePrompt: String, image: UIImage, output: Binding<UIImage?>, progress: Binding<StableDiffusionProgress?>, loading: Binding<Bool>) {
+        
+//        guard selectedSDModel != nil else {
+//            return
+//        }
+        
+        loading.wrappedValue = true
+        
+        let sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt)
+        guard let base64Image = image.pngData()?.base64EncodedString() else {
+            return
+        }
+        
+        Task.init {
+            do {
+                let strings = try await apiClient.generateBase64EncodedImages(sdOptions, base64EncodedSourceImages: [base64Image])
+                
+                if let string = strings.first,
+                   let data = Data(base64Encoded: string),
+                   let image = UIImage(data: data) {
+                    output.wrappedValue = image
+                }
+            } catch {
+                print(error)
+            }
+            loading.wrappedValue = false
+        }
+        
+        Task.init {
+            do {
+                while loading.wrappedValue == true {
+                    progress.wrappedValue = try await self.apiClient.imageGenerationProgress()
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                }
+            } catch {
+                print(error)
+            }
         }
     }
     

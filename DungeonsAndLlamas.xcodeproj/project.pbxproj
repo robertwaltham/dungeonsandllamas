@@ -22,6 +22,7 @@
 		D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058AD2BBB1A14003E6668 /* LandingView.swift */; };
 		D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058B02BBB1EC7003E6668 /* GenerationService.swift */; };
 		D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */; };
+		D1DC04342BCDCC02007BC5D2 /* PencilTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04332BCDCC02007BC5D2 /* PencilTestView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 		D17058AD2BBB1A14003E6668 /* LandingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingView.swift; sourceTree = "<group>"; };
 		D17058B02BBB1EC7003E6668 /* GenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationService.swift; sourceTree = "<group>"; };
 		D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingStreamTestView.swift; sourceTree = "<group>"; };
+		D1DC04332BCDCC02007BC5D2 /* PencilTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilTestView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,6 +130,7 @@
 				D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */,
 				D17058AB2BBB198C003E6668 /* NavigationTestView.swift */,
 				D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */,
+				D1DC04332BCDCC02007BC5D2 /* PencilTestView.swift */,
 			);
 			path = "Test Views";
 			sourceTree = "<group>";
@@ -209,6 +212,7 @@
 				D16CAE5B2BB3C06700ECA710 /* APIClient.swift in Sources */,
 				D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */,
 				D16CAE622BB4C04E00ECA710 /* ItemGeneratorView.swift in Sources */,
+				D1DC04342BCDCC02007BC5D2 /* PencilTestView.swift in Sources */,
 				D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */,
 				D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */,
 				D17058A72BBB1919003E6668 /* ContentFlowCoordinator.swift in Sources */,
