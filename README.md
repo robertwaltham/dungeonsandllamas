@@ -5,6 +5,8 @@ This is a project to explore the capabilties of modern LLM and Stable Diffusion 
 
 The goal of the app is to build a Dungeon Master's companion that enables the generation of artwork and descriptions for characters, items, maps, etc by leveraging AI tools. 
 
+<img src="https://github.com/robertwaltham/dungeonsandllamas/assets/438673/caa3de56-c6fd-4b62-b095-f3f05275f428" width="300"/>
+
 ### App Architecture
 
 The app is designed to leverage modern App development patterns including
