@@ -14,9 +14,15 @@ actor APIClient {
     }
     
     enum APIEndpoint: String {
+        
+        // OLLama LLM
         case test = ""
-        case testSD = "/sd/sdapi/v1/memory"
         case generate = "/api/generate"
+        case models = "/api/tags"
+        case modelDetail = "/api/show"
+        
+        // Stable Diffusion
+        case testSD = "/sd/sdapi/v1/memory"
         case generateSDtxt2img = "/sd/sdapi/v1/txt2img"
         case generateSDimg2img = "/sd/sdapi/v1/img2img"
         case progress = "/sd/sdapi/v1/progress"
@@ -42,20 +48,13 @@ actor APIClient {
         return d
     }
     
+    //MARK: - Init
+    
     init () {
         session = URLSession(configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: nil)
     }
     
-    private static func request(endpoint: APIEndpoint, method: APIMethod, timeout: TimeInterval = 120.0) -> URLRequest {
-        guard let url = URL(string: "\(Secrets.host)\(endpoint.rawValue)") else {
-            fatalError("can't create url")
-        }
-        var request = URLRequest(url: url, timeoutInterval: timeout)
-        request.httpMethod = method.rawValue
-        request.addValue(Secrets.authorization, forHTTPHeaderField: "Authorization")
-        
-        return request
-    }
+    //MARK: - Test
     
     func testConnection(service: Service) async throws -> Bool {
         let request = switch service {
@@ -74,6 +73,43 @@ actor APIClient {
         }
         
         return httpResponse.statusCode == 200
+    }
+    
+    //MARK: - LLM
+    
+    func getLocalModels() async throws -> [LLMModel] {
+        
+        let request = APIClient.request(endpoint: .models, method: .get)
+        
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)")
+        }
+        
+        return try decoder.decode(LLMModelResponse.self, from: data).models
+    }
+    
+    func getDetail(model: LLMModel) async throws -> LLMModelInformation {
+        var request = APIClient.request(endpoint: .modelDetail, method: .post)
+        
+        request.httpBody = """
+            {
+              "name": "\(model.name)"
+            }
+            """.data(using: .utf8)
+        
+        let (data, response) = try await self.session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)")
+        }
+        
+        return try decoder.decode(LLMModelInformation.self, from: data)
     }
  
     func asyncStreamGenerate(prompt: String) -> AsyncThrowingStream<OllamaResult, Error> {
@@ -150,6 +186,8 @@ actor APIClient {
             }
         }
     }
+    
+    //MARK: - Stable Diffusion
     
     func generateBase64EncodedImages(_ options: StableDiffusionGenerationOptions) async throws -> [String] {
         
@@ -255,6 +293,19 @@ actor APIClient {
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
+    }
+    
+    //MARK: - Helpers
+    
+    private static func request(endpoint: APIEndpoint, method: APIMethod, timeout: TimeInterval = 120.0) -> URLRequest {
+        guard let url = URL(string: "\(Secrets.host)\(endpoint.rawValue)") else {
+            fatalError("can't create url")
+        }
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = method.rawValue
+        request.addValue(Secrets.authorization, forHTTPHeaderField: "Authorization")
+        
+        return request
     }
     
     private func stableRequestBody(_ options: StableDiffusionGenerationOptions) -> String {
@@ -381,6 +432,8 @@ actor APIClient {
     }
 }
 
+//MARK: - Structs
+
 struct OllamaResult: Codable {
     var model: String
     var createdAt: String // not actually an iso8601 date
@@ -438,6 +491,38 @@ struct StableDiffusionModel: Codable, Identifiable, Hashable {
     var hash: String
     var sha256: String
     var filename: String
+}
+
+struct LLMModelDetails: Codable, Hashable {
+    var format: String
+    var family: String
+    var families: [String]? // not sure if this is an array or not
+    var parameterSize: String
+    var quantizationLevel: String
+}
+
+struct LLMModel: Codable, Identifiable, Hashable {
+
+    var id: String {
+        digest
+    }
+    var name: String
+    var modifiedAt: String // date but ehhh
+    var size: Int
+    var digest: String // hash
+    var details: LLMModelDetails
+}
+
+struct LLMModelResponse: Codable {
+    var models: [LLMModel]
+}
+
+struct LLMModelInformation: Codable {
+    var license: String
+    var modelfile: String
+    var parameters: String
+    var template: String
+    var details: LLMModelDetails
 }
 
 // (any URLSessionTaskDelegate)? is not sendable??? use this to surpress warning

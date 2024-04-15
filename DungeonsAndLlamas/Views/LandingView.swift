@@ -78,15 +78,28 @@ struct LandingView: View {
                 
                 let modelDisabled = generationService.modelTask != nil
                 
-                Picker("Model", selection: $generationService.selectedModel) {
-                    ForEach(generationService.models, id:\.self) { model in
-                        Text(model.modelName)
+                if generationService.selectedSDModel != nil {
+                    Picker("Model", selection: $generationService.selectedSDModel) {
+                        ForEach(generationService.sdModels) { model in
+                            Text(model.modelName).tag(model as StableDiffusionModel?)
+                        }
                     }
+                    .frame(minWidth: 150)
+                    .disabled(modelDisabled)
                 }
-                .frame(minWidth: 300)
-                .disabled(modelDisabled)
                 
-                if generationService.models.count > 0 {
+                if generationService.selectedLLMModel != nil {
+                    Picker("Model", selection: $generationService.selectedLLMModel) {
+                        ForEach(generationService.llmModels) { model in
+                            Text(model.name).tag(model as LLMModel?)
+                        }
+                    }
+                    .frame(minWidth: 150)
+                    .disabled(modelDisabled)
+                }
+                
+
+                if generationService.sdModels.count > 0 {
                     Button("Set Model") {
                         generationService.setSelectedModel()
                     }

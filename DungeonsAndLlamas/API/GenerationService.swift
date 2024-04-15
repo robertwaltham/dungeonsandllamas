@@ -27,8 +27,10 @@ class GenerationService {
     var llmStatus = ConnectionStatus(connected: false, lastChecked: .distantPast, service: .largeLanguageModel)
     var sdStatus = ConnectionStatus(connected: false, lastChecked: .distantPast, service: .stableDiffusion)
     
-    var models: [StableDiffusionModel] = []
-    var selectedModel = StableDiffusionModel(title: "n/a", modelName: "", hash: "", sha256: "", filename: "")
+    var sdModels: [StableDiffusionModel] = []
+    var llmModels: [LLMModel] = []
+    var selectedSDModel: StableDiffusionModel?
+    var selectedLLMModel: LLMModel?
     
     private(set) var statusTask: Task<Void, Never>?
     private(set) var modelTask: Task<Void, Never>?
@@ -79,15 +81,21 @@ class GenerationService {
         modelTask = Task {
             
             do {
-                models = try await apiClient.imageGenerationModels()
+                sdModels = try await apiClient.imageGenerationModels()
                 let options = try await apiClient.imageGenerationOptions()
                 
-                selectedModel = models.first { model in
+                selectedSDModel = sdModels.first { model in
                     model.sha256 == options.sdCheckpointHash
-                } ?? StableDiffusionModel(title: "n/a", modelName: "", hash: "", sha256: "", filename: "")
+                }
+                                
+                llmModels = try await apiClient.getLocalModels()
+                selectedLLMModel = llmModels.first
                 
-                print("Selected Model: \(selectedModel.title)")
-
+//                if let selectedLLMModel = selectedLLMModel {
+//                    let detail = try await apiClient.getDetail(model: selectedLLMModel)
+//                    print(detail)
+//                }
+                
             } catch {
                 print(error)
             }
@@ -102,9 +110,14 @@ class GenerationService {
             return
         }
         
+        guard let selectedSDModel = selectedSDModel else {
+            print("no model selected")
+            return
+        }
+        
         modelTask = Task {
             do {
-                try await apiClient.setImageGenerationModel(model: selectedModel)
+                try await apiClient.setImageGenerationModel(model: selectedSDModel)
             } catch {
                 print(error)
             }
