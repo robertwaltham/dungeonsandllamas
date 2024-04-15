@@ -7,6 +7,7 @@
 
 import Foundation
 import Observation
+import SwiftUI
 
 @MainActor
 @Observable
@@ -32,8 +33,12 @@ class GenerationService {
     var selectedSDModel: StableDiffusionModel?
     var selectedLLMModel: LLMModel?
     
+    var LLMHistory = [LLMHistoryEntry]()
+    
     private(set) var statusTask: Task<Void, Never>?
     private(set) var modelTask: Task<Void, Never>?
+    
+    //MARK: - Status & Models
 
     func checkStatus() {
         
@@ -124,5 +129,49 @@ class GenerationService {
             
             modelTask = nil
         }
+    }
+    
+    //MARK: - Generation
+    
+    func text(prompt: String, result: Binding<String>, loading: Binding<Bool>) {
+        
+        guard let selectedLLMModel = selectedLLMModel else {
+            return
+        }
+        
+        Task.init {
+            loading.wrappedValue = true
+            result.wrappedValue = ""
+            var history = LLMHistoryEntry(prompt: prompt, model: selectedLLMModel.name)
+            do {
+                for try await obj in await self.apiClient.asyncStreamGenerate(prompt: prompt) {
+                    if !obj.done {
+                        result.wrappedValue += obj.response
+                        history.result += obj.response
+                    }
+                }
+            } catch {
+                history.errorDescription = error.localizedDescription
+                print(error)
+            }
+            history.end = Date.now
+            loading.wrappedValue = false
+            LLMHistory.append(history)
+        }
+    }
+    
+    //MARK: - Classes & Structs
+    
+    struct LLMHistoryEntry: Codable, Identifiable {
+        var id: Date {
+            start
+        }
+        
+        var start: Date = Date.now
+        var end: Date?
+        var prompt: String
+        var result: String = ""
+        var model: String
+        var errorDescription: String?
     }
 }

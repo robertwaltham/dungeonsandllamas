@@ -21,6 +21,7 @@
 		D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058AB2BBB198C003E6668 /* NavigationTestView.swift */; };
 		D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058AD2BBB1A14003E6668 /* LandingView.swift */; };
 		D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058B02BBB1EC7003E6668 /* GenerationService.swift */; };
+		D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +40,7 @@
 		D17058AB2BBB198C003E6668 /* NavigationTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationTestView.swift; sourceTree = "<group>"; };
 		D17058AD2BBB1A14003E6668 /* LandingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingView.swift; sourceTree = "<group>"; };
 		D17058B02BBB1EC7003E6668 /* GenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationService.swift; sourceTree = "<group>"; };
+		D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingStreamTestView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,6 +127,7 @@
 				D16CAE582BB3AD0600ECA710 /* AccelerometerTestView.swift */,
 				D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */,
 				D17058AB2BBB198C003E6668 /* NavigationTestView.swift */,
+				D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */,
 			);
 			path = "Test Views";
 			sourceTree = "<group>";
@@ -200,6 +203,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D16CAE592BB3AD0600ECA710 /* AccelerometerTestView.swift in Sources */,
+				D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */,
 				D16CAE5D2BB3C09B00ECA710 /* Secrets.swift in Sources */,
 				D16CAE4B2BB3724000ECA710 /* ContentView.swift in Sources */,
 				D16CAE5B2BB3C06700ECA710 /* APIClient.swift in Sources */,
