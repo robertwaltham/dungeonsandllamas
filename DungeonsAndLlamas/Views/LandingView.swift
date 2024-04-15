@@ -38,6 +38,15 @@ struct LandingView: View {
                 .frame(width: 200, height: 200)
                 .background(Color(white: 0.7))
                 .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+                
+                Button(action: {
+                    flowState.nextLink(.drawing)
+                }, label: {
+                    Text("Drawing")
+                })
+                .frame(width: 200, height: 200)
+                .background(Color(white: 0.7))
+                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
             }
             
             Spacer()
@@ -119,7 +128,8 @@ struct LandingView: View {
 
 #Preview {
     let flowState = ContentFlowState()
-    return ContentFlowCoordinator(flowState: flowState) {
-        LandingView(flowState: flowState, generationService: GenerationService())
+    let service = GenerationService()
+    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+        LandingView(flowState: flowState, generationService: service)
     }
 }

@@ -381,7 +381,8 @@ class ViewModel {
 
 #Preview {
     let flowState = ContentFlowState()
-    return ContentFlowCoordinator(flowState: flowState) {
+    let service = GenerationService()
+    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
         APITestView(flowState: flowState)
     }
 }

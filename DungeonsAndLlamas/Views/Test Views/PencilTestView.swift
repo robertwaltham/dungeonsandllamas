@@ -10,7 +10,8 @@ import PencilKit
 
 struct PencilTestView: View {
     @State var viewModel = PencilTestViewModel()
-    var service: GenerationService
+    @State var flowState: ContentFlowState
+    @State var generationService: GenerationService
     
     var body: some View {
         ZStack {
@@ -34,7 +35,7 @@ struct PencilTestView: View {
                         guard let drawing = newValue, !viewModel.loading else {
                             return
                         }
-                        service.image(prompt: viewModel.prompt, negativePrompt: viewModel.negative, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        generationService.image(prompt: viewModel.prompt, negativePrompt: viewModel.negative, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
                     }
                 
                 if let image = viewModel.output {
@@ -68,8 +69,8 @@ struct PencilTestView: View {
 class PencilTestViewModel {
     var drawing: UIImage?
     var output: UIImage?
-    var prompt = "A cat wearing a fancy hat, watercolor, best quality, "
-    var negative = "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting"
+    var prompt = "A cat wearing a fancy hat"
+    var negative = "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting"
     var loading = false
     var progress: StableDiffusionProgress?
 }
@@ -78,6 +79,7 @@ struct PencilCanvasView: UIViewRepresentable {
     
     var image: Binding<UIImage?>
     
+    
     func makeUIView(context: Context) -> PKCanvasView {
         let view = PKCanvasView()
         view.drawingPolicy = .anyInput
@@ -85,6 +87,14 @@ struct PencilCanvasView: UIViewRepresentable {
         view.maximumZoomScale = 1
         view.delegate = context.coordinator
         view.translatesAutoresizingMaskIntoConstraints = false
+        
+        let picker = PKToolPicker()
+        picker.addObserver(context.coordinator)
+        picker.addObserver(view)
+        picker.setVisible(true, forFirstResponder: view)
+        view.becomeFirstResponder()
+        context.coordinator.picker = picker
+
         return view
     }
     
@@ -104,10 +114,11 @@ struct PencilCanvasView: UIViewRepresentable {
     
     typealias UIViewType = PKCanvasView
     
-    class PencilCanvasViewCoordinator: NSObject, PKCanvasViewDelegate {
+    class PencilCanvasViewCoordinator: NSObject, PKCanvasViewDelegate, PKToolPickerObserver {
         
         var dataChanged: ((UIImage) -> Void)?
-        
+        var picker: PKToolPicker?
+
         // TODO: figure out why this throws concurrency warnings
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
             dataChanged?(canvasView.drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0))
@@ -117,5 +128,9 @@ struct PencilCanvasView: UIViewRepresentable {
 }
 
 #Preview {
-    PencilTestView(service: GenerationService())
+    let flowState = ContentFlowState()
+    let service = GenerationService()
+    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+        PencilTestView(flowState: flowState, generationService: service)
+    }
 }

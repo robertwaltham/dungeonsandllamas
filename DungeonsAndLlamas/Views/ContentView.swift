@@ -14,7 +14,7 @@ struct ContentView: View {
     @State var generationService: GenerationService
     
     var body: some View {
-        ContentFlowCoordinator(flowState: flowState) {
+        ContentFlowCoordinator(flowState: flowState, generationService: generationService) {
            LandingView(flowState: flowState, generationService: generationService)
         }
     }

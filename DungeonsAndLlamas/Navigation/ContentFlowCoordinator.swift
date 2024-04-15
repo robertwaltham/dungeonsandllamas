@@ -10,6 +10,8 @@ import SwiftUI
 
 struct ContentFlowCoordinator<Content: View>: View {
     @State var flowState: ContentFlowState
+    @State var generationService: GenerationService
+    
     let content: () -> Content
 
     var body: some View {
@@ -30,6 +32,8 @@ extension ContentFlowCoordinator {
     @ViewBuilder private func destination(link: ContentLink) -> some View {
         
         switch link {
+        case .drawing:
+            PencilTestView(flowState: flowState, generationService: generationService)
         case .accelerometer:
             AccelerometerTestView(flowState: flowState)
         case .apiTest:

@@ -64,7 +64,8 @@ struct NavigationTestView: View {
 
 #Preview {
     let flowState = ContentFlowState()
-    return ContentFlowCoordinator(flowState: flowState) {
+    let service = GenerationService()
+    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
         NavigationTestView(viewModel: flowState)
     }
 }

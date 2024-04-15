@@ -26,5 +26,6 @@ enum ContentLink: Identifiable, Hashable {
     case secondLink(text: String)
     case accelerometer
     case apiTest
+    case drawing
     case itemGenerator
 }
