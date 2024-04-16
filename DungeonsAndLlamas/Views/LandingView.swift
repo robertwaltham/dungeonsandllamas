@@ -21,14 +21,14 @@ struct LandingView: View {
             Spacer().frame(maxHeight: 200)
             
             HStack {
-                Button(action: {
-                    flowState.nextLink(.itemGenerator)
-                }, label: {
-                    Text("Items")
-                })
-                .frame(width: 200, height: 200)
-                .background(Color(white: 0.7))
-                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+//                Button(action: {
+//                    flowState.nextLink(.itemGenerator)
+//                }, label: {
+//                    Text("Items")
+//                })
+//                .frame(width: 200, height: 200)
+//                .background(Color(white: 0.7))
+//                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                 
                 Button(action: {
                     flowState.nextLink(.apiTest)
@@ -43,6 +43,15 @@ struct LandingView: View {
                     flowState.nextLink(.drawing)
                 }, label: {
                     Text("Drawing")
+                })
+                .frame(width: 200, height: 200)
+                .background(Color(white: 0.7))
+                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+                
+                Button(action: {
+                    flowState.nextLink(.sdHistory)
+                }, label: {
+                    Text("History")
                 })
                 .frame(width: 200, height: 200)
                 .background(Color(white: 0.7))

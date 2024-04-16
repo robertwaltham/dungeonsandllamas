@@ -258,7 +258,7 @@ class GenerationService {
     
     func generateHistoryForTesting() {
         
-        var entry = SDHistoryEntry(prompt: "a cat in a fancy hat", negativePrompt: "negative prompt", model: "model")
+        var entry = SDHistoryEntry(prompt: "a cat in a fancy hat, with a really long prompt that doesn't fit on the page properly, best quality, realistic, etc etc", negativePrompt: "negative prompt", model: "model")
         entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
         entry.outputFilePaths = [fileService.save(image: UIImage(named: "lighthouse")!)]
         entry.end = Date.now
