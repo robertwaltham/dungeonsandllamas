@@ -478,6 +478,10 @@ struct StableDiffusionProgress: Codable {
         var samplingSteps: Int
         var skipped: Bool
         var stoppingGeneration: Bool
+        
+        static func initial() -> StableDiffusionProgress.StableDiffusionState {
+            return StableDiffusionState(interrupted: false, job: "", jobCount: 0, jobNo: 0, jobTimestamp: "", samplingStep: 0, samplingSteps: 0, skipped: false, stoppingGeneration: false)
+        }
     }
 }
 

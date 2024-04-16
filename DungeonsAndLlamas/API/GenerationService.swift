@@ -14,6 +14,7 @@ import SwiftUI
 class GenerationService {
     
     var apiClient = APIClient()
+    var fileService = FileService()
     
     static let statusCheckInterval = 2.0
     
@@ -34,9 +35,16 @@ class GenerationService {
     var selectedLLMModel: LLMModel?
     
     var LLMHistory = [LLMHistoryEntry]()
+    var SDHistory = [SDHistoryEntry]()
     
     private(set) var statusTask: Task<Void, Never>?
     private(set) var modelTask: Task<Void, Never>?
+    
+    //MARK: - History
+    
+    func loadHistory() {
+        SDHistory = fileService.loadSDHistory()
+    }
     
     //MARK: - Status & Models
 
@@ -161,10 +169,6 @@ class GenerationService {
     
     func image(prompt: String, negativePrompt: String, image: UIImage, output: Binding<UIImage?>, progress: Binding<StableDiffusionProgress?>, loading: Binding<Bool>) {
         
-//        guard selectedSDModel != nil else {
-//            return
-//        }
-        
         loading.wrappedValue = true
         
         let sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt)
@@ -172,7 +176,20 @@ class GenerationService {
             return
         }
         
+        
         Task.init {
+            
+            if selectedSDModel == nil {
+                if modelTask == nil {
+                    getModels()
+                }
+                _ = await modelTask?.result // TODO: handle error case
+                print("selected model: \(selectedSDModel?.modelName ?? "none")")
+            }
+            
+            var history = SDHistoryEntry(prompt: prompt, negativePrompt: negativePrompt, model: selectedSDModel?.modelName ?? "none")
+            history.inputFilePath = fileService.save(image: image)
+
             do {
                 let strings = try await apiClient.generateBase64EncodedImages(sdOptions, base64EncodedSourceImages: [base64Image])
                 
@@ -180,14 +197,22 @@ class GenerationService {
                    let data = Data(base64Encoded: string),
                    let image = UIImage(data: data) {
                     output.wrappedValue = image
+                    history.end = Date.now
+                    history.outputFilePaths = [fileService.save(image: image)]
                 }
             } catch {
+                history.errorDescription = error.localizedDescription
                 print(error)
             }
             loading.wrappedValue = false
+            
+            fileService.save(history: history)
+            SDHistory.append(history)
         }
         
         Task.init {
+            // TODO: inherit known values from options
+            progress.wrappedValue = StableDiffusionProgress(progress: 0, etaRelative: 0, state: StableDiffusionProgress.StableDiffusionState.initial())
             do {
                 while loading.wrappedValue == true {
                     progress.wrappedValue = try await self.apiClient.imageGenerationProgress()
@@ -212,5 +237,31 @@ class GenerationService {
         var result: String = ""
         var model: String
         var errorDescription: String?
+    }
+    
+    struct SDHistoryEntry: Codable, Identifiable {
+        var id: Date {
+            start
+        }
+        
+        var start: Date = Date.now
+        var end: Date?
+        var prompt: String
+        var negativePrompt: String
+        var inputFilePath: String?
+        var outputFilePaths = [String]()
+        var model: String
+        var errorDescription: String?
+    }
+    
+    //MARK: - Testing
+    
+    func generateHistoryForTesting() {
+        
+        var entry = SDHistoryEntry(prompt: "a cat in a fancy hat", negativePrompt: "negative prompt", model: "model")
+        entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
+        entry.outputFilePaths = [fileService.save(image: UIImage(named: "lighthouse")!)]
+        entry.end = Date.now
+        SDHistory.append(entry)
     }
 }

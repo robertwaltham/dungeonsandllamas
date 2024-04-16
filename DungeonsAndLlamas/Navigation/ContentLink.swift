@@ -28,4 +28,5 @@ enum ContentLink: Identifiable, Hashable {
     case apiTest
     case drawing
     case itemGenerator
+    case sdHistory
 }

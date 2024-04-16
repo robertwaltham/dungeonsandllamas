@@ -40,6 +40,8 @@ extension ContentFlowCoordinator {
             APITestView(flowState: flowState)
         case .itemGenerator:
             ItemGeneratorView(flowState: flowState)
+        case .sdHistory:
+            SDHistoryView(flowState: flowState, generationService: generationService)
         default:
             VStack {
                 Text("Link Destination \(link.id)")
