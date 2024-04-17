@@ -46,8 +46,8 @@
             filePath = "DungeonsAndLlamas/API/FileService.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "116"
-            endingLineNumber = "116"
+            startingLineNumber = "114"
+            endingLineNumber = "114"
             landmarkName = "loadImage(path:)"
             landmarkType = "7">
          </BreakpointContent>

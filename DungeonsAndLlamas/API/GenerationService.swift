@@ -46,6 +46,14 @@ class GenerationService {
         SDHistory = fileService.loadSDHistory()
     }
     
+    func loadOutputImage(history: SDHistoryEntry) -> UIImage {
+        return fileService.loadImage(path: history.outputFilePaths.first ?? "") // TODO: error handling
+    }
+    
+    func loadInputImage(history: SDHistoryEntry) -> UIImage {
+        return fileService.loadImage(path: history.inputFilePath ?? "") // TODO: error handling
+    }
+    
     //MARK: - Status & Models
 
     func checkStatus() {
@@ -262,6 +270,10 @@ class GenerationService {
         entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
         entry.outputFilePaths = [fileService.save(image: UIImage(named: "lighthouse")!)]
         entry.end = Date.now
-        SDHistory.append(entry)
+        
+        for i in 0..<10 {
+            entry.start = Date.now.addingTimeInterval(TimeInterval(i))
+            SDHistory.append(entry)
+        }
     }
 }

@@ -25,6 +25,7 @@
 		D1DC04342BCDCC02007BC5D2 /* PencilTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04332BCDCC02007BC5D2 /* PencilTestView.swift */; };
 		D1DC04362BCF2813007BC5D2 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04352BCF2813007BC5D2 /* FileService.swift */; };
 		D1DC04382BCF2C74007BC5D2 /* SDHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04372BCF2C74007BC5D2 /* SDHistoryView.swift */; };
+		D1DC043A2BCF4685007BC5D2 /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04392BCF4685007BC5D2 /* PencilCanvasView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,7 @@
 		D1DC04332BCDCC02007BC5D2 /* PencilTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilTestView.swift; sourceTree = "<group>"; };
 		D1DC04352BCF2813007BC5D2 /* FileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileService.swift; sourceTree = "<group>"; };
 		D1DC04372BCF2C74007BC5D2 /* SDHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDHistoryView.swift; sourceTree = "<group>"; };
+		D1DC04392BCF4685007BC5D2 /* PencilCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilCanvasView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +139,7 @@
 				D17058AB2BBB198C003E6668 /* NavigationTestView.swift */,
 				D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */,
 				D1DC04332BCDCC02007BC5D2 /* PencilTestView.swift */,
+				D1DC04392BCF4685007BC5D2 /* PencilCanvasView.swift */,
 			);
 			path = "Test Views";
 			sourceTree = "<group>";
@@ -222,6 +225,7 @@
 				D1DC04342BCDCC02007BC5D2 /* PencilTestView.swift in Sources */,
 				D1DC04362BCF2813007BC5D2 /* FileService.swift in Sources */,
 				D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */,
+				D1DC043A2BCF4685007BC5D2 /* PencilCanvasView.swift in Sources */,
 				D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */,
 				D17058A72BBB1919003E6668 /* ContentFlowCoordinator.swift in Sources */,
 				D16CAE5F2BB3C59E00ECA710 /* APITestView.swift in Sources */,

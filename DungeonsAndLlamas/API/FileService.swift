@@ -106,8 +106,6 @@ final class FileService {
     }
     
     func loadImage(path: String) -> UIImage {
-        print(path)
-        print(imageDirectory().appending(path: path).absoluteString)
         do {
             let data = try Data(contentsOf: imageDirectory().appending(path: path))
             return UIImage(data: data) ?? UIImage(named: "lighthouse")!

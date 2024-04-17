@@ -10,6 +10,21 @@ import SwiftUI
 struct SDHistoryView: View {
     @State var flowState: ContentFlowState
     @State var generationService: GenerationService
+    
+    @State var presentedHistory: GenerationService.SDHistoryEntry?
+    
+    
+    @ViewBuilder
+    @MainActor
+    func info(history: GenerationService.SDHistoryEntry) -> some View {
+        HStack {
+            
+            Text(history.prompt)
+            Image(uiImage: generationService.loadOutputImage(history: history))
+                .resizable()
+                .scaledToFit()
+        }
+    }
 
     var body: some View {
         
@@ -25,35 +40,51 @@ struct SDHistoryView: View {
                     .padding()
                 }
             }
-
-            ScrollView {
-                ForEach(generationService.SDHistory.reversed()) { history in
+            
+            if let history = presentedHistory {
+                VStack{
                     HStack {
+                        Image(uiImage: generationService.loadOutputImage(history: history))
+                        .resizable()
+                        .scaledToFit()
                         
-                        if let inputFilePath = history.inputFilePath {
-                            Image(uiImage: generationService.fileService.loadImage(path: inputFilePath))
-                                .scaleEffect(CGSize(width: 0.5, height: 0.5))
-                                .frame(width: 256, height: 256)
-                                .clipped()
-                                
-                        }
-
-                        if let outputFilePath = history.outputFilePaths.first {
-                            Image(uiImage: generationService.fileService.loadImage(path: outputFilePath))
-                                .scaleEffect(CGSize(width: 0.5, height: 0.5))
-                                .frame(width: 256, height: 256)
-                                .clipped()
-
-                        }
-                        
-                        Text(history.prompt)
-                            .frame(maxHeight: 256)
-
+                        Image(uiImage: generationService.loadInputImage(history: history))
+                            .resizable()
+                            .scaledToFit()
                     }
-                    .padding()
+
+                    
+                    HStack {
+                        Text(history.prompt)
+                        Text(history.negativePrompt)
+                        Button("Close") {
+                            withAnimation {
+                                presentedHistory = nil
+                            }
+                        }.buttonStyle(.bordered)
+                            .transition(.slide)
+                    }
                 }
             }
-        }
+
+            ScrollView {
+                
+                let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+                LazyVGrid(columns: columns) {
+                    ForEach(generationService.SDHistory.reversed()) { history in
+                        Button {
+                            withAnimation {
+                                presentedHistory = history
+                            }
+                        } label: {
+                            Image(uiImage: generationService.loadOutputImage(history: history))
+                                .resizable()
+                                .scaledToFit()
+                        }
+                    }
+                }
+            }
+        }.padding()
     }
 }
 
