@@ -54,6 +54,14 @@ class GenerationService {
         return fileService.loadImage(path: history.inputFilePath ?? "") // TODO: error handling
     }
     
+    func modelsFromHistory() -> [String] {
+        var result = Set<String>()
+        for h in SDHistory {
+            result.insert(h.model)
+        }
+        return result.sorted()
+    }
+    
     //MARK: - Status & Models
 
     func checkStatus() {

@@ -114,6 +114,7 @@ class PencilTestViewModel {
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
+    service.generateHistoryForTesting()
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {
         PencilTestView(flowState: flowState, generationService: service)
     }

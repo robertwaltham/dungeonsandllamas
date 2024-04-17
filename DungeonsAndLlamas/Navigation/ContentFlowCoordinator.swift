@@ -34,6 +34,7 @@ extension ContentFlowCoordinator {
         switch link {
         case .drawing:
             PencilTestView(flowState: flowState, generationService: generationService)
+                .navigationTitle("Drawing")
         case .accelerometer:
             AccelerometerTestView(flowState: flowState)
         case .apiTest:
@@ -42,6 +43,7 @@ extension ContentFlowCoordinator {
             ItemGeneratorView(flowState: flowState)
         case .sdHistory:
             SDHistoryView(flowState: flowState, generationService: generationService)
+                .navigationTitle("History")
         default:
             VStack {
                 Text("Link Destination \(link.id)")
