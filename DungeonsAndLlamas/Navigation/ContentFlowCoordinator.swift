@@ -11,6 +11,16 @@ import SwiftUI
 struct ContentFlowCoordinator<Content: View>: View {
     @State var flowState: ContentFlowState
     @State var generationService: GenerationService
+    let userInterfaceIdiom: UIUserInterfaceIdiom
+    
+    @MainActor
+    init(flowState: ContentFlowState, generationService: GenerationService, content: @escaping () -> Content) {
+        self.flowState = flowState
+        self.generationService = generationService
+        self.content = content
+        
+        self.userInterfaceIdiom = UIDevice.current.userInterfaceIdiom
+    }
     
     let content: () -> Content
 
@@ -31,38 +41,81 @@ extension ContentFlowCoordinator {
     
     @ViewBuilder private func destination(link: ContentLink) -> some View {
         
-        switch link {
-        case .drawing:
-            PencilTestView(flowState: flowState, generationService: generationService)
-                .navigationTitle("Drawing")
-        case .accelerometer:
-            AccelerometerTestView(flowState: flowState)
-        case .apiTest:
-            APITestView(flowState: flowState)
-        case .itemGenerator:
-            ItemGeneratorView(flowState: flowState)
-        case .sdHistory:
-            SDHistoryView(flowState: flowState, generationService: generationService)
-                .navigationTitle("History")
-        default:
-            VStack {
-                Text("Link Destination \(link.id)")
-                HStack {
-                    Button("pop") {
-                        flowState.pop()
-                    }.buttonStyle(.bordered)
-                    
-                    Button("push") {
-                        flowState.nextLink(.firstLink(text: "push"))
-                    }.buttonStyle(.bordered)
+        switch userInterfaceIdiom {
+            
+        case .phone:
+            
+            switch link {
+            case .drawing:
+                PencilDrawingiPhoneView(flowState: flowState, generationService: generationService)
+                    .navigationTitle("Drawing")
+            case .accelerometer:
+                AccelerometerTestView(flowState: flowState)
+            case .apiTest:
+                APITestView(flowState: flowState)
+            case .itemGenerator:
+                ItemGeneratorView(flowState: flowState)
+            case .sdHistory:
+                SDHistoryView(flowState: flowState, generationService: generationService)
+                    .navigationTitle("History")
+            default:
+                VStack {
+                    Text("Link Destination \(link.id)")
+                    HStack {
+                        Button("pop") {
+                            flowState.pop()
+                        }.buttonStyle(.bordered)
+                        
+                        Button("push") {
+                            flowState.nextLink(.firstLink(text: "push"))
+                        }.buttonStyle(.bordered)
+                    }
+                    HStack {
+                        Button("close cover") {
+                            flowState.closeCover()
+                        }.buttonStyle(.bordered)
+                        Button("close popover") {
+                            flowState.closePopover()
+                        }.buttonStyle(.bordered)
+                    }
                 }
-                HStack {
-                    Button("close cover") {
-                        flowState.closeCover()
-                    }.buttonStyle(.bordered)
-                    Button("close popover") {
-                        flowState.closePopover()
-                    }.buttonStyle(.bordered)
+            }
+            
+        default:
+            
+            switch link {
+            case .drawing:
+                PencilDrawingiPadView(flowState: flowState, generationService: generationService)
+                    .navigationTitle("Drawing")
+            case .accelerometer:
+                AccelerometerTestView(flowState: flowState)
+            case .apiTest:
+                APITestView(flowState: flowState)
+            case .itemGenerator:
+                ItemGeneratorView(flowState: flowState)
+            case .sdHistory:
+                SDHistoryView(flowState: flowState, generationService: generationService)
+                    .navigationTitle("History")
+            default:
+                VStack {
+                    Text("Link Destination \(link.id)")
+                    HStack {
+                        Button("pop") {
+                            flowState.pop()
+                        }.buttonStyle(.bordered)
+                        
+                        Button("push") {
+                            flowState.nextLink(.firstLink(text: "push"))
+                        }.buttonStyle(.bordered)
+                    }
+                    HStack {
+                        Button("close cover") {
+                            flowState.closeCover()
+                        }.buttonStyle(.bordered)
+                        Button("close popover") {
+                            flowState.closePopover()
+                        }.buttonStyle(.bordered)
+                    }
                 }
             }
         }

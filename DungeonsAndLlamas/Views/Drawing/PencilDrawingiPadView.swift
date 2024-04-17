@@ -1,5 +1,5 @@
 //
-//  PencilTestView.swift
+//  PencilDrawingiPadView.swift
 //  DungeonsAndLlamas
 //
 //  Created by Robert Waltham on 2024-04-15.
@@ -8,10 +8,16 @@
 import SwiftUI
 import PencilKit
 
-struct PencilTestView: View {
-    @State var viewModel = PencilTestViewModel()
+struct PencilDrawingiPadView: View {
+    @State var viewModel: PencilViewModel
     @State var flowState: ContentFlowState
     @State var generationService: GenerationService
+    
+    init(flowState: ContentFlowState, generationService: GenerationService) {
+        self.viewModel = PencilViewModel(generationService: generationService)
+        self.flowState = flowState
+        self.generationService = generationService
+    }
     
     var body: some View {
         ZStack {
@@ -25,14 +31,7 @@ struct PencilTestView: View {
                             return
                         }
                         
-                        let prompt = viewModel.includePromptAdd ? viewModel.prompt + viewModel.promptAdd : viewModel.prompt
-                        
-                        generationService.image(prompt: prompt, negativePrompt: viewModel.negative, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
-                    }
-                    .onChange(of: flowState.coverItem) { oldValue, newValue in
-                        if newValue == nil {
-                            
-                        }
+                        generationService.image(prompt: viewModel.imagePrompt(), negativePrompt: viewModel.negative, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
                     }
                 
                 TextField("Prompt", text: $viewModel.prompt)
@@ -96,26 +95,13 @@ struct PencilTestView: View {
     }
 }
 
-@Observable
-class PencilTestViewModel {
-    var drawing: UIImage?
-    var output: UIImage?
-//    var prompt = "A dragonborn wizard casting a spell swirling magic"
-    var prompt = "A cat wearing a fancy hat"
 
-    var promptAdd = ", modelshoot style, extremely detailed CG unity 8k wallpaper, full shot body photo of the most beautiful artwork in the world, english medieval, nature magic, medieval era, painting by Ed Blinkey, Atey Ghailan, Studio Ghibli, by Jeremy Mann, Greg Manchess, Antonio Moro, trending on ArtStation, trending on CGSociety, Intricate, High Detail, Sharp focus, dramatic, painting art by midjourney and greg rutkowski, petals, countryside, action pose"
-    var negative = "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting"
-    var loading = false
-    var progress: StableDiffusionProgress?
-    var includePromptAdd = true
-    var showTooltip = true
-}
 
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
     service.generateHistoryForTesting()
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {
-        PencilTestView(flowState: flowState, generationService: service)
+        PencilDrawingiPadView(flowState: flowState, generationService: service)
     }
 }

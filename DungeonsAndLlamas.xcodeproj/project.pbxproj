@@ -22,10 +22,13 @@
 		D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058AD2BBB1A14003E6668 /* LandingView.swift */; };
 		D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058B02BBB1EC7003E6668 /* GenerationService.swift */; };
 		D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */; };
-		D1DC04342BCDCC02007BC5D2 /* PencilTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04332BCDCC02007BC5D2 /* PencilTestView.swift */; };
+		D1DC04342BCDCC02007BC5D2 /* PencilDrawingiPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04332BCDCC02007BC5D2 /* PencilDrawingiPadView.swift */; };
 		D1DC04362BCF2813007BC5D2 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04352BCF2813007BC5D2 /* FileService.swift */; };
 		D1DC04382BCF2C74007BC5D2 /* SDHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04372BCF2C74007BC5D2 /* SDHistoryView.swift */; };
 		D1DC043A2BCF4685007BC5D2 /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04392BCF4685007BC5D2 /* PencilCanvasView.swift */; };
+		D1DC043D2BD03011007BC5D2 /* PencilViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC043C2BD03011007BC5D2 /* PencilViewModel.swift */; };
+		D1DC043F2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC043E2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift */; };
+		D1DC04412BD037AB007BC5D2 /* LandingiPhoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,10 +48,13 @@
 		D17058AD2BBB1A14003E6668 /* LandingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingView.swift; sourceTree = "<group>"; };
 		D17058B02BBB1EC7003E6668 /* GenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationService.swift; sourceTree = "<group>"; };
 		D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingStreamTestView.swift; sourceTree = "<group>"; };
-		D1DC04332BCDCC02007BC5D2 /* PencilTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilTestView.swift; sourceTree = "<group>"; };
+		D1DC04332BCDCC02007BC5D2 /* PencilDrawingiPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilDrawingiPadView.swift; sourceTree = "<group>"; };
 		D1DC04352BCF2813007BC5D2 /* FileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileService.swift; sourceTree = "<group>"; };
 		D1DC04372BCF2C74007BC5D2 /* SDHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDHistoryView.swift; sourceTree = "<group>"; };
 		D1DC04392BCF4685007BC5D2 /* PencilCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilCanvasView.swift; sourceTree = "<group>"; };
+		D1DC043C2BD03011007BC5D2 /* PencilViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilViewModel.swift; sourceTree = "<group>"; };
+		D1DC043E2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilDrawingiPhoneView.swift; sourceTree = "<group>"; };
+		D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingiPhoneView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,8 +119,10 @@
 		D17058A52BBB18D1003E6668 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D1DC043B2BD02D1D007BC5D2 /* Drawing */,
 				D16CAE4A2BB3724000ECA710 /* ContentView.swift */,
 				D17058AD2BBB1A14003E6668 /* LandingView.swift */,
+				D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */,
 				D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */,
 				D1DC04372BCF2C74007BC5D2 /* SDHistoryView.swift */,
 				D17058AF2BBB1DDD003E6668 /* Test Views */,
@@ -138,10 +146,19 @@
 				D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */,
 				D17058AB2BBB198C003E6668 /* NavigationTestView.swift */,
 				D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */,
-				D1DC04332BCDCC02007BC5D2 /* PencilTestView.swift */,
-				D1DC04392BCF4685007BC5D2 /* PencilCanvasView.swift */,
 			);
 			path = "Test Views";
+			sourceTree = "<group>";
+		};
+		D1DC043B2BD02D1D007BC5D2 /* Drawing */ = {
+			isa = PBXGroup;
+			children = (
+				D1DC04332BCDCC02007BC5D2 /* PencilDrawingiPadView.swift */,
+				D1DC043E2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift */,
+				D1DC04392BCF4685007BC5D2 /* PencilCanvasView.swift */,
+				D1DC043C2BD03011007BC5D2 /* PencilViewModel.swift */,
+			);
+			path = Drawing;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -215,20 +232,23 @@
 			buildActionMask = 2147483647;
 			files = (
 				D16CAE592BB3AD0600ECA710 /* AccelerometerTestView.swift in Sources */,
+				D1DC043D2BD03011007BC5D2 /* PencilViewModel.swift in Sources */,
 				D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */,
 				D1DC04382BCF2C74007BC5D2 /* SDHistoryView.swift in Sources */,
 				D16CAE5D2BB3C09B00ECA710 /* Secrets.swift in Sources */,
 				D16CAE4B2BB3724000ECA710 /* ContentView.swift in Sources */,
 				D16CAE5B2BB3C06700ECA710 /* APIClient.swift in Sources */,
+				D1DC043F2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift in Sources */,
 				D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */,
 				D16CAE622BB4C04E00ECA710 /* ItemGeneratorView.swift in Sources */,
-				D1DC04342BCDCC02007BC5D2 /* PencilTestView.swift in Sources */,
+				D1DC04342BCDCC02007BC5D2 /* PencilDrawingiPadView.swift in Sources */,
 				D1DC04362BCF2813007BC5D2 /* FileService.swift in Sources */,
 				D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */,
 				D1DC043A2BCF4685007BC5D2 /* PencilCanvasView.swift in Sources */,
 				D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */,
 				D17058A72BBB1919003E6668 /* ContentFlowCoordinator.swift in Sources */,
 				D16CAE5F2BB3C59E00ECA710 /* APITestView.swift in Sources */,
+				D1DC04412BD037AB007BC5D2 /* LandingiPhoneView.swift in Sources */,
 				D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */,
 				D17058A92BBB1956003E6668 /* ContentLink.swift in Sources */,
 			);

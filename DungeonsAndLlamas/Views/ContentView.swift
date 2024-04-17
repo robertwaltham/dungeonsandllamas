@@ -15,7 +15,16 @@ struct ContentView: View {
     
     var body: some View {
         ContentFlowCoordinator(flowState: flowState, generationService: generationService) {
-           LandingView(flowState: flowState, generationService: generationService)
+            landing()
+        }
+    }
+    
+    @MainActor @ViewBuilder
+    func landing() -> some View {
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            LandingiPhoneView(flowState: flowState, generationService: generationService)
+        } else {
+            LandingView(flowState: flowState, generationService: generationService)
         }
     }
 }
