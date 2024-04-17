@@ -12,6 +12,7 @@ import PencilKit
 struct PencilCanvasView: UIViewRepresentable {
     
     var image: Binding<UIImage?>
+    var showTooltip: Binding<Bool>
     
     func makeUIView(context: Context) -> PKCanvasView {
         let view = PKCanvasView()
@@ -35,9 +36,12 @@ struct PencilCanvasView: UIViewRepresentable {
         if image.wrappedValue == nil {
             context.coordinator.skipUpdate = true
             uiView.drawing = PKDrawing()
-            DispatchQueue.main.async {
-                uiView.becomeFirstResponder() // hack to make tool picker show again
-            }
+        }
+        
+        if showTooltip.wrappedValue {
+            uiView.becomeFirstResponder()
+        } else {
+            uiView.resignFirstResponder()
         }
     }
     
