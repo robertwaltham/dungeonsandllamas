@@ -28,6 +28,7 @@ actor APIClient {
         case progress = "/sd/sdapi/v1/progress"
         case options = "/sd/sdapi/v1/options"
         case sdModels = "/sd/sdapi/v1/sd-models"
+        case loras = "/sd/sdapi/v1/loras"
     }
     
     enum APIMethod: String {
@@ -295,6 +296,20 @@ actor APIClient {
         }
     }
     
+    func loras() async throws -> [StableDiffusionLora] {
+        var request = APIClient.request(endpoint: .loras, method: .get)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
+        }
+        return try decoder.decode([StableDiffusionLora].self, from: data)
+    }
+    
     //MARK: - Helpers
     
     private static func request(endpoint: APIEndpoint, method: APIMethod, timeout: TimeInterval = 120.0) -> URLRequest {
@@ -415,6 +430,8 @@ actor APIClient {
 //        }
 //        """
         
+        let seed = options.seed != nil ? options.seed! : -1
+        
         return """
         {
           "prompt": "\(options.prompt)",
@@ -426,7 +443,8 @@ actor APIClient {
           "init_images": [
             "\(base64EncodedSourceImages.joined(separator: "\",\""))"
           ],
-          "sampler_name": "DPM++ 2M Karras"
+          "sampler_name": "DPM++ 2M Karras",
+          "seed": "\(seed)"
         }
         """
     }
@@ -447,6 +465,7 @@ struct StableDiffusionGenerationOptions {
     var size: Int
     var steps: Int
     var batchSize: Int
+    var seed: Int?
     
     init(prompt: String, negativePrompt: String = "", size: Int = 512, steps: Int = 20, batchSize: Int = 1) {
         self.prompt = prompt
@@ -495,6 +514,15 @@ struct StableDiffusionModel: Codable, Identifiable, Hashable {
     var hash: String
     var sha256: String
     var filename: String
+}
+
+struct StableDiffusionLora: Codable, Identifiable, Hashable {
+    var id: String {
+        name
+    }
+    
+    var name: String
+    var alias: String
 }
 
 struct LLMModelDetails: Codable, Hashable {

@@ -31,7 +31,7 @@ struct PencilDrawingiPadView: View {
                             return
                         }
                         
-                        generationService.image(prompt: viewModel.imagePrompt(), negativePrompt: viewModel.negative, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        generationService.image(prompt: viewModel.imagePrompt(), negativePrompt: viewModel.negative, lora: viewModel.selectedLora, loraWeight: viewModel.loraWeight, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
                     }
                 
                 TextField("Prompt", text: $viewModel.prompt)
@@ -72,6 +72,42 @@ struct PencilDrawingiPadView: View {
                     .padding()
                     .foregroundColor(.red)
                     
+                    Button("Go Again") {
+                        guard !viewModel.loading, let image = viewModel.drawing else {
+                            return
+                        }
+                        
+                        generationService.image(prompt: viewModel.imagePrompt(), negativePrompt: viewModel.negative, lora: viewModel.selectedLora, loraWeight: viewModel.loraWeight, image: image, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                    }
+                    .buttonStyle(.bordered)
+                    .padding()
+                    .foregroundColor(.green)
+
+                    
+                    let maxWidth: CGFloat = 100
+                    Toggle("Add", isOn: $viewModel.includePromptAdd)
+                        .frame(maxWidth: maxWidth)
+                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+
+                    Toggle("Tool", isOn: $viewModel.showTooltip)
+                        .frame(maxWidth: maxWidth)
+                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+
+                    Text("Lora")
+                    Picker("Lora", selection: $viewModel.selectedLora) {
+                        Text("None").tag(nil as StableDiffusionLora?)
+                        ForEach(generationService.SDLoras) { lora in
+                            Text(lora.name).tag(lora as StableDiffusionLora?)
+                        }
+                    }
+                    .frame(maxWidth: maxWidth)
+                    .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+
+                    Text("Weight \(viewModel.loraWeight, format: .number.precision(.fractionLength(0...1)))")
+                    Slider(value: $viewModel.loraWeight, in: 0...1)
+                        .frame(maxWidth: maxWidth)
+                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                    
                     Button("History") {
                         viewModel.showTooltip = false
                         flowState.coverItem = .sdHistory
@@ -79,18 +115,11 @@ struct PencilDrawingiPadView: View {
                     .buttonStyle(.bordered)
                     .padding()
                     
-                    Toggle("Add", isOn: $viewModel.includePromptAdd)
-                        .frame(maxWidth: 90)
-                        .padding()
-                    
-                    Toggle("Tool", isOn: $viewModel.showTooltip)
-                        .frame(maxWidth: 90)
-                        .padding()
                 }
                 .background(Color(white: 0.9))
                 .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
             }
-            .padding()
+            .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
         }
     }
 }
@@ -101,6 +130,9 @@ struct PencilDrawingiPadView: View {
     let flowState = ContentFlowState()
     let service = GenerationService()
     service.generateHistoryForTesting()
+    Task {
+        service.getModels()
+    }
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {
         PencilDrawingiPadView(flowState: flowState, generationService: service)
     }

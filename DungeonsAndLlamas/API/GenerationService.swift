@@ -33,6 +33,7 @@ class GenerationService {
     var llmModels: [LLMModel] = []
     var selectedSDModel: StableDiffusionModel?
     var selectedLLMModel: LLMModel?
+    var SDLoras: [StableDiffusionLora] = []
     
     var LLMHistory = [LLMHistoryEntry]()
     var SDHistory = [SDHistoryEntry]()
@@ -58,6 +59,16 @@ class GenerationService {
         var result = Set<String>()
         for h in SDHistory {
             result.insert(h.model)
+        }
+        return result.sorted()
+    }
+    
+    func lorasFromHistory() -> [String] {
+        var result = Set<String>()
+        for h in SDHistory {
+            if let lora = h.lora {
+                result.insert(lora)
+            }
         }
         return result.sorted()
     }
@@ -124,6 +135,8 @@ class GenerationService {
 //                    print(detail)
 //                }
                 
+            SDLoras = try await apiClient.loras()
+                
             } catch {
                 print(error)
             }
@@ -183,15 +196,16 @@ class GenerationService {
         }
     }
     
-    func image(prompt: String, negativePrompt: String, image: UIImage, output: Binding<UIImage?>, progress: Binding<StableDiffusionProgress?>, loading: Binding<Bool>) {
+    func image(prompt: String, negativePrompt: String, lora: StableDiffusionLora?, loraWeight: Double, image: UIImage, output: Binding<UIImage?>, progress: Binding<StableDiffusionProgress?>, loading: Binding<Bool>) {
         
         loading.wrappedValue = true
         
-        let sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt)
+        var sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt)
         guard let base64Image = image.pngData()?.base64EncodedString() else {
             return
         }
         
+        sdOptions.seed = 1
         
         Task.init {
             
@@ -205,6 +219,12 @@ class GenerationService {
             
             var history = SDHistoryEntry(prompt: prompt, negativePrompt: negativePrompt, model: selectedSDModel?.modelName ?? "none")
             history.inputFilePath = fileService.save(image: image)
+            
+            if let lora {
+                history.lora = lora.name
+                history.loraWeight = loraWeight
+                sdOptions.prompt += promptAdd(lora: lora, weight: loraWeight)
+            }
 
             do {
                 let strings = try await apiClient.generateBase64EncodedImages(sdOptions, base64EncodedSourceImages: [base64Image])
@@ -240,6 +260,10 @@ class GenerationService {
         }
     }
     
+    private func promptAdd(lora: StableDiffusionLora, weight: Double) -> String {
+        return " <lora:\(lora.name):\(weight.formatted(.number.precision(.fractionLength(0...1))))>"
+    }
+    
     //MARK: - Classes & Structs
     
     struct LLMHistoryEntry: Codable, Identifiable {
@@ -268,6 +292,8 @@ class GenerationService {
         var outputFilePaths = [String]()
         var model: String
         var errorDescription: String?
+        var lora: String?
+        var loraWeight: Double?
     }
     
     //MARK: - Testing
@@ -280,8 +306,13 @@ class GenerationService {
         entry.end = Date.now
         
         for i in 0..<10 {
-            entry.start = Date.now.addingTimeInterval(TimeInterval(i))
-            SDHistory.append(entry)
+            var newEntry = entry
+            newEntry.start = Date.now.addingTimeInterval(TimeInterval(i))
+            if i > 5 {
+                newEntry.loraWeight = 0.5
+                newEntry.lora = "lora_name_0.015"
+            }
+            SDHistory.append(newEntry)
         }
     }
 }

@@ -36,7 +36,7 @@ struct PencilDrawingiPhoneView: View {
                             return
                         }
                         
-                        generationService.image(prompt: viewModel.imagePrompt(), negativePrompt: viewModel.negative, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        generationService.image(prompt: viewModel.imagePrompt(), negativePrompt: viewModel.negative, lora: viewModel.selectedLora, loraWeight: viewModel.loraWeight, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
                     }
                 
                 

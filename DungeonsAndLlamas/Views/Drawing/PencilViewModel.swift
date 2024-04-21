@@ -27,6 +27,9 @@ class PencilViewModel {
     var progress: StableDiffusionProgress?
     var includePromptAdd = true
     var showTooltip = true
+    var useLora = false
+    var selectedLora: StableDiffusionLora?
+    var loraWeight: Double = 0
     
     func imagePrompt() -> String {
         
