@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import PencilKit
 
 
 final class FileService {
@@ -28,7 +29,7 @@ final class FileService {
     let manager = FileManager.default
     
     init() {
-        let urls = [imageDirectory(), sdHistoryDirectory(), llmHistoryDirectory()]
+        let urls = [imageDirectory(), sdHistoryDirectory(), llmHistoryDirectory(), pencilDrawingDirectory()]
         
         for url in urls {
             if !manager.fileExists(atPath: url.absoluteString) {
@@ -47,6 +48,10 @@ final class FileService {
     
     private func sdHistoryDirectory() -> URL {
         return URL.documentsDirectory.appendingPathComponent("sdHistory")
+    }
+    
+    private func pencilDrawingDirectory() -> URL {
+        return URL.documentsDirectory.appendingPathComponent("pencil")
     }
     
     private func llmHistoryDirectory() -> URL {
@@ -116,4 +121,27 @@ final class FileService {
         return UIImage(named: "lighthouse")!
     }
     
+    func save(drawing: PKDrawing) -> String {
+        let filename = NSUUID().uuidString + ".drawing"
+        let fileURL = pencilDrawingDirectory().appending(component: filename)
+        let data = drawing.dataRepresentation()
+        do {
+            try data.write(to: fileURL)
+        } catch {
+            print(error.localizedDescription)
+        }
+
+        return filename
+    }
+    
+    func load(path: String) -> PKDrawing {
+        do {
+            let data = try Data(contentsOf: pencilDrawingDirectory().appending(path: path))
+            return try PKDrawing(data: data)
+            
+        } catch {
+            print(error.localizedDescription)
+        }
+        return PKDrawing()
+    }
 }

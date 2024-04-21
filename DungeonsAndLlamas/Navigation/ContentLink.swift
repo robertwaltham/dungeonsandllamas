@@ -27,6 +27,7 @@ enum ContentLink: Identifiable, Hashable {
     case accelerometer
     case apiTest
     case drawing
+    case drawingFrom(history: GenerationService.SDHistoryEntry)
     case itemGenerator
     case sdHistory
 }

@@ -68,12 +68,21 @@ struct SDHistoryView: View {
                     
                     HStack {
                         VStack {
-                            Text(history.prompt)
+                            if let addon = history.promptAdd {
+                                Text(history.prompt + addon)
+                            } else {
+                                Text(history.prompt)
+                            }
                             if let lora = history.lora {
                                 Text(lora + " weight: \(history.loraWeight ?? 0)")
                             }
                         }
-                        //                        Text(history.negativePrompt)
+                        if history.drawingPath != nil {
+                            Button("Remix") {
+                                flowState.nextLink(.drawingFrom(history: history))
+                            }.buttonStyle(.bordered)
+                        }
+
                         Button("Close") {
                             withAnimation {
                                 presentedHistory = nil

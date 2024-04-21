@@ -19,19 +19,27 @@ struct PencilDrawingiPadView: View {
         self.generationService = generationService
     }
     
+    @MainActor
+    init(flowState: ContentFlowState, generationService: GenerationService, history: GenerationService.SDHistoryEntry) {
+        let viewModel = PencilViewModel(generationService: generationService)
+        viewModel.load(history: history)
+        self.viewModel = viewModel
+        self.flowState = flowState
+        self.generationService = generationService
+    }
+    
     var body: some View {
         ZStack {
             Color(white: 0.7)
             VStack {
 
-                PencilCanvasView(image: $viewModel.drawing, showTooltip: $viewModel.showTooltip)
+                PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip)
                     .frame(width: 512, height: 512)
                     .onChange(of: viewModel.drawing) { oldValue, newValue in
-                        guard let drawing = newValue, !viewModel.loading else {
+                        guard !viewModel.loading else {
                             return
                         }
-                        
-                        generationService.image(prompt: viewModel.imagePrompt(), negativePrompt: viewModel.negative, lora: viewModel.selectedLora, loraWeight: viewModel.loraWeight, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
                     }
                 
                 TextField("Prompt", text: $viewModel.prompt)
@@ -73,11 +81,10 @@ struct PencilDrawingiPadView: View {
                     .foregroundColor(.red)
                     
                     Button("Go Again") {
-                        guard !viewModel.loading, let image = viewModel.drawing else {
+                        guard !viewModel.loading else {
                             return
                         }
-                        
-                        generationService.image(prompt: viewModel.imagePrompt(), negativePrompt: viewModel.negative, lora: viewModel.selectedLora, loraWeight: viewModel.loraWeight, image: image, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
                     }
                     .buttonStyle(.bordered)
                     .padding()
@@ -107,6 +114,13 @@ struct PencilDrawingiPadView: View {
                     Slider(value: $viewModel.loraWeight, in: 0...1)
                         .frame(maxWidth: maxWidth)
                         .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                    
+                    Text("Seed")
+                    Text("\(viewModel.seed, format: .number.grouping(.never))")
+                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                        .onTapGesture {
+                            viewModel.newSeed()
+                        }
                     
                     Button("History") {
                         viewModel.showTooltip = false

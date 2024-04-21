@@ -39,7 +39,7 @@ struct ContentFlowCoordinator<Content: View>: View {
 
 extension ContentFlowCoordinator {
     
-    @ViewBuilder private func destination(link: ContentLink) -> some View {
+    @MainActor @ViewBuilder private func destination(link: ContentLink) -> some View {
         
         switch userInterfaceIdiom {
             
@@ -48,6 +48,9 @@ extension ContentFlowCoordinator {
             switch link {
             case .drawing:
                 PencilDrawingiPhoneView(flowState: flowState, generationService: generationService)
+                    .navigationTitle("Drawing")
+            case .drawingFrom(let history):
+                PencilDrawingiPhoneView(flowState: flowState, generationService: generationService, history: history)
                     .navigationTitle("Drawing")
             case .accelerometer:
                 AccelerometerTestView(flowState: flowState)
@@ -87,6 +90,9 @@ extension ContentFlowCoordinator {
             case .drawing:
                 PencilDrawingiPadView(flowState: flowState, generationService: generationService)
                     .navigationTitle("Drawing")
+            case .drawingFrom(let history):
+                PencilDrawingiPadView(flowState: flowState, generationService: generationService, history: history)
+                    .navigationTitle("Drawing")
             case .accelerometer:
                 AccelerometerTestView(flowState: flowState)
             case .apiTest:
@@ -122,19 +128,19 @@ extension ContentFlowCoordinator {
 
     }
     
-    @ViewBuilder private func linkDestination(link: ContentLink) -> some View {
+    @MainActor @ViewBuilder private func linkDestination(link: ContentLink) -> some View {
         destination(link: link)
     }
     
-    @ViewBuilder private func sheetContent(link: ContentLink) -> some View {
+    @MainActor @ViewBuilder private func sheetContent(link: ContentLink) -> some View {
         destination(link: link)
     }
     
-    @ViewBuilder private func coverContent(link: ContentLink) -> some View {
+    @MainActor @ViewBuilder private func coverContent(link: ContentLink) -> some View {
         destination(link: link)
     }
     
-    @ViewBuilder private func popoverContent(link: ContentLink) -> some View {
+    @MainActor @ViewBuilder private func popoverContent(link: ContentLink) -> some View {
         destination(link: link).padding()
     }
 }

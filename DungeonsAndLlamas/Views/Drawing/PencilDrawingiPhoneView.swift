@@ -24,21 +24,28 @@ struct PencilDrawingiPhoneView: View {
         self.generationService = generationService
     }
     
+    @MainActor
+    init(flowState: ContentFlowState, generationService: GenerationService, history: GenerationService.SDHistoryEntry) {
+        let viewModel = PencilViewModel(generationService: generationService)
+        viewModel.load(history: history)
+        self.viewModel = viewModel
+        self.flowState = flowState
+        self.generationService = generationService
+    }
+    
     var body: some View {
         ZStack {
             Color(white: 0.7).ignoresSafeArea()
             VStack {
                 Spacer()
-                PencilCanvasView(image: $viewModel.drawing, showTooltip: $viewModel.showTooltip)
+                PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip)
                     .frame(width: imageSize, height: imageSize)
                     .onChange(of: viewModel.drawing) { oldValue, newValue in
-                        guard let drawing = newValue, !viewModel.loading else {
+                        guard !viewModel.loading else {
                             return
                         }
-                        
-                        generationService.image(prompt: viewModel.imagePrompt(), negativePrompt: viewModel.negative, lora: viewModel.selectedLora, loraWeight: viewModel.loraWeight, image: drawing, output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
                     }
-                
                 
                 HStack {
                     Text(viewModel.prompt)
@@ -92,7 +99,6 @@ struct PencilDrawingiPhoneView: View {
                                 }
                             }
 
-
                             Text("Weight \(viewModel.loraWeight, format: .number.precision(.fractionLength(0...1)))")
                             Slider(value: $viewModel.loraWeight, in: 0...1)
                                 .padding()
@@ -139,7 +145,6 @@ struct PencilDrawingiPhoneView: View {
         }
     }
 }
-
 
 
 #Preview {

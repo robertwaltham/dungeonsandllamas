@@ -11,7 +11,7 @@ import PencilKit
 
 struct PencilCanvasView: UIViewRepresentable {
     
-    var image: Binding<UIImage?>
+    var drawing: Binding<PKDrawing?>
     var showTooltip: Binding<Bool>
     
     func makeUIView(context: Context) -> PKCanvasView {
@@ -21,6 +21,9 @@ struct PencilCanvasView: UIViewRepresentable {
         view.maximumZoomScale = 1
         view.delegate = context.coordinator
         view.translatesAutoresizingMaskIntoConstraints = false
+        if let drawing = drawing.wrappedValue {
+            view.drawing = drawing
+        }
         
         let picker = PKToolPicker()
         picker.addObserver(context.coordinator)
@@ -33,7 +36,7 @@ struct PencilCanvasView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: PKCanvasView, context: Context) {
-        if image.wrappedValue == nil {
+        if drawing.wrappedValue == nil {
             context.coordinator.skipUpdate = true
             uiView.drawing = PKDrawing()
         }
@@ -49,7 +52,7 @@ struct PencilCanvasView: UIViewRepresentable {
         let coordinator = PencilCanvasViewCoordinator()
         coordinator.dataChanged = { image in
             DispatchQueue.main.async {
-                self.image.wrappedValue = image
+                self.drawing.wrappedValue = image
             }
         }
         return coordinator
@@ -59,7 +62,7 @@ struct PencilCanvasView: UIViewRepresentable {
     
     class PencilCanvasViewCoordinator: NSObject, PKCanvasViewDelegate, PKToolPickerObserver {
         
-        var dataChanged: ((UIImage) -> Void)?
+        var dataChanged: ((PKDrawing) -> Void)?
         var picker: PKToolPicker?
         var skipUpdate = true
 
@@ -69,7 +72,7 @@ struct PencilCanvasView: UIViewRepresentable {
                 skipUpdate = false
                 return
             }
-            dataChanged?(canvasView.drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0))
+            dataChanged?(canvasView.drawing)
         }
     }
     

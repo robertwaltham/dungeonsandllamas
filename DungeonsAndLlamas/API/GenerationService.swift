@@ -8,6 +8,7 @@
 import Foundation
 import Observation
 import SwiftUI
+import PencilKit
 
 @MainActor
 @Observable
@@ -53,6 +54,10 @@ class GenerationService {
     
     func loadInputImage(history: SDHistoryEntry) -> UIImage {
         return fileService.loadImage(path: history.inputFilePath ?? "") // TODO: error handling
+    }
+    
+    func loadDrawing(history: SDHistoryEntry) -> PKDrawing {
+        return fileService.load(path: history.drawingPath ?? "") // TODO: error handling
     }
     
     func modelsFromHistory() -> [String] {
@@ -196,16 +201,17 @@ class GenerationService {
         }
     }
     
-    func image(prompt: String, negativePrompt: String, lora: StableDiffusionLora?, loraWeight: Double, image: UIImage, output: Binding<UIImage?>, progress: Binding<StableDiffusionProgress?>, loading: Binding<Bool>) {
+    func image(prompt: String, promptAddon: String?, negativePrompt: String, lora: StableDiffusionLora?, loraWeight: Double, seed: Int, drawing: PKDrawing, output: Binding<UIImage?>, progress: Binding<StableDiffusionProgress?>, loading: Binding<Bool>) {
         
         loading.wrappedValue = true
         
         var sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt)
+        let image = drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0)
         guard let base64Image = image.pngData()?.base64EncodedString() else {
             return
         }
         
-        sdOptions.seed = 1
+        sdOptions.seed = seed
         
         Task.init {
             
@@ -217,15 +223,24 @@ class GenerationService {
                 print("selected model: \(selectedSDModel?.modelName ?? "none")")
             }
             
-            var history = SDHistoryEntry(prompt: prompt, negativePrompt: negativePrompt, model: selectedSDModel?.modelName ?? "none")
+            var history = SDHistoryEntry(prompt: prompt, promptAdd: promptAddon, negativePrompt: negativePrompt, model: selectedSDModel?.modelName ?? "none")
             history.inputFilePath = fileService.save(image: image)
+            history.drawingPath = fileService.save(drawing: drawing)
+            history.seed = seed
+            
+            var fullPrompt = prompt
+            if let promptAddon {
+                fullPrompt += promptAddon
+            }
             
             if let lora {
                 history.lora = lora.name
                 history.loraWeight = loraWeight
-                sdOptions.prompt += promptAdd(lora: lora, weight: loraWeight)
+                fullPrompt += promptAdd(lora: lora, weight: loraWeight)
             }
 
+            sdOptions.prompt = fullPrompt
+            
             do {
                 let strings = try await apiClient.generateBase64EncodedImages(sdOptions, base64EncodedSourceImages: [base64Image])
                 
@@ -279,7 +294,7 @@ class GenerationService {
         var errorDescription: String?
     }
     
-    struct SDHistoryEntry: Codable, Identifiable {
+    struct SDHistoryEntry: Codable, Identifiable, Hashable {
         var id: Date {
             start
         }
@@ -287,6 +302,7 @@ class GenerationService {
         var start: Date = Date.now
         var end: Date?
         var prompt: String
+        var promptAdd: String?
         var negativePrompt: String
         var inputFilePath: String?
         var outputFilePaths = [String]()
@@ -294,6 +310,8 @@ class GenerationService {
         var errorDescription: String?
         var lora: String?
         var loraWeight: Double?
+        var drawingPath: String?
+        var seed: Int?
     }
     
     //MARK: - Testing
