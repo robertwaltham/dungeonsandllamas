@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D1320E082BD5C12D00EEEDCC /* Photo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1320E072BD5C12D00EEEDCC /* Photo.swift */; };
 		D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE482BB3724000ECA710 /* DungeonsAndLlamasApp.swift */; };
 		D16CAE4B2BB3724000ECA710 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE4A2BB3724000ECA710 /* ContentView.swift */; };
 		D16CAE4F2BB3724100ECA710 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D16CAE4E2BB3724100ECA710 /* Assets.xcassets */; };
@@ -32,6 +33,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D1320E072BD5C12D00EEEDCC /* Photo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Photo.swift; sourceTree = "<group>"; };
 		D16CAE452BB3724000ECA710 /* DungeonsAndLlamas.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DungeonsAndLlamas.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D16CAE482BB3724000ECA710 /* DungeonsAndLlamasApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonsAndLlamasApp.swift; sourceTree = "<group>"; };
 		D16CAE4A2BB3724000ECA710 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -124,6 +126,7 @@
 				D17058AD2BBB1A14003E6668 /* LandingView.swift */,
 				D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */,
 				D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */,
+				D1320E072BD5C12D00EEEDCC /* Photo.swift */,
 				D1DC04372BCF2C74007BC5D2 /* SDHistoryView.swift */,
 				D17058AF2BBB1DDD003E6668 /* Test Views */,
 			);
@@ -231,6 +234,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1320E082BD5C12D00EEEDCC /* Photo.swift in Sources */,
 				D16CAE592BB3AD0600ECA710 /* AccelerometerTestView.swift in Sources */,
 				D1DC043D2BD03011007BC5D2 /* PencilViewModel.swift in Sources */,
 				D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */,
@@ -388,6 +392,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DungeonsAndLlamas/Info.plist;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Save generated images to your library";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -420,6 +425,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DungeonsAndLlamas/Info.plist;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Save generated images to your library";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

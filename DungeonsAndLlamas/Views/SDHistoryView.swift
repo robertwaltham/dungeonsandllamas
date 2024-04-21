@@ -13,6 +13,7 @@ struct SDHistoryView: View {
     @State var presentedHistory: GenerationService.SDHistoryEntry?
     @State var filter: String?
     @State var loraFilter: String?
+    @State var saved: String?
 
     
     @ViewBuilder
@@ -54,9 +55,12 @@ struct SDHistoryView: View {
             }
 
             if let history = presentedHistory {
+                let image = generationService.loadOutputImage(history: history)
+                let output = Image(uiImage: image)
+
                 VStack{
                     HStack {
-                        Image(uiImage: generationService.loadOutputImage(history: history))
+                        output
                             .resizable()
                             .scaledToFit()
                         
@@ -67,28 +71,63 @@ struct SDHistoryView: View {
                     
                     
                     HStack {
+
                         VStack {
-                            if let addon = history.promptAdd {
-                                Text(history.prompt + addon)
-                            } else {
-                                Text(history.prompt)
-                            }
+                            Text(history.prompt)
                             if let lora = history.lora {
                                 Text(lora + " weight: \(history.loraWeight ?? 0)")
                             }
                         }
-                        if history.drawingPath != nil {
-                            Button("Remix") {
-                                flowState.nextLink(.drawingFrom(history: history))
-                            }.buttonStyle(.bordered)
-                        }
+                        
 
-                        Button("Close") {
-                            withAnimation {
-                                presentedHistory = nil
+                        VStack {
+
+
+                            HStack {
+                                
+                                if history.drawingPath != nil {
+                                    Button("Remix") {
+                                        flowState.nextLink(.drawingFrom(history: history))
+                                    }.buttonStyle(.bordered)
+                                }
+                                
+                                Button("Close") {
+                                    withAnimation {
+                                        presentedHistory = nil
+                                    }
+                                }.buttonStyle(.bordered)
+                                    .transition(.slide)
+                                
                             }
-                        }.buttonStyle(.bordered)
-                            .transition(.slide)
+                            
+                            HStack {
+                                let photo = Photo(image: output, caption: history.prompt, description: history.prompt)
+                                
+                                ShareLink(item: photo, message: Text(history.prompt) ,preview: SharePreview(history.prompt, image: photo))
+                                    .padding()
+                                
+                                if saved != history.id.description {
+                                    Button {
+                                        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                                        withAnimation(.bouncy) {
+                                            saved = history.id.description
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Label("Save", systemImage: "photo.on.rectangle.angled")
+                                        }
+                                        .foregroundColor(.purple)
+                                    }
+                                } else {
+                                    Text("Saved!")
+                                        .foregroundColor(.purple)
+                                }
+  
+                            }
+                       
+                        }
+                        
+
                     }
                 }
             }
@@ -107,15 +146,16 @@ struct SDHistoryView: View {
                         }
                         return result
                     }) .reversed()) { history in
-                        Button {
-                            withAnimation {
-                                presentedHistory = history
+                        
+                        Image(uiImage: generationService.loadOutputImage(history: history))
+                            .resizable()
+                            .scaledToFit()
+                            .onTapGesture {
+                                withAnimation {
+                                    presentedHistory = history
+                                }
                             }
-                        } label: {
-                            Image(uiImage: generationService.loadOutputImage(history: history))
-                                .resizable()
-                                .scaledToFit()
-                        }
+    
                     }
                 }
             }

@@ -102,8 +102,18 @@ struct PencilDrawingiPhoneView: View {
                             Text("Weight \(viewModel.loraWeight, format: .number.precision(.fractionLength(0...1)))")
                             Slider(value: $viewModel.loraWeight, in: 0...1)
                                 .padding()
-
-                        }
+                            
+                            Text("Seed")
+                            Text("\(viewModel.seed, format: .number.grouping(.never))")
+                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                                .onTapGesture {
+                                    viewModel.newSeed()
+                                }
+                        }.onDisappear {
+                            guard !viewModel.loading else {
+                                return
+                            }
+                            viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)                        }
                     })
                 }
                 .background(.white)
