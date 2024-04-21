@@ -83,6 +83,20 @@ struct PencilDrawingiPhoneView: View {
                             TextEditor(text: $viewModel.negative)
                                 .padding()
                             Spacer()
+                            
+                            Text("Lora").font(.title2)
+                            Picker("Lora", selection: $viewModel.selectedLora) {
+                                Text("None").tag(nil as StableDiffusionLora?)
+                                ForEach(generationService.SDLoras) { lora in
+                                    Text(lora.name).tag(lora as StableDiffusionLora?)
+                                }
+                            }
+
+
+                            Text("Weight \(viewModel.loraWeight, format: .number.precision(.fractionLength(0...1)))")
+                            Slider(value: $viewModel.loraWeight, in: 0...1)
+                                .padding()
+
                         }
                     })
                 }
