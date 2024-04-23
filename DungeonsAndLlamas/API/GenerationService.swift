@@ -42,6 +42,8 @@ class GenerationService {
     private(set) var statusTask: Task<Void, Never>?
     private(set) var modelTask: Task<Void, Never>?
     
+    private var storedPrompt: String?
+    
     //MARK: - History
     
     func loadHistory() {
@@ -58,6 +60,19 @@ class GenerationService {
     
     func loadDrawing(history: SDHistoryEntry) -> PKDrawing {
         return fileService.load(path: history.drawingPath ?? "") // TODO: error handling
+    }
+    
+    func lastPrompt() -> String {
+        // TODO: Persist last prompt
+        return storedPrompt ?? "A cat with a fancy hat"
+    }
+    
+    func promptsFromHistory() -> [String] {
+        var result = Set<String>()
+        for h in SDHistory {
+            result.insert(h.prompt)
+        }
+        return result.sorted()
     }
     
     func modelsFromHistory() -> [String] {
@@ -212,6 +227,7 @@ class GenerationService {
         }
         
         sdOptions.seed = seed
+        storedPrompt = prompt
         
         Task.init {
             
@@ -277,6 +293,14 @@ class GenerationService {
     
     private func promptAdd(lora: StableDiffusionLora, weight: Double) -> String {
         return " <lora:\(lora.name):\(weight.formatted(.number.precision(.fractionLength(0...1))))>"
+    }
+    
+    func suggestedPromptAdds() -> [String: String] {
+        return [
+            "Wizard": ", modelshoot style, extremely detailed CG unity 8k wallpaper, full shot body photo of the most beautiful artwork in the world, english medieval, nature magic, medieval era, painting by Ed Blinkey, Atey Ghailan, Studio Ghibli, by Jeremy Mann, Greg Manchess, Antonio Moro, trending on ArtStation, trending on CGSociety, Intricate, High Detail, Sharp focus, dramatic, painting art by midjourney and greg rutkowski, petals, countryside, action pose",
+            "Wizard2": ", (painting, art: 1.5), (modelshoot: 1.1), (full shot body photo: 1.2), (extremely detailed: 1.2), (sharp focus: 1.2), (dramatic), (Ed Blinkey, Atey Ghailan, Studio Ghibli, Jeremy Mann, Greg Manchess, Antonio Moro)",
+            "Film": ", cinematic film still, (shallow depth of field:0.24), (vignette:0.15), (highly detailed, high budget:1.2), (bokeh, cinemascope:0.3), (epic, gorgeous:1.2), film grain, (grainy:0.6), (detailed skin texture:1.1), subsurface scattering, (motion blur:0.7)"
+        ]
     }
     
     //MARK: - Classes & Structs

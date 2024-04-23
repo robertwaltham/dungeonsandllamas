@@ -12,7 +12,12 @@ struct PencilDrawingiPadView: View {
     @State var viewModel: PencilViewModel
     @State var flowState: ContentFlowState
     @State var generationService: GenerationService
-    
+    @FocusState private var keyboardShown: Bool
+    @State var showPrompts: Bool = false
+    @State var historyPrompt: String = "History"
+    @State var promptAdd: String?
+
+    @MainActor
     init(flowState: ContentFlowState, generationService: GenerationService) {
         self.viewModel = PencilViewModel(generationService: generationService)
         self.flowState = flowState
@@ -43,10 +48,37 @@ struct PencilDrawingiPadView: View {
                     }
                 
                 TextField("Prompt", text: $viewModel.prompt)
+                    .focused($keyboardShown)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
                     .frame(width: 482)
                     .padding()
                     .background(.white)
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 10, height: 10)))
+                    .onChange(of: keyboardShown) { oldValue, newValue in
+                        withAnimation {
+                            showPrompts.toggle()
+                        }
+                    }
+                
+                if showPrompts {
+                    Picker("Prompt", selection: $historyPrompt) {
+                        Text("History").tag("History")
+                        ForEach(generationService.promptsFromHistory(), id:\.self) { text in
+                            Text(text.prefix(60).description)
+                        }
+                    }
+                    .transition(.scale)
+                    .animation(.easeInOut(duration: 0.2), value: keyboardShown)
+                    .frame(width: 482)
+                    .padding()
+                    .background(.white)
+                    .onChange(of: historyPrompt) { oldValue, newValue in
+                        if newValue != "History" {
+                            viewModel.prompt = newValue
+                        }
+                    }
+                }
                 
                 ZStack {
                     if let image = viewModel.output {
@@ -69,7 +101,8 @@ struct PencilDrawingiPadView: View {
                     }
                 }.frame(height: 512)
 
-            }
+            }                   
+
             HStack {
                 Spacer()
                 VStack {
@@ -92,9 +125,24 @@ struct PencilDrawingiPadView: View {
 
                     
                     let maxWidth: CGFloat = 100
-                    Toggle("Add", isOn: $viewModel.includePromptAdd)
-                        .frame(maxWidth: maxWidth)
-                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+//                    Toggle("Add", isOn: $viewModel.includePromptAdd)
+//                        .frame(maxWidth: maxWidth)
+//                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                    
+                    let adds = generationService.suggestedPromptAdds()
+                    Text("Prompt Add")
+                    Picker("Prompt Add", selection: $promptAdd) {
+                        Text("None").tag(nil as String?)
+                        ForEach(adds.keys.map({$0}), id:\.self) { label in
+                            Text(label).tag(label as String?)
+                        }
+                    }.onChange(of: promptAdd) { _, newValue in
+                        if let newValue {
+                            viewModel.promptAdd = newValue
+                        } else {
+                            viewModel.promptAdd = nil
+                        }
+                    }
 
                     Toggle("Tool", isOn: $viewModel.showTooltip)
                         .frame(maxWidth: maxWidth)

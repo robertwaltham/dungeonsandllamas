@@ -18,6 +18,7 @@ struct PencilDrawingiPhoneView: View {
     
     let imageSize: CGFloat = 320
     
+    @MainActor
     init(flowState: ContentFlowState, generationService: GenerationService) {
         self.viewModel = PencilViewModel(generationService: generationService)
         self.flowState = flowState
@@ -80,9 +81,8 @@ struct PencilDrawingiPhoneView: View {
                                 .padding()
                             Spacer()
 
-                            Toggle("Prompt Addon", isOn: $viewModel.includePromptAdd)
-                                .padding()
-                            Text(viewModel.promptAdd)
+                            Text("Prompt Add")
+                            Text(viewModel.promptAdd ?? "")
                                 .padding()
 
                             Spacer()

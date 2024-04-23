@@ -74,6 +74,9 @@ struct SDHistoryView: View {
 
                         VStack {
                             Text(history.prompt)
+                            if let error = history.errorDescription {
+                                Text(error)
+                            }
                             if let lora = history.lora {
                                 Text(lora + " weight: \(history.loraWeight ?? 0)")
                             }

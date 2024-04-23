@@ -13,21 +13,23 @@ import SwiftUI
 @Observable
 class PencilViewModel {
     
+    @MainActor
     init(generationService: GenerationService) {
         self.generationService = generationService
+        self.prompt = generationService.lastPrompt()
     }
     
     var generationService: GenerationService
     var drawing: PKDrawing?
     var output: UIImage?
-    var prompt = "A dragonborn wizard casting a spell swirling magic"
-//    var prompt = "A cat wearing a fancy hat"
+    var prompt: String
 
-    var promptAdd = ", modelshoot style, extremely detailed CG unity 8k wallpaper, full shot body photo of the most beautiful artwork in the world, english medieval, nature magic, medieval era, painting by Ed Blinkey, Atey Ghailan, Studio Ghibli, by Jeremy Mann, Greg Manchess, Antonio Moro, trending on ArtStation, trending on CGSociety, Intricate, High Detail, Sharp focus, dramatic, painting art by midjourney and greg rutkowski, petals, countryside, action pose"
+    var promptAdd: String?
+    
     var negative = "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting"
+    
     var loading = false
     var progress: StableDiffusionProgress?
-    var includePromptAdd = true
     var showTooltip = true
     var useLora = false
     var selectedLora: StableDiffusionLora?
@@ -48,15 +50,14 @@ class PencilViewModel {
             lora.name == history.lora
         }
         loraWeight = history.loraWeight ?? 0
-        includePromptAdd = history.promptAdd != nil
+        promptAdd = history.promptAdd
         seed = history.seed ?? -1
     }
     
     @MainActor
     func generate(output: Binding<UIImage?>, progress: Binding<StableDiffusionProgress?>, loading: Binding<Bool>) {
-        let addon = includePromptAdd ? promptAdd : nil
         if let drawing {
-            generationService.image(prompt: prompt, promptAddon: addon, negativePrompt: negative, lora: selectedLora, loraWeight: loraWeight, seed: seed, drawing: drawing, output: output, progress: progress, loading: loading)
+            generationService.image(prompt: prompt, promptAddon: promptAdd, negativePrompt: negative, lora: selectedLora, loraWeight: loraWeight, seed: seed, drawing: drawing, output: output, progress: progress, loading: loading)
         }
     }
 }
