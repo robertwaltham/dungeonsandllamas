@@ -250,6 +250,7 @@ class GenerationService {
             history.inputFilePath = fileService.save(image: image)
             history.drawingPath = fileService.save(drawing: drawing)
             history.seed = seed
+            history.sampler = selectedSampler.name
             
             var fullPrompt = prompt
             if let promptAddon {
@@ -343,6 +344,7 @@ class GenerationService {
         var loraWeight: Double?
         var drawingPath: String?
         var seed: Int?
+        var sampler: String?
     }
     
     //MARK: - Testing

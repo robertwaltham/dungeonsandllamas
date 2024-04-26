@@ -78,31 +78,18 @@ struct SDHistoryView: View {
                             if let error = history.errorDescription {
                                 Text(error)
                             }
-                            if let lora = history.lora {
-                                Text(lora + " weight: \(history.loraWeight ?? 0)")
+                            HStack {
+                                if let lora = history.lora {
+                                    Text(lora + " weight:")
+                                    Text(history.loraWeight ?? 0.0, format: .number.precision(.fractionLength(0...2)))
+                                }
+                                Text(history.sampler ?? APIClient.defaultSampler.name)
                             }
+
                         }
                         
 
                         VStack {
-
-
-                            HStack {
-                                
-                                if history.drawingPath != nil {
-                                    Button("Remix") {
-                                        flowState.nextLink(.drawingFrom(history: history))
-                                    }.buttonStyle(.bordered)
-                                }
-                                
-                                Button("Close") {
-                                    withAnimation {
-                                        presentedHistory = nil
-                                    }
-                                }.buttonStyle(.bordered)
-                                    .transition(.slide)
-                                
-                            }
                             
                             HStack {
                                 let photo = Photo(image: output, caption: history.prompt, description: history.prompt)
@@ -118,13 +105,25 @@ struct SDHistoryView: View {
                                         }
                                     } label: {
                                         HStack {
-                                            Label("Save", systemImage: "photo.on.rectangle.angled")
+                                            Label("Save", systemImage: "photo.badge.arrow.down.fill")
                                         }
                                         .foregroundColor(.purple)
                                     }
                                 } else {
                                     Text("Saved!")
                                         .foregroundColor(.purple)
+                                }
+                                
+                                if history.drawingPath != nil {
+                                    Button {
+                                        flowState.nextLink(.drawingFrom(history: history))
+                                    } label: {
+                                        HStack {
+                                            Label("Remix", systemImage: "photo.on.rectangle.angled")
+                                        }
+                                        .foregroundColor(.green)
+                                    }
+                                    .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
                                 }
   
                             }

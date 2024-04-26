@@ -158,7 +158,7 @@ struct PencilDrawingiPadView: View {
                     .frame(maxWidth: maxWidth)
                     .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
 
-                    Text("Weight \(viewModel.loraWeight, format: .number.precision(.fractionLength(0...1)))")
+                    Text("Weight \(viewModel.loraWeight, format: .number.precision(.fractionLength(0...2)))")
                     Slider(value: $viewModel.loraWeight, in: 0...1)
                         .frame(maxWidth: maxWidth)
                         .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
