@@ -46,7 +46,7 @@ class PencilViewModel {
         prompt = history.prompt
         output = generationService.loadOutputImage(history: history)
         useLora = history.lora != nil
-        selectedLora = generationService.SDLoras.first { lora in
+        selectedLora = generationService.sdLoras.first { lora in
             lora.name == history.lora
         }
         loraWeight = history.loraWeight ?? 0

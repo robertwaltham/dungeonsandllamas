@@ -94,7 +94,7 @@ struct PencilDrawingiPhoneView: View {
                             Text("Lora").font(.title2)
                             Picker("Lora", selection: $viewModel.selectedLora) {
                                 Text("None").tag(nil as StableDiffusionLora?)
-                                ForEach(generationService.SDLoras) { lora in
+                                ForEach(generationService.sdLoras) { lora in
                                     Text(lora.name).tag(lora as StableDiffusionLora?)
                                 }
                             }

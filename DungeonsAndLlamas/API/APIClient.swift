@@ -29,6 +29,7 @@ actor APIClient {
         case options = "/sd/sdapi/v1/options"
         case sdModels = "/sd/sdapi/v1/sd-models"
         case loras = "/sd/sdapi/v1/loras"
+        case samplers = "/sd/sdapi/v1/samplers"
     }
     
     enum APIMethod: String {
@@ -48,6 +49,8 @@ actor APIClient {
         d.dateDecodingStrategy = .iso8601
         return d
     }
+    
+    static let defaultSampler = StableDiffusionSampler(name: "DPM++ 2M Karras", aliases: ["k_dpmpp_2m_ka"], options: [:])
     
     //MARK: - Init
     
@@ -310,6 +313,20 @@ actor APIClient {
         return try decoder.decode([StableDiffusionLora].self, from: data)
     }
     
+    func samplers() async throws -> [StableDiffusionSampler] {
+        var request = APIClient.request(endpoint: .samplers, method: .get)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
+        }
+        return try decoder.decode([StableDiffusionSampler].self, from: data)
+    }
+    
     //MARK: - Helpers
     
     private static func request(endpoint: APIEndpoint, method: APIMethod, timeout: TimeInterval = 120.0) -> URLRequest {
@@ -466,13 +483,15 @@ struct StableDiffusionGenerationOptions {
     var steps: Int
     var batchSize: Int
     var seed: Int?
+    var sampler: StableDiffusionSampler
     
-    init(prompt: String, negativePrompt: String = "", size: Int = 512, steps: Int = 20, batchSize: Int = 1) {
+    init(prompt: String, negativePrompt: String = "", size: Int = 512, steps: Int = 20, batchSize: Int = 1, sampler: StableDiffusionSampler = APIClient.defaultSampler) {
         self.prompt = prompt
         self.negativePrompt = negativePrompt
         self.size = size
         self.steps = steps
         self.batchSize = batchSize
+        self.sampler = sampler
     }
 }
 
@@ -523,6 +542,15 @@ struct StableDiffusionLora: Codable, Identifiable, Hashable {
     
     var name: String
     var alias: String
+}
+
+struct StableDiffusionSampler: Codable, Identifiable, Hashable {
+    var id: String {
+        name
+    }
+    var name: String
+    var aliases: [String]
+    var options: [String: String]
 }
 
 struct LLMModelDetails: Codable, Hashable {

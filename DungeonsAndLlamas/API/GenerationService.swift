@@ -34,7 +34,9 @@ class GenerationService {
     var llmModels: [LLMModel] = []
     var selectedSDModel: StableDiffusionModel?
     var selectedLLMModel: LLMModel?
-    var SDLoras: [StableDiffusionLora] = []
+    var sdLoras: [StableDiffusionLora] = []
+    var sdSamplers: [StableDiffusionSampler] = []
+    var selectedSampler = APIClient.defaultSampler // default
     
     var LLMHistory = [LLMHistoryEntry]()
     var SDHistory = [SDHistoryEntry]()
@@ -150,12 +152,14 @@ class GenerationService {
                 llmModels = try await apiClient.getLocalModels()
                 selectedLLMModel = llmModels.first
                 
+                sdSamplers = try await apiClient.samplers()
+                
 //                if let selectedLLMModel = selectedLLMModel {
 //                    let detail = try await apiClient.getDetail(model: selectedLLMModel)
 //                    print(detail)
 //                }
                 
-            SDLoras = try await apiClient.loras()
+            sdLoras = try await apiClient.loras()
                 
             } catch {
                 print(error)
@@ -220,7 +224,7 @@ class GenerationService {
         
         loading.wrappedValue = true
         
-        var sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt)
+        var sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt, sampler: selectedSampler)
         let image = drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0)
         guard let base64Image = image.pngData()?.base64EncodedString() else {
             return
@@ -347,7 +351,7 @@ class GenerationService {
         entry.outputFilePaths = [fileService.save(image: UIImage(named: "lighthouse")!)]
         entry.end = Date.now
         
-        for i in 0..<10 {
+        for i in 0..<30 {
             var newEntry = entry
             newEntry.start = Date.now.addingTimeInterval(TimeInterval(i))
             if i > 5 {

@@ -63,6 +63,7 @@ struct SDHistoryView: View {
                         output
                             .resizable()
                             .scaledToFit()
+                          
                         
                         Image(uiImage: generationService.loadInputImage(history: history))
                             .resizable()
