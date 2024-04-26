@@ -35,7 +35,7 @@ struct LandingView: View {
             }
             .onReceive(timer) { input in
                 withAnimation(.linear(duration: 1.0)){
-                    var random = Int.random(in: 0..<history.count)
+                    let random = Int.random(in: 0..<history.count - 1) // TODO: fix bug with last cell sliding animation
                     let img = generationService.loadOutputImage(history: generationService.SDHistory.randomElement()!)
                     if history.firstIndex(of: img) == nil {
                         history[random] = img
@@ -52,7 +52,7 @@ struct LandingView: View {
                 }
                 .shadow(radius: 10)
                 .padding(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20))
-                .background(Color(red: 0.9, green: 0.9, blue: 0.9, opacity: 0.3))
+                .background(Color(red: 0.8, green: 0.8, blue: 0.8, opacity: 0.5))
                 .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                 
         
@@ -70,9 +70,9 @@ struct LandingView: View {
     //                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                     
                     Button(action: {
-                        flowState.nextLink(.apiTest)
+                        flowState.nextLink(.modelInfo)
                     }, label: {
-                        Text("APITest")
+                        Text("Model Info")
                     })
                     .frame(width: 200, height: 200)
                     .background(Color(white: 0.7))

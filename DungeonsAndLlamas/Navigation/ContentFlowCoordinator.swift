@@ -61,6 +61,9 @@ extension ContentFlowCoordinator {
             case .sdHistory:
                 SDHistoryView(flowState: flowState, generationService: generationService)
                     .navigationTitle("History")
+            case .modelInfo:
+                ModelSettingsView(flowState: flowState, generationService: generationService)
+                    .navigationTitle("Model Info")
             default:
                 VStack {
                     Text("Link Destination \(link.id)")
@@ -102,6 +105,9 @@ extension ContentFlowCoordinator {
             case .sdHistory:
                 SDHistoryView(flowState: flowState, generationService: generationService)
                     .navigationTitle("History")
+            case .modelInfo:
+                ModelSettingsView(flowState: flowState, generationService: generationService)
+                    .navigationTitle("Model Info")
             default:
                 VStack {
                     Text("Link Destination \(link.id)")

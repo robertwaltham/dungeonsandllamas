@@ -41,6 +41,9 @@ class GenerationService {
     var LLMHistory = [LLMHistoryEntry]()
     var SDHistory = [SDHistoryEntry]()
     
+    var imageSize = 512
+    var steps = 20
+    
     private(set) var statusTask: Task<Void, Never>?
     private(set) var modelTask: Task<Void, Never>?
     
@@ -224,8 +227,8 @@ class GenerationService {
         
         loading.wrappedValue = true
         
-        var sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt, sampler: selectedSampler)
-        let image = drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0)
+        var sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt, size: imageSize, steps: steps, sampler: selectedSampler)
+        let image = drawing.image(from: CGRect(x: 0, y: 0, width: imageSize, height: imageSize), scale: 1.0)
         guard let base64Image = image.pngData()?.base64EncodedString() else {
             return
         }

@@ -50,7 +50,7 @@ actor APIClient {
         return d
     }
     
-    static let defaultSampler = StableDiffusionSampler(name: "DPM++ 2M Karras", aliases: ["k_dpmpp_2m_ka"], options: [:])
+    static let defaultSampler = StableDiffusionSampler(name: "DPM++ 2M Karras", aliases: ["k_dpmpp_2m_ka"], options: ["scheduler":"karras"])
     
     //MARK: - Init
     
@@ -226,7 +226,7 @@ actor APIClient {
             throw APIError.requestError("no request")
         }
         guard httpResponse.statusCode == 200 else {
-            print(String(data: data, encoding: .utf8) ?? "")
+//            print(String(data: data, encoding: .utf8) ?? "")
             throw APIError.requestError("status code: \(httpResponse.statusCode)")
         }
         
@@ -278,6 +278,7 @@ actor APIClient {
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
+//        print(String(data: data, encoding: .utf8)!)
         return try decoder.decode([StableDiffusionModel].self, from: data)
     }
     
@@ -324,6 +325,7 @@ actor APIClient {
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
+//        print(String(data: data, encoding: .utf8)!)
         return try decoder.decode([StableDiffusionSampler].self, from: data)
     }
     

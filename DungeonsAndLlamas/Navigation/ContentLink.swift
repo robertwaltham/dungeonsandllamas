@@ -30,4 +30,5 @@ enum ContentLink: Identifiable, Hashable {
     case drawingFrom(history: GenerationService.SDHistoryEntry)
     case itemGenerator
     case sdHistory
+    case modelInfo
 }
