@@ -303,6 +303,23 @@ class GenerationService {
         return " <lora:\(lora.name):\(weight.formatted(.number.precision(.fractionLength(0...1))))>"
     }
     
+    func interrogate(image: UIImage, output: Binding<String?>) {
+        
+        guard let base64Image = image.pngData()?.base64EncodedString() else {
+            print("failed to generate image data")
+            return
+        }
+        
+        Task {
+            do {
+                output.wrappedValue = try await apiClient.interrogate(base64EncodedImage: base64Image)
+            } catch {
+                print(error)
+                output.wrappedValue = nil
+            }    
+        }
+    }
+    
     func suggestedPromptAdds() -> [String: String] {
         return [
             "Wizard": ", modelshoot style, extremely detailed CG unity 8k wallpaper, full shot body photo of the most beautiful artwork in the world, english medieval, nature magic, medieval era, painting by Ed Blinkey, Atey Ghailan, Studio Ghibli, by Jeremy Mann, Greg Manchess, Antonio Moro, trending on ArtStation, trending on CGSociety, Intricate, High Detail, Sharp focus, dramatic, painting art by midjourney and greg rutkowski, petals, countryside, action pose",

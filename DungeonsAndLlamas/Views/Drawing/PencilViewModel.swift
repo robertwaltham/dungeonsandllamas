@@ -26,7 +26,7 @@ class PencilViewModel {
 
     var promptAdd: String?
     
-    var negative = "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting"
+    var negative = "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, duplicate, ugly, monochrome, horror, geometry, mutation, disgusting"
     
     var loading = false
     var progress: StableDiffusionProgress?
@@ -52,6 +52,9 @@ class PencilViewModel {
         loraWeight = history.loraWeight ?? 0
         promptAdd = history.promptAdd
         seed = history.seed ?? -1
+        generationService.selectedSampler = generationService.sdSamplers.first { sampler in
+            sampler.name == history.sampler
+        } ?? APIClient.defaultSampler
     }
     
     @MainActor

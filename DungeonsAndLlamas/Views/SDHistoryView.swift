@@ -14,6 +14,7 @@ struct SDHistoryView: View {
     @State var filter: String?
     @State var loraFilter: String?
     @State var saved: String?
+//    @State var interrogated: String?
 
     
     @ViewBuilder
@@ -63,7 +64,11 @@ struct SDHistoryView: View {
                         output
                             .resizable()
                             .scaledToFit()
-                          
+//                            .onTapGesture {
+//                                print("tap")
+//                                generationService.interrogate(image: image, output: $interrogated)
+//                            }
+//                          
                         
                         Image(uiImage: generationService.loadInputImage(history: history))
                             .resizable()
@@ -85,6 +90,10 @@ struct SDHistoryView: View {
                                 }
                                 Text(history.sampler ?? APIClient.defaultSampler.name)
                             }
+                            
+//                            if let interrogated {
+//                                Text(interrogated)
+//                            }
 
                         }
                         

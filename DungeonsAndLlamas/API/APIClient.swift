@@ -30,6 +30,7 @@ actor APIClient {
         case sdModels = "/sd/sdapi/v1/sd-models"
         case loras = "/sd/sdapi/v1/loras"
         case samplers = "/sd/sdapi/v1/samplers"
+        case interrogate = "/sd/sdapi/v1/interrogate"
     }
     
     enum APIMethod: String {
@@ -327,6 +328,28 @@ actor APIClient {
         }
 //        print(String(data: data, encoding: .utf8)!)
         return try decoder.decode([StableDiffusionSampler].self, from: data)
+    }
+    
+    func interrogate(base64EncodedImage: String) async throws -> String {
+        
+        var request = APIClient.request(endpoint: .interrogate, method: .post, timeout: 300)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = """
+        {
+          "image": "\(base64EncodedImage)",
+          "model": "clip"
+        }
+        """.data(using: .utf8)
+                
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
+        }
+        
+        return try decoder.decode([String: String].self, from: data)["caption"] ?? "n/a"
     }
     
     //MARK: - Helpers

@@ -66,24 +66,7 @@ extension ContentFlowCoordinator {
                     .navigationTitle("Model Info")
             default:
                 VStack {
-                    Text("Link Destination \(link.id)")
-                    HStack {
-                        Button("pop") {
-                            flowState.pop()
-                        }.buttonStyle(.bordered)
-                        
-                        Button("push") {
-                            flowState.nextLink(.firstLink(text: "push"))
-                        }.buttonStyle(.bordered)
-                    }
-                    HStack {
-                        Button("close cover") {
-                            flowState.closeCover()
-                        }.buttonStyle(.bordered)
-                        Button("close popover") {
-                            flowState.closePopover()
-                        }.buttonStyle(.bordered)
-                    }
+                    Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
                 }
             }
             
@@ -110,24 +93,7 @@ extension ContentFlowCoordinator {
                     .navigationTitle("Model Info")
             default:
                 VStack {
-                    Text("Link Destination \(link.id)")
-                    HStack {
-                        Button("pop") {
-                            flowState.pop()
-                        }.buttonStyle(.bordered)
-                        
-                        Button("push") {
-                            flowState.nextLink(.firstLink(text: "push"))
-                        }.buttonStyle(.bordered)
-                    }
-                    HStack {
-                        Button("close cover") {
-                            flowState.closeCover()
-                        }.buttonStyle(.bordered)
-                        Button("close popover") {
-                            flowState.closePopover()
-                        }.buttonStyle(.bordered)
-                    }
+                    Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
                 }
             }
         }
