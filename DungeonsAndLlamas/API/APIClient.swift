@@ -44,11 +44,19 @@ actor APIClient {
     }
     
     let session: URLSession
+    
     var decoder: JSONDecoder {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
         d.dateDecodingStrategy = .iso8601
         return d
+    }
+    
+    var encoder: JSONEncoder {
+        let e = JSONEncoder()
+        e.keyEncodingStrategy = .convertToSnakeCase
+        e.dateEncodingStrategy = .iso8601
+        return e
     }
     
     static let defaultSampler = StableDiffusionSampler(name: "DPM++ 2M Karras", aliases: ["k_dpmpp_2m_ka"], options: ["scheduler":"karras"])
@@ -100,11 +108,7 @@ actor APIClient {
     func getDetail(model: LLMModel) async throws -> LLMModelInformation {
         var request = APIClient.request(endpoint: .modelDetail, method: .post)
         
-        request.httpBody = """
-            {
-              "name": "\(model.name)"
-            }
-            """.data(using: .utf8)
+        request.httpBody = try encoder.encode(["name": model.name])
         
         let (data, response) = try await self.session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -117,17 +121,16 @@ actor APIClient {
         return try decoder.decode(LLMModelInformation.self, from: data)
     }
  
-    func asyncStreamGenerate(prompt: String) -> AsyncThrowingStream<OllamaResult, Error> {
+    func asyncStreamGenerate(prompt: String, model: LLMModel) -> AsyncThrowingStream<OllamaResult, Error> {
         return AsyncThrowingStream<OllamaResult, Error> { continuation in
             Task.detached {
                 var request = APIClient.request(endpoint: .generate, method: .post)
-                request.httpBody = """
-                {
-                    "model": "llama2",
-                    "prompt": "\(prompt)",
-                    "stream": true
-                }
-                """.data(using: .utf8)
+                
+                request.httpBody = try await self.encoder.encode([
+                    "model": model.name,
+                    "prompt": prompt,
+                    "stream": "true"
+                ])
                 
                 do {
                     let (bytes, response) = try await self.session.bytes(for: request, delegate: DelegateToSupressWarning())
@@ -158,14 +161,13 @@ actor APIClient {
         return AsyncThrowingStream<OllamaResult, Error> { continuation in
             Task.init {
                 var request = APIClient.request(endpoint: .generate, method: .post)
-                request.httpBody = """
-                {
-                    "model": "llava",
-                    "prompt": "\(prompt)",
-                    "stream": true,
-                    "images": ["\(base64Image)"]
-                }
-                """.data(using: .utf8)
+                
+                request.httpBody = try encoder.encode([
+                    "model": "llava", // TODO: pickable img->text model
+                    "prompt": prompt,
+                    "stream": "true",
+                    "images": "[\(base64Image)]"
+                ])
                 
                 do {
                     let (bytes, response) = try await session.bytes(for: request, delegate: DelegateToSupressWarning())
@@ -196,9 +198,10 @@ actor APIClient {
     
     func generateBase64EncodedImages(_ options: StableDiffusionGenerationOptions) async throws -> [String] {
         
-        var request = APIClient.request(endpoint: .generateSDtxt2img, method: .post, timeout: 300)
+        let endpoint: APIEndpoint = options.initImages != nil ? .generateSDimg2img : .generateSDtxt2img
+        var request = APIClient.request(endpoint: endpoint, method: .post, timeout: 300)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = stableRequestBody(options).data(using: .utf8)
+        request.httpBody = try encoder.encode(options)
                 
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -206,29 +209,6 @@ actor APIClient {
         }
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
-        }
-        
-        let responseObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let images = responseObject?["images"] as? [String] else {
-            throw APIError.requestError("no images")
-        }
-        
-        return images
-    }
-    
-    func generateBase64EncodedImages(_ options: StableDiffusionGenerationOptions, base64EncodedSourceImages: [String]) async throws -> [String] {
-        
-        var request = APIClient.request(endpoint: .generateSDimg2img, method: .post, timeout: 300)
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = stableRequestBody(options, base64EncodedSourceImages: base64EncodedSourceImages).data(using: .utf8)
-
-        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.requestError("no request")
-        }
-        guard httpResponse.statusCode == 200 else {
-//            print(String(data: data, encoding: .utf8) ?? "")
-            throw APIError.requestError("status code: \(httpResponse.statusCode)")
         }
         
         let responseObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -286,11 +266,10 @@ actor APIClient {
     func setImageGenerationModel(model: StableDiffusionModel) async throws {
         var request = APIClient.request(endpoint: .options, method: .post)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = """
-        {
-            "sd_model_checkpoint": "\(model.title)"
-        }
-        """.data(using: .utf8)
+        
+        request.httpBody = try encoder.encode([
+            "sdModelCheckpoint": model.title
+        ])
         
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -334,12 +313,10 @@ actor APIClient {
         
         var request = APIClient.request(endpoint: .interrogate, method: .post, timeout: 300)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = """
-        {
-          "image": "\(base64EncodedImage)",
-          "model": "clip"
-        }
-        """.data(using: .utf8)
+        request.httpBody = try encoder.encode([
+            "image": base64EncodedImage,
+            "model": "clip"
+        ])
                 
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -364,132 +341,7 @@ actor APIClient {
         
         return request
     }
-    
-    private func stableRequestBody(_ options: StableDiffusionGenerationOptions) -> String {
-        return """
-        {
-            "init_images": [],
-            "resize_mode": 0,
-            "denoising_strength": 0.75,
-            "image_cfg_scale": 0,
-            "mask_blur": 0,
-            "mask_blur_x": 0,
-            "mask_blur_y": 0,
-            "inpainting_fill": 0,
-            "inpaint_full_res": true,
-            "inpaint_full_res_padding": 0,
-            "inpainting_mask_invert": 0,
-            "initial_noise_multiplier": 0,
-            "prompt": "\(options.prompt)",
-            "styles": [],
-            "seed": -1,
-            "subseed": -1,
-            "subseed_strength": 0,
-            "seed_resize_from_h": -1,
-            "seed_resize_from_w": -1,
-            "sampler_name": "",
-            "batch_size": \(options.batchSize),
-            "n_iter": 1,
-            "steps": \(options.steps),
-            "cfg_scale": 7,
-            "width": \(options.size),
-            "height": \(options.size),
-            "restore_faces": false,
-            "tiling": false,
-            "do_not_save_samples": false,
-            "do_not_save_grid": false,
-            "negative_prompt": "\(options.negativePrompt)",
-            "eta": 0,
-            "s_min_uncond": 0,
-            "s_churn": 0,
-            "s_tmax": 0,
-            "s_tmin": 0,
-            "s_noise": 1,
-            "override_settings": {},
-            "override_settings_restore_afterwards": true,
-            "script_args": [],
-            "sampler_index": "DPM2",
-            "include_init_images": false,
-            "script_name": "",
-            "send_images": true,
-            "save_images": true,
-            "alwayson_scripts": {}
-        }
-        """
-    }
-    
-    private func stableRequestBody(_ options: StableDiffusionGenerationOptions, base64EncodedSourceImages: [String]) -> String {
-//        return """
-//        {
-//            "init_images": [
-//            "\(base64EncodedSourceImages.joined(separator: "\",\""))"
-//            ],
-//            "resize_mode": 0,
-//            "denoising_strength": 0.75,
-//            "image_cfg_scale": 0,
-//            "mask_blur": 0,
-//            "mask_blur_x": 0,
-//            "mask_blur_y": 0,
-//            "inpainting_fill": 0,
-//            "inpaint_full_res": true,
-//            "inpaint_full_res_padding": 0,
-//            "inpainting_mask_invert": 0,
-//            "initial_noise_multiplier": 0,
-//            "prompt": "\(options.prompt)",
-//            "styles": [],
-//            "seed": -1,
-//            "subseed": -1,
-//            "subseed_strength": 0,
-//            "seed_resize_from_h": -1,
-//            "seed_resize_from_w": -1,
-//            "sampler_name": "",
-//            "batch_size": \(options.batchSize),
-//            "n_iter": 1,
-//            "steps": \(options.steps),
-//            "cfg_scale": 7,
-//            "width": \(options.size),
-//            "height": \(options.size),
-//            "restore_faces": false,
-//            "tiling": false,
-//            "do_not_save_samples": false,
-//            "do_not_save_grid": false,
-//            "negative_prompt": "\(options.negativePrompt)",
-//            "eta": 0,
-//            "s_min_uncond": 0,
-//            "s_churn": 0,
-//            "s_tmax": 0,
-//            "s_tmin": 0,
-//            "s_noise": 1,
-//            "override_settings": {},
-//            "override_settings_restore_afterwards": true,
-//            "script_args": [],
-//            "sampler_index": "DPM2",
-//            "include_init_images": false,
-//            "script_name": "",
-//            "send_images": true,
-//            "save_images": true,
-//            "alwayson_scripts": {}
-//        }
-//        """
-        
-        let seed = options.seed != nil ? options.seed! : -1
-        
-        return """
-        {
-          "prompt": "\(options.prompt)",
-          "negative_prompt": "\(options.negativePrompt)",
-          "batch_size": \(options.batchSize),
-          "steps": \(options.steps),
-          "width": \(options.size),
-          "height": \(options.size),
-          "init_images": [
-            "\(base64EncodedSourceImages.joined(separator: "\",\""))"
-          ],
-          "sampler_name": "DPM++ 2M Karras",
-          "seed": "\(seed)"
-        }
-        """
-    }
+
 }
 
 //MARK: - Structs
@@ -501,22 +353,26 @@ struct OllamaResult: Codable {
     var done: Bool
 }
 
-struct StableDiffusionGenerationOptions {
+struct StableDiffusionGenerationOptions: Codable {
     var prompt: String
     var negativePrompt: String
-    var size: Int
+    var width: Int
+    var height: Int
     var steps: Int
     var batchSize: Int
     var seed: Int?
-    var sampler: StableDiffusionSampler
+    var samplerName: String
+    var initImages: [String]?
     
-    init(prompt: String, negativePrompt: String = "", size: Int = 512, steps: Int = 20, batchSize: Int = 1, sampler: StableDiffusionSampler = APIClient.defaultSampler) {
+    init(prompt: String, negativePrompt: String = "", size: Int = 512, steps: Int = 20, batchSize: Int = 1, sampler: StableDiffusionSampler = APIClient.defaultSampler, initImages: [String]? = nil) {
         self.prompt = prompt
         self.negativePrompt = negativePrompt
-        self.size = size
+        self.width = size
+        self.height = size
         self.steps = steps
         self.batchSize = batchSize
-        self.sampler = sampler
+        self.samplerName = sampler.name
+        self.initImages = initImages
     }
 }
 

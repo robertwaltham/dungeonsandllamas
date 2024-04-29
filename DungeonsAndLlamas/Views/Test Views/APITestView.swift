@@ -78,7 +78,7 @@ struct APITestView: View {
                         Slider(value: viewModel.stepsProxy, in: 1...50)
                     }
                     HStack {
-                        Text("Size \(viewModel.sdOptions.size)")
+                        Text("Size \(viewModel.sdOptions.width)")
                         Slider(value: viewModel.sizeProxy, in: 64...512, step: 64)
                     }
                 }
@@ -154,6 +154,8 @@ class ViewModel {
     var selectedModel = StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")
     var models = [StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")]
     
+    var llmModel = LLMModel(name: "llama", modifiedAt: "", size: 0, digest: "asdf", details: LLMModelDetails(format: "", family: "llama", parameterSize: "too many", quantizationLevel: "1"))
+    
     var batchSizeProxy: Binding<Double>{
         Binding<Double>(get: {
             return Double(self.sdOptions.batchSize)
@@ -172,9 +174,10 @@ class ViewModel {
     
     var sizeProxy: Binding<Double>{
         Binding<Double>(get: {
-            return Double(self.sdOptions.size)
+            return Double(self.sdOptions.width)
         }, set: {
-            self.sdOptions.size = Int($0)
+            self.sdOptions.width = Int($0)
+            self.sdOptions.height = Int($0)
         })
     }
     
@@ -195,7 +198,7 @@ class ViewModel {
         loading = true
         Task.init {
             do {
-                for try await obj in await self.client.asyncStreamGenerate(prompt: llmPrompt) {
+                for try await obj in await self.client.asyncStreamGenerate(prompt: llmPrompt, model: llmModel) {
                     if !obj.done {
                         self.result += obj.response
                     }
@@ -263,7 +266,7 @@ class ViewModel {
                 for string in strings {
                     if let data = Data(base64Encoded: string),
                         let image = UIImage(data: data),
-                       Int(image.size.width) <= sdOptions.size { // skip combined image
+                       Int(image.size.width) <= sdOptions.width { // skip combined image
                         images.append(image)
                     }
                 }
@@ -316,12 +319,13 @@ class ViewModel {
         
         Task.init {
             do {
-                let strings = try await client.generateBase64EncodedImages(sdOptions, base64EncodedSourceImages: [base64Image])
+                let options = StableDiffusionGenerationOptions(prompt: sdOptions.prompt, negativePrompt: sdOptions.negativePrompt, initImages: [base64Image])
+                let strings = try await client.generateBase64EncodedImages(options)
                 
                 for string in strings {
                     if let data = Data(base64Encoded: string),
                        let image = UIImage(data: data),
-                       Int(image.size.width) <= sdOptions.size { // skip combined image
+                       Int(image.size.width) <= sdOptions.width { // skip combined image
                         images.append(image)
                     }
                 }

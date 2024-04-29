@@ -207,7 +207,7 @@ class GenerationService {
             result.wrappedValue = ""
             var history = LLMHistoryEntry(prompt: prompt, model: selectedLLMModel.name)
             do {
-                for try await obj in await self.apiClient.asyncStreamGenerate(prompt: prompt) {
+                for try await obj in await self.apiClient.asyncStreamGenerate(prompt: prompt, model: selectedLLMModel) {
                     if !obj.done {
                         result.wrappedValue += obj.response
                         history.result += obj.response
@@ -227,11 +227,12 @@ class GenerationService {
         
         loading.wrappedValue = true
         
-        var sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt, size: imageSize, steps: steps, sampler: selectedSampler)
         let image = drawing.image(from: CGRect(x: 0, y: 0, width: imageSize, height: imageSize), scale: 1.0)
         guard let base64Image = image.pngData()?.base64EncodedString() else {
             return
         }
+        
+        var sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt, size: imageSize, steps: steps, sampler: selectedSampler, initImages: [base64Image])
         
         sdOptions.seed = seed
         storedPrompt = prompt
@@ -266,7 +267,7 @@ class GenerationService {
             sdOptions.prompt = fullPrompt
             
             do {
-                let strings = try await apiClient.generateBase64EncodedImages(sdOptions, base64EncodedSourceImages: [base64Image])
+                let strings = try await apiClient.generateBase64EncodedImages(sdOptions)
                 
                 if let string = strings.first,
                    let data = Data(base64Encoded: string),
