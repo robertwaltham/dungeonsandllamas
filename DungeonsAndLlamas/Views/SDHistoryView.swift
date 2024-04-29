@@ -88,7 +88,7 @@ struct SDHistoryView: View {
                                     Text(lora + " weight:")
                                     Text(history.loraWeight ?? 0.0, format: .number.precision(.fractionLength(0...2)))
                                 }
-                                Text(history.sampler ?? APIClient.defaultSampler.name)
+                                Text(history.sampler ?? StableDiffusionClient.defaultSampler.name)
                             }
                             
 //                            if let interrogated {

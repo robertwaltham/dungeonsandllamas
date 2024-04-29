@@ -102,7 +102,7 @@ struct LandingiPhoneView: View {
                 if generationService.selectedSDModel != nil {
                     Picker("Model", selection: $generationService.selectedSDModel) {
                         ForEach(generationService.sdModels) { model in
-                            Text(model.modelName).tag(model as StableDiffusionModel?)
+                            Text(model.modelName).tag(model as StableDiffusionClient.Model?)
                         }
                     }
                     .frame(minWidth: 150)

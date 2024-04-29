@@ -150,9 +150,9 @@ struct PencilDrawingiPadView: View {
 
                     Text("Lora")
                     Picker("Lora", selection: $viewModel.selectedLora) {
-                        Text("None").tag(nil as StableDiffusionLora?)
+                        Text("None").tag(nil as StableDiffusionClient.Lora?)
                         ForEach(generationService.sdLoras) { lora in
-                            Text(lora.name).tag(lora as StableDiffusionLora?)
+                            Text(lora.name).tag(lora as StableDiffusionClient.Lora?)
                         }
                     }
                     .frame(maxWidth: maxWidth)

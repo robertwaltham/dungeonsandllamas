@@ -14,7 +14,9 @@ import PencilKit
 @Observable
 class GenerationService {
     
-    var apiClient = APIClient()
+    var llmClient = LargeLangageModelClient()
+    var stableDiffusionClient = StableDiffusionClient()
+    
     var fileService = FileService()
     
     static let statusCheckInterval = 2.0
@@ -24,19 +26,25 @@ class GenerationService {
     struct ConnectionStatus {
         var connected: Bool
         var lastChecked: Date
-        var service: APIClient.Service
+        var service: Service
+        var error: String?
+    }
+    
+    enum Service {
+        case stableDiffusion
+        case largeLanguageModel
     }
     
     var llmStatus = ConnectionStatus(connected: false, lastChecked: .distantPast, service: .largeLanguageModel)
     var sdStatus = ConnectionStatus(connected: false, lastChecked: .distantPast, service: .stableDiffusion)
     
-    var sdModels: [StableDiffusionModel] = []
-    var llmModels: [LLMModel] = []
-    var selectedSDModel: StableDiffusionModel?
-    var selectedLLMModel: LLMModel?
-    var sdLoras: [StableDiffusionLora] = []
-    var sdSamplers: [StableDiffusionSampler] = []
-    var selectedSampler = APIClient.defaultSampler // default
+    var sdModels: [StableDiffusionClient.Model] = []
+    var llmModels: [LargeLangageModelClient.Model] = []
+    var selectedSDModel: StableDiffusionClient.Model?
+    var selectedLLMModel: LargeLangageModelClient.Model?
+    var sdLoras: [StableDiffusionClient.Lora] = []
+    var sdSamplers: [StableDiffusionClient.Sampler] = []
+    var selectedSampler = StableDiffusionClient.defaultSampler // default
     
     var LLMHistory = [LLMHistoryEntry]()
     var SDHistory = [SDHistoryEntry]()
@@ -109,19 +117,17 @@ class GenerationService {
         statusTask = Task.init {
             
             do {
-                let success = try await apiClient.testConnection(service: .largeLanguageModel)
-                llmStatus = ConnectionStatus(connected: success, lastChecked: Date.now, service: .largeLanguageModel)
+                llmStatus = ConnectionStatus(connected: try await llmClient.testConnection(), lastChecked: Date.now, service: .largeLanguageModel)
             } catch {
-                print(error.localizedDescription)
+                llmStatus = ConnectionStatus(connected: false, lastChecked: Date.now, service: .largeLanguageModel, error: error.localizedDescription)
             }
             
             do {
-                let success = try await apiClient.testConnection(service: .stableDiffusion)
-                sdStatus = ConnectionStatus(connected: success, lastChecked: Date.now, service: .stableDiffusion)
-            } catch {
-                print(error.localizedDescription)
+                sdStatus = ConnectionStatus(connected: try await stableDiffusionClient.testConnection(), lastChecked: Date.now, service: .stableDiffusion)
+            }catch {
+                sdStatus = ConnectionStatus(connected: false, lastChecked: Date.now, service: .stableDiffusion, error: error.localizedDescription)
             }
-            
+
             statusTask = nil
         }
     }
@@ -145,24 +151,19 @@ class GenerationService {
         modelTask = Task {
             
             do {
-                sdModels = try await apiClient.imageGenerationModels()
-                let options = try await apiClient.imageGenerationOptions()
+                sdModels = try await stableDiffusionClient.imageGenerationModels()
+                let options = try await stableDiffusionClient.imageGenerationOptions()
                 
                 selectedSDModel = sdModels.first { model in
                     model.sha256 == options.sdCheckpointHash
                 }
                                 
-                llmModels = try await apiClient.getLocalModels()
+                llmModels = try await llmClient.getLocalModels()
                 selectedLLMModel = llmModels.first
                 
-                sdSamplers = try await apiClient.samplers()
+                sdSamplers = try await stableDiffusionClient.samplers()
                 
-//                if let selectedLLMModel = selectedLLMModel {
-//                    let detail = try await apiClient.getDetail(model: selectedLLMModel)
-//                    print(detail)
-//                }
-                
-            sdLoras = try await apiClient.loras()
+                sdLoras = try await stableDiffusionClient.loras()
                 
             } catch {
                 print(error)
@@ -185,7 +186,7 @@ class GenerationService {
         
         modelTask = Task {
             do {
-                try await apiClient.setImageGenerationModel(model: selectedSDModel)
+                try await stableDiffusionClient.setImageGenerationModel(model: selectedSDModel)
             } catch {
                 print(error)
             }
@@ -207,7 +208,7 @@ class GenerationService {
             result.wrappedValue = ""
             var history = LLMHistoryEntry(prompt: prompt, model: selectedLLMModel.name)
             do {
-                for try await obj in await self.apiClient.asyncStreamGenerate(prompt: prompt, model: selectedLLMModel) {
+                for try await obj in await self.llmClient.asyncStreamGenerate(prompt: prompt, model: selectedLLMModel) {
                     if !obj.done {
                         result.wrappedValue += obj.response
                         history.result += obj.response
@@ -223,7 +224,7 @@ class GenerationService {
         }
     }
     
-    func image(prompt: String, promptAddon: String?, negativePrompt: String, lora: StableDiffusionLora?, loraWeight: Double, seed: Int, drawing: PKDrawing, output: Binding<UIImage?>, progress: Binding<StableDiffusionProgress?>, loading: Binding<Bool>) {
+    func image(prompt: String, promptAddon: String?, negativePrompt: String, lora: StableDiffusionClient.Lora?, loraWeight: Double, seed: Int, drawing: PKDrawing, output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
         
         loading.wrappedValue = true
         
@@ -232,7 +233,7 @@ class GenerationService {
             return
         }
         
-        var sdOptions = StableDiffusionGenerationOptions(prompt: prompt, negativePrompt: negativePrompt, size: imageSize, steps: steps, sampler: selectedSampler, initImages: [base64Image])
+        var sdOptions = StableDiffusionClient.GenerationOptions(prompt: prompt, negativePrompt: negativePrompt, size: imageSize, steps: steps, sampler: selectedSampler, initImages: [base64Image])
         
         sdOptions.seed = seed
         storedPrompt = prompt
@@ -267,7 +268,7 @@ class GenerationService {
             sdOptions.prompt = fullPrompt
             
             do {
-                let strings = try await apiClient.generateBase64EncodedImages(sdOptions)
+                let strings = try await stableDiffusionClient.generateBase64EncodedImages(sdOptions)
                 
                 if let string = strings.first,
                    let data = Data(base64Encoded: string),
@@ -288,10 +289,10 @@ class GenerationService {
         
         Task.init {
             // TODO: inherit known values from options
-            progress.wrappedValue = StableDiffusionProgress(progress: 0, etaRelative: 0, state: StableDiffusionProgress.StableDiffusionState.initial())
+            progress.wrappedValue = StableDiffusionClient.Progress(progress: 0, etaRelative: 0, state: StableDiffusionClient.Progress.State.initial())
             do {
                 while loading.wrappedValue == true {
-                    progress.wrappedValue = try await self.apiClient.imageGenerationProgress()
+                    progress.wrappedValue = try await self.stableDiffusionClient.imageGenerationProgress()
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
             } catch {
@@ -300,7 +301,7 @@ class GenerationService {
         }
     }
     
-    private func promptAdd(lora: StableDiffusionLora, weight: Double) -> String {
+    private func promptAdd(lora: StableDiffusionClient.Lora, weight: Double) -> String {
         return " <lora:\(lora.name):\(weight.formatted(.number.precision(.fractionLength(0...1))))>"
     }
     
@@ -313,7 +314,7 @@ class GenerationService {
         
         Task {
             do {
-                output.wrappedValue = try await apiClient.interrogate(base64EncodedImage: base64Image)
+                output.wrappedValue = try await stableDiffusionClient.interrogate(base64EncodedImage: base64Image)
             } catch {
                 print(error)
                 output.wrappedValue = nil

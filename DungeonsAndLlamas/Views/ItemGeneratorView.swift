@@ -79,7 +79,8 @@ class ItemGeneratorViewModel {
     var weaponType: WeaponType = .club
     var quality: Quality = .decent
     var images = [UIImage]()
-    let client = APIClient()
+    let llmClient = LargeLangageModelClient() // todo update to use generation service
+    let sdClient = StableDiffusionClient()
     var loading = false
     
     // SwiftUI will create the state object in a non-isolated context
@@ -96,13 +97,13 @@ class ItemGeneratorViewModel {
         }
         loading = true
         let prompt = prompt
-        let client = client
+        let client = llmClient
         Task.init {
             do {
                 let size = 512
-                let options = StableDiffusionGenerationOptions(prompt: prompt, size: size, steps: 20, batchSize: 1)
+                let options = StableDiffusionClient.GenerationOptions(prompt: prompt, size: size, steps: 20, batchSize: 1)
 
-                let strings = try await client.generateBase64EncodedImages(options)
+                let strings = try await sdClient.generateBase64EncodedImages(options)
                 
                 for string in strings {
                     if let data = Data(base64Encoded: string), let image = UIImage(data: data), Int(image.size.width) <= size {
@@ -128,7 +129,7 @@ class ItemGeneratorViewModel {
         }
         Task.init {
             do {
-                for try await obj in await client.asyncStreamGenerate(prompt: "Describe the item in this image in 50 words or less", base64Image: imageData){
+                for try await obj in await llmClient.asyncStreamGenerate(prompt: "Describe the item in this image in 50 words or less", base64Image: imageData){
                     if !obj.done {
                         itemDescription += obj.response
                     }

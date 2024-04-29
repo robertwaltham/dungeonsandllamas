@@ -32,7 +32,7 @@ struct ModelSettingsView: View {
                 Text("Selected Model")
                 Picker("Selected Model", selection: $generationService.selectedSDModel) {
                     ForEach(generationService.sdModels) { model in
-                        Text(model.modelName).tag(model as StableDiffusionModel?)
+                        Text(model.modelName).tag(model as StableDiffusionClient.Model?)
                     }
                 }
                 .disabled(modelDisabled)

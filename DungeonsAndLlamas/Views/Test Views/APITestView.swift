@@ -143,18 +143,19 @@ struct APITestView: View {
 @Observable
 @MainActor
 class ViewModel {
-    let client = APIClient()
+    let llmClient = LargeLangageModelClient()
+    let sdClient = StableDiffusionClient()
     var result = ""
     var images = [UIImage]()
     var inProgressImage: UIImage?
     var llmPrompt = "Describe the image in 30 words or less. Respond only with a comma separated list of the contents"
     var loading = false
     let dndprompt = "modelshoot style, (extremely detailed CG unity 8k wallpaper), full shot body photo of the most beautiful artwork in the world, english medieval pink (dragonborn druid) witch, black silk robe, nature magic, medieval era, painting by Ed Blinkey, Atey Ghailan, Studio Ghibli, by Jeremy Mann, Greg Manchess, Antonio Moro, trending on ArtStation, trending on CGSociety, Intricate, High Detail, Sharp focus, dramatic, painting art by midjourney and greg rutkowski, teal and gold, petals, countryside, action pose, casting a spell, green swirling magic"
-    var sdOptions = StableDiffusionGenerationOptions(prompt: "watercolor, painting, ", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
-    var selectedModel = StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")
-    var models = [StableDiffusionModel(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")]
+    var sdOptions = StableDiffusionClient.GenerationOptions(prompt: "watercolor, painting, ", negativePrompt: "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch ,duplicate, ugly, monochrome, horror, geometry, mutation, disgusting")
+    var selectedModel = StableDiffusionClient.Model(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")
+    var models = [StableDiffusionClient.Model(title: "n/a", modelName: "n/a", hash: "", sha256: "", filename: "")]
     
-    var llmModel = LLMModel(name: "llama", modifiedAt: "", size: 0, digest: "asdf", details: LLMModelDetails(format: "", family: "llama", parameterSize: "too many", quantizationLevel: "1"))
+    var llmModel = LargeLangageModelClient.Model(name: "llama", modifiedAt: "", size: 0, digest: "asdf", details: LargeLangageModelClient.ModelDetails(format: "", family: "llama", parameterSize: "too many", quantizationLevel: "1"))
     
     var batchSizeProxy: Binding<Double>{
         Binding<Double>(get: {
@@ -198,7 +199,7 @@ class ViewModel {
         loading = true
         Task.init {
             do {
-                for try await obj in await self.client.asyncStreamGenerate(prompt: llmPrompt, model: llmModel) {
+                for try await obj in await self.llmClient.asyncStreamGenerate(prompt: llmPrompt, model: llmModel) {
                     if !obj.done {
                         self.result += obj.response
                     }
@@ -214,7 +215,7 @@ class ViewModel {
         loading = true
         Task.init {
             do {
-                let options = try await client.imageGenerationOptions()
+                let options = try await sdClient.imageGenerationOptions()
                 print(options)
             } catch {
                 print(error)
@@ -227,7 +228,7 @@ class ViewModel {
         loading = true
         Task.init {
             do {
-                models = try await client.imageGenerationModels()
+                models = try await sdClient.imageGenerationModels()
             } catch {
                 print(error)
             }
@@ -239,7 +240,7 @@ class ViewModel {
         loading = true
         Task.init {
             do {
-                try await client.setImageGenerationModel(model: selectedModel)
+                try await sdClient.setImageGenerationModel(model: selectedModel)
             } catch {
                 print(error)
             }
@@ -261,7 +262,7 @@ class ViewModel {
         
         Task.init {
             do {
-                let strings = try await client.generateBase64EncodedImages(sdOptions)
+                let strings = try await sdClient.generateBase64EncodedImages(sdOptions)
                 
                 for string in strings {
                     if let data = Data(base64Encoded: string),
@@ -279,7 +280,7 @@ class ViewModel {
         Task.init {
             do {
                 while loading == true {
-                    let progress = try await self.client.imageGenerationProgress()
+                    let progress = try await self.sdClient.imageGenerationProgress()
                     
                     eta = progress.etaRelative
                     self.progress = progress.progress
@@ -319,8 +320,8 @@ class ViewModel {
         
         Task.init {
             do {
-                let options = StableDiffusionGenerationOptions(prompt: sdOptions.prompt, negativePrompt: sdOptions.negativePrompt, initImages: [base64Image])
-                let strings = try await client.generateBase64EncodedImages(options)
+                let options = StableDiffusionClient.GenerationOptions(prompt: sdOptions.prompt, negativePrompt: sdOptions.negativePrompt, initImages: [base64Image])
+                let strings = try await sdClient.generateBase64EncodedImages(options)
                 
                 for string in strings {
                     if let data = Data(base64Encoded: string),
@@ -338,7 +339,7 @@ class ViewModel {
         Task.init {
             do {
                 while loading == true {
-                    let progress = try await self.client.imageGenerationProgress()
+                    let progress = try await self.sdClient.imageGenerationProgress()
                     
                     eta = progress.etaRelative
                     self.progress = progress.progress
@@ -370,7 +371,7 @@ class ViewModel {
         }
         Task.init {
             do {
-                for try await obj in await client.asyncStreamGenerate(prompt: llmPrompt, base64Image: imageData){
+                for try await obj in await llmClient.asyncStreamGenerate(prompt: llmPrompt, base64Image: imageData){
                     if !obj.done {
                         result += obj.response
                     }

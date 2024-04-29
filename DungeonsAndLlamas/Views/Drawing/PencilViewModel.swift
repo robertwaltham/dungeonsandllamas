@@ -29,10 +29,10 @@ class PencilViewModel {
     var negative = "worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, duplicate, ugly, monochrome, horror, geometry, mutation, disgusting"
     
     var loading = false
-    var progress: StableDiffusionProgress?
+    var progress: StableDiffusionClient.Progress?
     var showTooltip = true
     var useLora = false
-    var selectedLora: StableDiffusionLora?
+    var selectedLora: StableDiffusionClient.Lora?
     var loraWeight: Double = 0
     var seed = Int.random(in: 0...Int(Int16.max))
     
@@ -54,11 +54,11 @@ class PencilViewModel {
         seed = history.seed ?? -1
         generationService.selectedSampler = generationService.sdSamplers.first { sampler in
             sampler.name == history.sampler
-        } ?? APIClient.defaultSampler
+        } ?? StableDiffusionClient.defaultSampler
     }
     
     @MainActor
-    func generate(output: Binding<UIImage?>, progress: Binding<StableDiffusionProgress?>, loading: Binding<Bool>) {
+    func generate(output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
         if let drawing {
             generationService.image(prompt: prompt, promptAddon: promptAdd, negativePrompt: negative, lora: selectedLora, loraWeight: loraWeight, seed: seed, drawing: drawing, output: output, progress: progress, loading: loading)
         }
