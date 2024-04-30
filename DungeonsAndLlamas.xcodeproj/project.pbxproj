@@ -140,9 +140,9 @@
 		D17058A52BBB18D1003E6668 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D16CAE4A2BB3724000ECA710 /* ContentView.swift */,
 				D1DC043B2BD02D1D007BC5D2 /* Drawing */,
 				D17058AF2BBB1DDD003E6668 /* Test Views */,
-				D16CAE4A2BB3724000ECA710 /* ContentView.swift */,
 				D17058AD2BBB1A14003E6668 /* LandingView.swift */,
 				D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */,
 				D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */,

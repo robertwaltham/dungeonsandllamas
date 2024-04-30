@@ -14,8 +14,6 @@ struct SDHistoryView: View {
     @State var filter: String?
     @State var loraFilter: String?
     @State var saved: String?
-//    @State var interrogated: String?
-
     
     @ViewBuilder
     @MainActor
@@ -64,11 +62,6 @@ struct SDHistoryView: View {
                         output
                             .resizable()
                             .scaledToFit()
-//                            .onTapGesture {
-//                                print("tap")
-//                                generationService.interrogate(image: image, output: $interrogated)
-//                            }
-//                          
                         
                         Image(uiImage: generationService.loadInputImage(history: history))
                             .resizable()
@@ -84,17 +77,12 @@ struct SDHistoryView: View {
                                 Text(error)
                             }
                             HStack {
-                                if let lora = history.lora {
-                                    Text(lora + " weight:")
-                                    Text(history.loraWeight ?? 0.0, format: .number.precision(.fractionLength(0...2)))
+                                ForEach(history.loras ?? []) { lora in
+                                    Text(lora.name + ":")
+                                    Text(lora.weight, format: .number.precision(.fractionLength(0...2)))
                                 }
                                 Text(history.sampler ?? StableDiffusionClient.defaultSampler.name)
                             }
-                            
-//                            if let interrogated {
-//                                Text(interrogated)
-//                            }
-
                         }
                         
 

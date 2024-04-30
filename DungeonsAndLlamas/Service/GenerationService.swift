@@ -49,7 +49,7 @@ class GenerationService {
     var LLMHistory = [LLMHistoryEntry]()
     var SDHistory = [SDHistoryEntry]()
     
-    var imageSize = 512
+    let imageSize = 512
     var steps = 20
     
     private(set) var statusTask: Task<Void, Never>?
@@ -60,7 +60,16 @@ class GenerationService {
     //MARK: - History
     
     func loadHistory() {
+        // TODO: Migrate history properly
         SDHistory = fileService.loadSDHistory()
+        
+        for i in 0..<SDHistory.count {
+            SDHistory[i].loras = [SDHistoryEntry.LoraHistoryEntry]()
+            if let loraName = SDHistory[i].lora {
+                SDHistory[i].loras?.append(SDHistoryEntry.LoraHistoryEntry(name: loraName, weight: SDHistory[i].loraWeight ?? 0))
+            }
+        }
+        
     }
     
     func loadOutputImage(history: SDHistoryEntry) -> UIImage {
@@ -99,8 +108,8 @@ class GenerationService {
     func lorasFromHistory() -> [String] {
         var result = Set<String>()
         for h in SDHistory {
-            if let lora = h.lora {
-                result.insert(lora)
+            for lora in h.loras ?? [] {
+                result.insert(lora.name)
             }
         }
         return result.sorted()
@@ -260,8 +269,7 @@ class GenerationService {
             }
             
             if let lora {
-                history.lora = lora.name
-                history.loraWeight = loraWeight
+                history.loras = [SDHistoryEntry.LoraHistoryEntry(name: lora.name, weight: loraWeight)]
                 fullPrompt += promptAdd(lora: lora, weight: loraWeight)
             }
 
@@ -350,6 +358,14 @@ class GenerationService {
             start
         }
         
+        struct LoraHistoryEntry: Codable, Equatable, Hashable, Identifiable {
+            var id: String {
+                name
+            }
+            var name: String
+            var weight: Double
+        }
+        
         var start: Date = Date.now
         var end: Date?
         var prompt: String
@@ -361,6 +377,7 @@ class GenerationService {
         var errorDescription: String?
         var lora: String?
         var loraWeight: Double?
+        var loras: [LoraHistoryEntry]?
         var drawingPath: String?
         var seed: Int?
         var sampler: String?

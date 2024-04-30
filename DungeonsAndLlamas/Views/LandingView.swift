@@ -35,10 +35,12 @@ struct LandingView: View {
             }
             .onReceive(timer) { input in
                 withAnimation(.linear(duration: 1.0)){
-                    let random = Int.random(in: 0..<history.count - 1) // TODO: fix bug with last cell sliding animation
-                    let img = generationService.loadOutputImage(history: generationService.SDHistory.randomElement()!)
-                    if history.firstIndex(of: img) == nil {
-                        history[random] = img
+                    if history.count > 1 {
+                        let random = Int.random(in: 0..<history.count - 1) // TODO: fix bug with last cell sliding animation
+                        let img = generationService.loadOutputImage(history: generationService.SDHistory.randomElement()!)
+                        if history.firstIndex(of: img) == nil {
+                            history[random] = img
+                        }
                     }
                 }
             }

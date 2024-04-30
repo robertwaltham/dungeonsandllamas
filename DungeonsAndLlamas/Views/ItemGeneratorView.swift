@@ -97,7 +97,6 @@ class ItemGeneratorViewModel {
         }
         loading = true
         let prompt = prompt
-        let client = llmClient
         Task.init {
             do {
                 let size = 512
