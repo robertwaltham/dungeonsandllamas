@@ -30,6 +30,14 @@ class GenerationService {
         var error: String?
     }
     
+    struct LoraInvocation: Identifiable {
+        var id: String {
+            name
+        }
+        var name: String
+        var weight: Double
+    }
+    
     enum Service {
         case stableDiffusion
         case largeLanguageModel
@@ -64,8 +72,8 @@ class GenerationService {
         SDHistory = fileService.loadSDHistory()
         
         for i in 0..<SDHistory.count {
-            SDHistory[i].loras = [SDHistoryEntry.LoraHistoryEntry]()
             if let loraName = SDHistory[i].lora {
+                SDHistory[i].loras = [SDHistoryEntry.LoraHistoryEntry]()
                 SDHistory[i].loras?.append(SDHistoryEntry.LoraHistoryEntry(name: loraName, weight: SDHistory[i].loraWeight ?? 0))
             }
         }
@@ -233,7 +241,7 @@ class GenerationService {
         }
     }
     
-    func image(prompt: String, promptAddon: String?, negativePrompt: String, lora: StableDiffusionClient.Lora?, loraWeight: Double, seed: Int, drawing: PKDrawing, output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
+    func image(prompt: String, promptAddon: String?, negativePrompt: String, loras: [LoraInvocation] = [], seed: Int, drawing: PKDrawing, output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
         
         loading.wrappedValue = true
         
@@ -254,7 +262,6 @@ class GenerationService {
                     getModels()
                 }
                 _ = await modelTask?.result // TODO: handle error case
-                print("selected model: \(selectedSDModel?.modelName ?? "none")")
             }
             
             var history = SDHistoryEntry(prompt: prompt, promptAdd: promptAddon, negativePrompt: negativePrompt, model: selectedSDModel?.modelName ?? "none")
@@ -262,15 +269,20 @@ class GenerationService {
             history.drawingPath = fileService.save(drawing: drawing)
             history.seed = seed
             history.sampler = selectedSampler.name
-            
+            history.loras = loras.map { lora in
+                SDHistoryEntry.LoraHistoryEntry(name: lora.name, weight: lora.weight)
+            }
+                        
             var fullPrompt = prompt
             if let promptAddon {
                 fullPrompt += promptAddon
             }
             
-            if let lora {
-                history.loras = [SDHistoryEntry.LoraHistoryEntry(name: lora.name, weight: loraWeight)]
-                fullPrompt += promptAdd(lora: lora, weight: loraWeight)
+            if loras.count > 0 {
+                fullPrompt += " "
+                fullPrompt += loras.map { lora in
+                    promptAdd(lora: lora)
+                }.joined(separator: " ")
             }
 
             sdOptions.prompt = fullPrompt
@@ -309,8 +321,8 @@ class GenerationService {
         }
     }
     
-    private func promptAdd(lora: StableDiffusionClient.Lora, weight: Double) -> String {
-        return " <lora:\(lora.name):\(weight.formatted(.number.precision(.fractionLength(0...1))))>"
+    private func promptAdd(lora: LoraInvocation) -> String {
+        return " <lora:\(lora.name):\(lora.weight.formatted(.number.precision(.fractionLength(0...1))))>"
     }
     
     func interrogate(image: UIImage, output: Binding<String?>) {

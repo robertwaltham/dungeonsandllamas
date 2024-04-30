@@ -11,12 +11,26 @@ import PencilKit
 import SwiftUI
 
 @Observable
-class PencilViewModel {
+class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making the observation tracking sendable
     
     @MainActor
     init(generationService: GenerationService) {
         self.generationService = generationService
         self.prompt = generationService.lastPrompt()
+        self.loras = generationService.sdLoras.map { lora in
+            GenerationService.LoraInvocation.init(name: lora.name, weight: 0)
+        }
+        withObservationTracking {
+            _ = generationService.sdLoras
+        } onChange: {
+            Task {
+                // TODO: preserve weights
+                self.loras = await generationService.sdLoras.map { lora in
+                    GenerationService.LoraInvocation.init(name: lora.name, weight: 0)
+                }
+            }
+        }
+
     }
     
     var generationService: GenerationService
@@ -31,9 +45,11 @@ class PencilViewModel {
     var loading = false
     var progress: StableDiffusionClient.Progress?
     var showTooltip = true
-    var useLora = false
-    var selectedLora: StableDiffusionClient.Lora?
-    var loraWeight: Double = 0
+    
+    var loras: [GenerationService.LoraInvocation]
+    var enabledLoras: [GenerationService.LoraInvocation] {
+        loras.filter { $0.weight > 0}
+    }
     var seed = Int.random(in: 0...Int(Int16.max))
     
     func newSeed() {
@@ -45,11 +61,9 @@ class PencilViewModel {
         drawing = generationService.loadDrawing(history: history)
         prompt = history.prompt
         output = generationService.loadOutputImage(history: history)
-        useLora = history.lora != nil
-        selectedLora = generationService.sdLoras.first { lora in
-            lora.name == history.lora
+        for i in 0..<loras.count {
+            loras[i].weight = history.loras?.first { lora in lora.name == loras[i].name }?.weight ?? 0
         }
-        loraWeight = history.loraWeight ?? 0
         promptAdd = history.promptAdd
         seed = history.seed ?? -1
         generationService.selectedSampler = generationService.sdSamplers.first { sampler in
@@ -60,7 +74,7 @@ class PencilViewModel {
     @MainActor
     func generate(output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
         if let drawing {
-            generationService.image(prompt: prompt, promptAddon: promptAdd, negativePrompt: negative, lora: selectedLora, loraWeight: loraWeight, seed: seed, drawing: drawing, output: output, progress: progress, loading: loading)
+            generationService.image(prompt: prompt, promptAddon: promptAdd, negativePrompt: negative, loras: enabledLoras, seed: seed, drawing: drawing, output: output, progress: progress, loading: loading)
         }
     }
 }

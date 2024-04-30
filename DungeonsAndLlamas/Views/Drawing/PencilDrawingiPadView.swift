@@ -14,6 +14,8 @@ struct PencilDrawingiPadView: View {
     @State var generationService: GenerationService
     @FocusState private var keyboardShown: Bool
     @State var showPrompts: Bool = false
+    @State var showLoras: Bool = false
+
     @State var historyPrompt: String = "History"
     @State var promptAdd: String?
 
@@ -123,16 +125,11 @@ struct PencilDrawingiPadView: View {
                     .padding()
                     .foregroundColor(.green)
 
-                    
                     let maxWidth: CGFloat = 100
-//                    Toggle("Add", isOn: $viewModel.includePromptAdd)
-//                        .frame(maxWidth: maxWidth)
-//                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
                     
                     let adds = generationService.suggestedPromptAdds()
-                    Text("Prompt Add")
                     Picker("Prompt Add", selection: $promptAdd) {
-                        Text("None").tag(nil as String?)
+                        Label(" Add", systemImage: "plus.app").tag(nil as String?)
                         ForEach(adds.keys.map({$0}), id:\.self) { label in
                             Text(label).tag(label as String?)
                         }
@@ -144,28 +141,54 @@ struct PencilDrawingiPadView: View {
                         }
                     }
 
-                    Toggle("Tool", isOn: $viewModel.showTooltip)
-                        .frame(maxWidth: maxWidth)
-                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
-
-                    Text("Lora")
-                    Picker("Lora", selection: $viewModel.selectedLora) {
-                        Text("None").tag(nil as StableDiffusionClient.Lora?)
-                        ForEach(generationService.sdLoras) { lora in
-                            Text(lora.name).tag(lora as StableDiffusionClient.Lora?)
+                    Button {
+                        viewModel.showTooltip.toggle()
+                    } label: {
+                        
+                        HStack {
+                            Label("Tool", systemImage: "paintbrush.pointed")
                         }
-                    }
-                    .frame(maxWidth: maxWidth)
-                    .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                        .foregroundColor(.green)
 
-                    Text("Weight \(viewModel.loraWeight, format: .number.precision(.fractionLength(0...2)))")
-                    Slider(value: $viewModel.loraWeight, in: 0...1)
-                        .frame(maxWidth: maxWidth)
-                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                    }
+                    .padding()
+
+                    Button {
+                        showLoras = true
+                    } label: {
+                        
+                        HStack {
+                            Label("Loras", systemImage: "photo.on.rectangle.angled")
+                        }
+                        .foregroundColor(.purple)
+
+                        HStack {
+                            Text("\(viewModel.enabledLoras.count)")
+                        }
+                        .foregroundColor(.black)
+                    }
+                    .padding()
+                    .popover(isPresented: $showLoras) {
+                        Grid(horizontalSpacing: 10, verticalSpacing: 20) {
+                            
+                            ForEach($viewModel.loras) { $lora in
+                                
+                                GridRow {
+                                    Text(lora.name).frame(minWidth: 200)
+                                    Slider(value: $lora.weight)
+                                    Text(lora.weight.formatted(.number.precision(.fractionLength(0...2))))
+                                        .frame(minWidth: 50)
+                                }
+                            }
+                        }
+                        .frame(minWidth: 500)
+                        .padding()
+                    }
+
                     
                     Text("Seed")
                     Text("\(viewModel.seed, format: .number.grouping(.never))")
-                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
                         .onTapGesture {
                             viewModel.newSeed()
                         }
@@ -185,8 +208,6 @@ struct PencilDrawingiPadView: View {
         }
     }
 }
-
-
 
 #Preview {
     let flowState = ContentFlowState()

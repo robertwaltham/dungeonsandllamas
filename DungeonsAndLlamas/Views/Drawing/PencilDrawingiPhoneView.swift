@@ -78,12 +78,8 @@ struct PencilDrawingiPhoneView: View {
                             
                             Text("Prompt").font(.title2)
                             TextEditor(text: $viewModel.prompt)
-                                .padding()
+                                .padding() // TODO: fix keyboard
                             Spacer()
-
-                            Text("Prompt Add")
-                            Text(viewModel.promptAdd ?? "")
-                                .padding()
 
                             Spacer()
                             Text("Negative Prompt").font(.title2)
@@ -91,17 +87,14 @@ struct PencilDrawingiPhoneView: View {
                                 .padding()
                             Spacer()
                             
-                            Text("Lora").font(.title2)
-                            Picker("Lora", selection: $viewModel.selectedLora) {
-                                Text("None").tag(nil as StableDiffusionClient.Lora?)
-                                ForEach(generationService.sdLoras) { lora in
-                                    Text(lora.name).tag(lora as StableDiffusionClient.Lora?)
-                                }
+                            Text("Lora \(viewModel.enabledLoras.count)").font(.title2)
+                            ForEach($viewModel.loras) { $lora in
+                                
+                                HStack {
+                                    Text("\(lora.name) \(                                    lora.weight.formatted(.number.precision(.fractionLength(2...2))))")
+                                     Slider(value: $lora.weight)
+                                }.padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
                             }
-
-                            Text("Weight \(viewModel.loraWeight, format: .number.precision(.fractionLength(0...1)))")
-                            Slider(value: $viewModel.loraWeight, in: 0...1)
-                                .padding()
                             
                             Text("Seed")
                             Text("\(viewModel.seed, format: .number.grouping(.never))")
@@ -161,6 +154,9 @@ struct PencilDrawingiPhoneView: View {
     let flowState = ContentFlowState()
     let service = GenerationService()
     service.generateHistoryForTesting()
+    Task {
+        service.getModels()
+    }
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {
         PencilDrawingiPhoneView(flowState: flowState, generationService: service)
     }

@@ -65,6 +65,9 @@ final class FileService {
         let fileURL = sdHistoryDirectory().appending(component: filename + ".history")
         
         do {
+            
+//            print(String(data: try encoder.encode(history), encoding: .utf8)!)
+
             try encoder.encode(history).write(to: fileURL)
         } catch {
             print(error)
@@ -79,7 +82,7 @@ final class FileService {
             let paths = try manager.contentsOfDirectory(atPath: directory.path())
             for path in paths {
                 let data = try Data(contentsOf: directory.appending(path: path))
-                
+//                print(String(data: data, encoding: .utf8)!)
                 result.append(try decoder.decode(GenerationService.SDHistoryEntry.self, from: data))
             }
 
