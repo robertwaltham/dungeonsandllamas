@@ -81,6 +81,8 @@ struct SDHistoryView: View {
                                 Text(lora.weight, format: .number.precision(.fractionLength(0...2)))
                             }
                             Text(history.sampler ?? StableDiffusionClient.defaultSampler.name)
+                            Text("Steps: \(history.steps ?? 20)")
+                            Text("Size: \(history.size ?? 512)")
                         }
 
                         HStack {

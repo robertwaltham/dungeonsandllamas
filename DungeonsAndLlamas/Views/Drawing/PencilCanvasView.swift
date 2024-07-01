@@ -18,8 +18,8 @@ struct PencilCanvasView: UIViewRepresentable {
     func makeUIView(context: Context) -> PKCanvasView {
         let view = PKCanvasView()
         view.drawingPolicy = .anyInput
-        view.minimumZoomScale = 2
-        view.maximumZoomScale = 2
+//        view.minimumZoomScale = 1
+//        view.maximumZoomScale = 2
         view.delegate = context.coordinator
         view.translatesAutoresizingMaskIntoConstraints = false
         if let drawing = drawing.wrappedValue {
@@ -42,7 +42,7 @@ struct PencilCanvasView: UIViewRepresentable {
             uiView.drawing = PKDrawing()
         }
         
-        uiView.contentSize = CGSize(width: contentSize.wrappedValue, height: contentSize.wrappedValue)
+//        uiView.contentSize = CGSize(width: contentSize.wrappedValue, height: contentSize.wrappedValue)
         
         if showTooltip.wrappedValue {
             DispatchQueue.main.async {

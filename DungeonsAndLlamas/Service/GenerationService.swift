@@ -245,7 +245,11 @@ class GenerationService {
         
         loading.wrappedValue = true
         
-        let image = drawing.image(from: CGRect(x: 0, y: 0, width: imageSize, height: imageSize), scale: 1.0)
+        var image = drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0)
+        
+        if imageSize != 512 { // TODO: canvas size instead of resizing
+            image = image.resized(to: CGSize(width: imageSize, height: imageSize))
+        }
         guard let base64Image = image.pngData()?.base64EncodedString() else {
             return
         }
@@ -269,6 +273,8 @@ class GenerationService {
             history.drawingPath = fileService.save(drawing: drawing)
             history.seed = seed
             history.sampler = selectedSampler.name
+            history.steps = steps
+            history.size = imageSize
             history.loras = loras.map { lora in
                 SDHistoryEntry.LoraHistoryEntry(name: lora.name, weight: lora.weight)
             }
@@ -405,6 +411,8 @@ class GenerationService {
         entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
         entry.outputFilePaths = [fileService.save(image: UIImage(named: "lighthouse")!)]
         entry.end = Date.now
+        entry.size = 512
+        entry.steps = 21
         
         for i in 0..<30 {
             var newEntry = entry
@@ -414,6 +422,15 @@ class GenerationService {
                 newEntry.lora = "lora_name_0.015"
             }
             SDHistory.append(newEntry)
+        }
+    }
+}
+
+
+extension UIImage {
+    func resized(to size: CGSize) -> UIImage {
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            draw(in: CGRect(origin: .zero, size: size))
         }
     }
 }
