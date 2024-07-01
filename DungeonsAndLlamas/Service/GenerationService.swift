@@ -57,7 +57,7 @@ class GenerationService {
     var LLMHistory = [LLMHistoryEntry]()
     var SDHistory = [SDHistoryEntry]()
     
-    let imageSize = 512
+    var imageSize = 512
     var steps = 20
     
     private(set) var statusTask: Task<Void, Never>?
@@ -393,6 +393,8 @@ class GenerationService {
         var drawingPath: String?
         var seed: Int?
         var sampler: String?
+        var steps: Int?
+        var size: Int?
     }
     
     //MARK: - Testing

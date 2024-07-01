@@ -39,7 +39,7 @@ struct PencilDrawingiPhoneView: View {
             Color(white: 0.7).ignoresSafeArea()
             VStack {
                 Spacer()
-                PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip)
+                PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip, contentSize: $generationService.imageSize)
                     .frame(width: imageSize, height: imageSize)
                     .onChange(of: viewModel.drawing) { oldValue, newValue in
                         guard !viewModel.loading else {

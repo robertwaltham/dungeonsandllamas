@@ -56,23 +56,38 @@ struct ModelSettingsView: View {
                 .padding(EdgeInsets(top: 20, leading: 0, bottom: 0, trailing: 0))
 
             HStack {
-                Text("Selected Sampler")
-                Picker("Selected Sampler", selection: $generationService.selectedSampler) {
-                    ForEach(generationService.sdSamplers) { sampler in
-                        Text(sampler.name).tag(sampler)
+                HStack {
+                    Text("Selected Sampler")
+                    Picker("Selected Sampler", selection: $generationService.selectedSampler) {
+                        ForEach(generationService.sdSamplers) { sampler in
+                            Text(sampler.name).tag(sampler)
+                        }
+                    }
+                }
+                VStack {
+                    let array: [String] = generationService.selectedSampler.options.keys.compactMap({$0})
+                    ForEach(array, id: \.self) { key in
+                        Text("\(key) - \(generationService.selectedSampler.options[key] ?? "")")
                     }
                 }
             }
+
             
             Text("Options").font(.title)
                 .padding(EdgeInsets(top: 20, leading: 0, bottom: 10, trailing: 0))
 
-            Text("Image Size: \(generationService.imageSize) x \(generationService.imageSize)")
+            HStack {
+                Text("Image Size:")
+                Picker("Size", selection: $generationService.imageSize) {
+                    Text("512 x 512").tag(512)
+                    Text("1024 x 1024").tag(1024)
+                }
+            }
             
             HStack {
                 Text("Generation Steps")
                 Picker("Steps", selection: $generationService.steps) {
-                    ForEach(15..<26) { value in
+                    ForEach(15..<32) { value in
                         Text(value.description).tag(value)
                     }
                 }

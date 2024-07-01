@@ -79,13 +79,13 @@ actor StableDiffusionClient {
 
     struct Model: Codable, Identifiable, Hashable {
         var id: String {
-            sha256
+            sha256 ?? modelName
         }
         
         var title: String
         var modelName: String
-        var hash: String
-        var sha256: String
+        var hash: String?
+        var sha256: String?
         var filename: String
     }
 
@@ -107,7 +107,7 @@ actor StableDiffusionClient {
         var options: [String: String]
     }
     
-    static let defaultSampler = Sampler(name: "DPM++ 2M Karras", aliases: ["k_dpmpp_2m_ka"], options: ["scheduler":"karras"])
+    static let defaultSampler = Sampler(name: "DPM++ 2M", aliases: ["k_dpmpp_2m"], options: ["scheduler":"karras"])
     
     // MARK: - Private Vars
     
@@ -162,7 +162,7 @@ actor StableDiffusionClient {
     func generateBase64EncodedImages(_ options: GenerationOptions) async throws -> [String] {
         
         let endpoint: Endpoint = options.initImages != nil ? .generateSDimg2img : .generateSDtxt2img
-        var request = try StableDiffusionClient.request(endpoint: endpoint, method: .post, timeout: 300)
+        var request = try StableDiffusionClient.request(endpoint: endpoint, method: .post, timeout: 600)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(options)
                 
@@ -230,7 +230,7 @@ actor StableDiffusionClient {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
         request.httpBody = try encoder.encode([
-            "sdModelCheckpoint": model.title
+            "sd_model_checkpoint": model.title
         ])
         
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())

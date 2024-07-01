@@ -15,6 +15,7 @@ struct PencilDrawingiPadView: View {
     @FocusState private var keyboardShown: Bool
     @State var showPrompts: Bool = false
     @State var showLoras: Bool = false
+    @State var generateOnChange: Bool = true
 
     @State var historyPrompt: String = "History"
     @State var promptAdd: String?
@@ -40,10 +41,10 @@ struct PencilDrawingiPadView: View {
             Color(white: 0.7)
             VStack {
 
-                PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip)
+                PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip, contentSize: $generationService.imageSize)
                     .frame(width: 512, height: 512)
                     .onChange(of: viewModel.drawing) { oldValue, newValue in
-                        guard !viewModel.loading else {
+                        guard !viewModel.loading, generateOnChange else {
                             return
                         }
                         viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
@@ -85,6 +86,8 @@ struct PencilDrawingiPadView: View {
                 ZStack {
                     if let image = viewModel.output {
                         Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
                             .frame(width: 512, height: 512)
                             .background(.white)
                     } else {
@@ -115,6 +118,9 @@ struct PencilDrawingiPadView: View {
                     .padding()
                     .foregroundColor(.red)
                     
+                    Toggle("", isOn: $generateOnChange)
+                        .frame(maxWidth: 0)
+                    
                     Button("Go Again") {
                         guard !viewModel.loading else {
                             return
@@ -124,8 +130,6 @@ struct PencilDrawingiPadView: View {
                     .buttonStyle(.bordered)
                     .padding()
                     .foregroundColor(.green)
-
-                    let maxWidth: CGFloat = 100
                     
                     let adds = generationService.suggestedPromptAdds()
                     Picker("Prompt Add", selection: $promptAdd) {
