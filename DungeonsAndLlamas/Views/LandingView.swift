@@ -12,9 +12,10 @@ struct LandingView: View {
     @State var generationService: GenerationService
     @State var history = [UIImage]()
     let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
+    
     var body: some View {
         ZStack {
-            
+            GradientView(type: .greyscale)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]) {
                 ForEach(history, id:\.self) { img in
                     
@@ -50,12 +51,17 @@ struct LandingView: View {
                 VStack{
                     Text("Dungeons & Llamas")
                         .font(.largeTitle)
-                    Text("A generative journey").font(.title)
+                        .shadow(color:.gray, radius: 2.0)
+                    
+                    Text("A generative journey")
+                        .font(.title)
+                        .shadow(color:.gray, radius: 2.0)
+
                 }
-                .shadow(radius: 10)
-                .padding(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20))
-                .background(Color(red: 0.8, green: 0.8, blue: 0.8, opacity: 0.5))
-                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+//                .shadow(radius: 10)
+//                .padding(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20))
+//                .background(Color(red: 0.8, green: 0.8, blue: 0.8, opacity: 0.5))
+//                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                 
         
                 

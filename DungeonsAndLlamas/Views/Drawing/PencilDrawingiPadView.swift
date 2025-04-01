@@ -38,7 +38,7 @@ struct PencilDrawingiPadView: View {
     
     var body: some View {
         ZStack {
-            Color(white: 0.7)
+            GradientView(type: .greyscale)
             VStack {
 
                 PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip, contentSize: $generationService.imageSize)

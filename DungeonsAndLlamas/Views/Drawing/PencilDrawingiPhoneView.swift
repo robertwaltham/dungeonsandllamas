@@ -37,7 +37,8 @@ struct PencilDrawingiPhoneView: View {
     
     var body: some View {
         ZStack {
-            Color(white: 0.7).ignoresSafeArea()
+//            Color(white: 0.7).ignoresSafeArea()
+            GradientView(type: .greyscale).ignoresSafeArea()
             VStack {
                 HStack {
                     Spacer()
@@ -73,7 +74,7 @@ struct PencilDrawingiPhoneView: View {
                     Spacer()
                     
                     Button {
-                        showLora = true
+                        showSettings = true
                         viewModel.showTooltip = false
                     } label: {
                         
@@ -83,10 +84,22 @@ struct PencilDrawingiPhoneView: View {
                         .foregroundColor(.yellow)
 
                     }
-                    .popover(isPresented: $showLora, content: {
-                        loraOverlay()
+                    .popover(isPresented: $showSettings, content: {
+                        promptOverlay()
                     })
                     Spacer()
+                    
+                    Button {
+                        viewModel.newSeed()
+                        generate()
+                    } label: {
+                        HStack {
+                            Label("", systemImage: "dice")
+                        }
+                        .foregroundColor(.red)
+                    }
+                    Spacer()
+
                 }
                 
                 PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip, contentSize: $generationService.imageSize)
@@ -169,23 +182,25 @@ struct PencilDrawingiPhoneView: View {
             TextEditor(text: $viewModel.negative)
                 .padding()
             Spacer()
+        }.onDisappear {
+            generate()
         }
     }
     
     @ViewBuilder
     func loraOverlay() -> some View {
         VStack {
-
+            Spacer().frame(maxHeight: 10)
             Text("Lora \(viewModel.enabledLoras.count)").font(.title2)
             ForEach($viewModel.loras) { $lora in
                 
                 HStack {
                     Text("\(lora.name)").frame(width: 220)
-                    Slider(value: $lora.weight, in: 0.0...2.0)
+                    Slider(value: $lora.weight, in: 0.0...1.5)
                     Text("\(                                    lora.weight.formatted(.number.precision(.fractionLength(2...2))))")
                 }.padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
             }
-            
+            Spacer()
 //            Text("Seed")
 //            Text("\(viewModel.seed, format: .number.grouping(.never))")
 //                .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
@@ -193,11 +208,15 @@ struct PencilDrawingiPhoneView: View {
 //                    viewModel.newSeed()
 //                }
         }.onDisappear {
-            guard !viewModel.loading else {
-                return
-            }
-            viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+            generate()
         }
+    }
+    
+    func generate() {
+        guard !viewModel.loading else {
+            return
+        }
+        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
     }
 }
 

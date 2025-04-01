@@ -29,136 +29,140 @@ struct SDHistoryView: View {
     
     var body: some View {
         
-        VStack {
- 
-            HStack {
-                Picker("Filter", selection: $filter) {
-                    Text("Model Filter").tag(nil as String?)
-                    ForEach(generationService.modelsFromHistory(), id: \.self) { model in
-                        Text(model).tag(model as String?)
-                    }
-                }
-                Picker("Lora Filter", selection: $loraFilter) {
-                    Text("Lora Filter").tag(nil as String?)
-                    ForEach(generationService.lorasFromHistory(), id: \.self) { lora in
-                        Text(lora).tag(lora as String?)
-                    }
-                }
-                Spacer()
+        ZStack {
+            GradientView(type: .greyscale)
+
+            VStack {
                 
-                if flowState.coverItem != nil {
-                    Button("Close", systemImage: "x.circle") {
-                        flowState.coverItem = nil
+                HStack {
+                    Picker("Filter", selection: $filter) {
+                        Text("Model Filter").tag(nil as String?)
+                        ForEach(generationService.modelsFromHistory(), id: \.self) { model in
+                            Text(model).tag(model as String?)
+                        }
+                    }
+                    Picker("Lora Filter", selection: $loraFilter) {
+                        Text("Lora Filter").tag(nil as String?)
+                        ForEach(generationService.lorasFromHistory(), id: \.self) { lora in
+                            Text(lora).tag(lora as String?)
+                        }
+                    }
+                    Spacer()
+                    
+                    if flowState.coverItem != nil {
+                        Button("Close", systemImage: "x.circle") {
+                            flowState.coverItem = nil
+                        }
                     }
                 }
-            }
-
-            if let history = presentedHistory {
-                let image = generationService.loadOutputImage(history: history)
-                let output = Image(uiImage: image)
-
-                VStack {
-                    Text(history.prompt)
-                    if let error = history.errorDescription {
-                        Text(error)
-                    }
-                    
-                    HStack {
-                        output
-                            .resizable()
-                            .scaledToFit()
-                        
-                        Image(uiImage: generationService.loadInputImage(history: history))
-                            .resizable()
-                            .scaledToFit()
-                    }
+                
+                if let history = presentedHistory {
+                    let image = generationService.loadOutputImage(history: history)
+                    let output = Image(uiImage: image)
                     
                     VStack {
+                        Text(history.prompt)
+                        if let error = history.errorDescription {
+                            Text(error)
+                        }
                         
                         HStack {
-                            ForEach(history.loras ?? []) { lora in
-                                Text(lora.name + ":")
-                                Text(lora.weight, format: .number.precision(.fractionLength(0...2)))
-                            }
-                            Text(history.sampler ?? StableDiffusionClient.defaultSampler.name)
-                            Text("Steps: \(history.steps ?? 20)")
-                            Text("Size: \(history.size ?? 512)")
+                            output
+                                .resizable()
+                                .scaledToFit()
+                            
+                            Image(uiImage: generationService.loadInputImage(history: history))
+                                .resizable()
+                                .scaledToFit()
                         }
-
-                        HStack {
-                            let photo = Photo(image: output, caption: history.prompt, description: history.prompt)
+                        
+                        VStack {
                             
-                            ShareLink(item: photo, message: Text(history.prompt) ,preview: SharePreview(history.prompt, image: photo))
-                                .padding()
-                            
-                            if saved != history.id.description {
-                                Button {
-                                    UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-                                    withAnimation(.bouncy) {
-                                        saved = history.id.description
-                                    }
-                                } label: {
-                                    HStack {
-                                        Label("Save", systemImage: "photo.badge.arrow.down.fill")
-                                    }
-                                    .foregroundColor(.purple)
+                            HStack {
+                                ForEach(history.loras ?? []) { lora in
+                                    Text(lora.name + ":")
+                                    Text(lora.weight, format: .number.precision(.fractionLength(0...2)))
                                 }
-                            } else {
-                                Text("Saved!")
-                                    .foregroundColor(.purple)
+                                Text(history.sampler ?? StableDiffusionClient.defaultSampler.name)
+                                Text("Steps: \(history.steps ?? 20)")
+                                Text("Size: \(history.size ?? 512)")
                             }
                             
-                            if history.drawingPath != nil {
-                                Button {
-                                    flowState.nextLink(.drawingFrom(history: history))
-                                } label: {
-                                    HStack {
-                                        Label("Remix", systemImage: "photo.on.rectangle.angled")
+                            HStack {
+                                let photo = Photo(image: output, caption: history.prompt, description: history.prompt)
+                                
+                                ShareLink(item: photo, message: Text(history.prompt) ,preview: SharePreview(history.prompt, image: photo))
+                                    .padding()
+                                
+                                if saved != history.id.description {
+                                    Button {
+                                        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                                        withAnimation(.bouncy) {
+                                            saved = history.id.description
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Label("Save", systemImage: "photo.badge.arrow.down.fill")
+                                        }
+                                        .foregroundColor(.purple)
                                     }
-                                    .foregroundColor(.green)
+                                } else {
+                                    Text("Saved!")
+                                        .foregroundColor(.purple)
                                 }
-                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
+                                
+                                if history.drawingPath != nil {
+                                    Button {
+                                        flowState.nextLink(.drawingFrom(history: history))
+                                    } label: {
+                                        HStack {
+                                            Label("Remix", systemImage: "photo.on.rectangle.angled")
+                                        }
+                                        .foregroundColor(.green)
+                                    }
+                                    .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
+                                }
+                                
                             }
-
+                            
                         }
-
                     }
                 }
-            }
-            
-            ScrollView {
                 
-                let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
-                LazyVGrid(columns: columns) {
-                    ForEach(generationService.SDHistory.filter({ e in
-                        var result = true
-                        if let filter {
-                            result = e.model == filter
-                        }
-                        if let loraFilter, result {
-                            result = (e.loras ?? []).contains { e in
-                                e.name == loraFilter
+                ScrollView {
+                    
+                    let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+                    LazyVGrid(columns: columns) {
+                        ForEach(generationService.SDHistory.filter({ e in
+                            var result = true
+                            if let filter {
+                                result = e.model == filter
                             }
-                        }
-                        return result
-                    }) .reversed()) { history in
-                        
-                        Image(uiImage: generationService.loadOutputImage(history: history))
-                            .resizable()
-                            .scaledToFit()
-                            .onTapGesture {
-                                withAnimation {
-                                    presentedHistory = history
+                            if let loraFilter, result {
+                                result = (e.loras ?? []).contains { e in
+                                    e.name == loraFilter
                                 }
                             }
-    
+                            return result
+                        }) .reversed()) { history in
+                            
+                            Image(uiImage: generationService.loadOutputImage(history: history))
+                                .resizable()
+                                .scaledToFit()
+                                .onTapGesture {
+                                    withAnimation {
+                                        presentedHistory = history
+                                    }
+                                }
+                            
+                        }
                     }
                 }
+                
+                
             }
-            
-            
+            .padding()
         }
-        .padding()
     }
 }
 
