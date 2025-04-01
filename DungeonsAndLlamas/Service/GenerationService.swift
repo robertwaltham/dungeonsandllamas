@@ -73,11 +73,11 @@ class GenerationService {
         
         for i in 0..<SDHistory.count {
             if let loraName = SDHistory[i].lora {
+                let loraWeight = SDHistory[i].loraWeight ?? 0
                 SDHistory[i].loras = [SDHistoryEntry.LoraHistoryEntry]()
-                SDHistory[i].loras?.append(SDHistoryEntry.LoraHistoryEntry(name: loraName, weight: SDHistory[i].loraWeight ?? 0))
+                SDHistory[i].loras?.append(SDHistoryEntry.LoraHistoryEntry(name: loraName, weight: loraWeight))
             }
         }
-        
     }
     
     func loadOutputImage(history: SDHistoryEntry) -> UIImage {
