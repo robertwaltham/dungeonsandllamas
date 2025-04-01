@@ -48,10 +48,10 @@ extension ContentFlowCoordinator {
             switch link {
             case .drawing:
                 PencilDrawingiPhoneView(flowState: flowState, generationService: generationService)
-                    .navigationTitle("Drawing")
+//                    .navigationTitle("Drawing")
             case .drawingFrom(let history):
                 PencilDrawingiPhoneView(flowState: flowState, generationService: generationService, history: history)
-                    .navigationTitle("Drawing")
+//                    .navigationTitle("Drawing")
             case .accelerometer:
                 AccelerometerTestView(flowState: flowState)
             case .apiTest:

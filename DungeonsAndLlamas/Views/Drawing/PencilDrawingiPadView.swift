@@ -179,7 +179,7 @@ struct PencilDrawingiPadView: View {
                                 
                                 GridRow {
                                     Text(lora.name).frame(minWidth: 200)
-                                    Slider(value: $lora.weight)
+                                    Slider(value: $lora.weight, in: 0.0...2.0)
                                     Text(lora.weight.formatted(.number.precision(.fractionLength(0...2))))
                                         .frame(minWidth: 50)
                                 }

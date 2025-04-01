@@ -14,8 +14,9 @@ struct PencilDrawingiPhoneView: View {
     @State var viewModel: PencilViewModel
     @State var flowState: ContentFlowState
     @State var generationService: GenerationService
+    @State var showLora = false
     @State var showSettings = false
-    
+
     let imageSize: CGFloat = 320
     
     @MainActor
@@ -38,7 +39,56 @@ struct PencilDrawingiPhoneView: View {
         ZStack {
             Color(white: 0.7).ignoresSafeArea()
             VStack {
-                Spacer()
+                HStack {
+                    Spacer()
+                    
+                    Button {
+                        viewModel.showTooltip.toggle()
+                    } label: {
+                        
+                        HStack {
+                            Label("Tool", systemImage: "paintbrush.pointed")
+                        }
+                        .foregroundColor(.green)
+
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        showLora = true
+                        viewModel.showTooltip = false
+                    } label: {
+                        
+                        HStack {
+                            Label("LoRa", systemImage: "waveform")
+                        }
+                        .foregroundColor(.blue)
+
+                    }
+                    .popover(isPresented: $showLora, content: {
+                        loraOverlay()
+                    })
+                    
+                    Spacer()
+                    
+                    Button {
+                        showLora = true
+                        viewModel.showTooltip = false
+                    } label: {
+                        
+                        HStack {
+                            Label("Prompt", systemImage: "character.textbox")
+                        }
+                        .foregroundColor(.yellow)
+
+                    }
+                    .popover(isPresented: $showLora, content: {
+                        loraOverlay()
+                    })
+                    Spacer()
+                }
+                
                 PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip, contentSize: $generationService.imageSize)
                     .frame(width: imageSize, height: imageSize)
                     .onChange(of: viewModel.drawing) { oldValue, newValue in
@@ -47,72 +97,6 @@ struct PencilDrawingiPhoneView: View {
                         }
                         viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
                     }
-                
-                HStack {
-                    Text(viewModel.prompt)
-                        .padding()
-                        .frame(maxHeight: 50)
-                    
-                    Button("Settings") {
-                        showSettings = true
-                    }
-                    .buttonStyle(.bordered)
-                    .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
-                    .popover(isPresented: $showSettings, content: {
-                        VStack {
-                            HStack {
-                                Button("Clear Canvas") {
-                                    viewModel.drawing = nil
-                                }
-                                .buttonStyle(.bordered)
-                                .padding()
-                                .foregroundColor(.red)
-                                
-                                Button("History") {
-                                    viewModel.showTooltip = false
-                                    flowState.coverItem = .sdHistory
-                                }
-                                .buttonStyle(.bordered)
-                                .padding()
-                            }
-                            
-                            Text("Prompt").font(.title2)
-                            TextEditor(text: $viewModel.prompt)
-                                .padding() // TODO: fix keyboard
-                            Spacer()
-
-                            Spacer()
-                            Text("Negative Prompt").font(.title2)
-                            TextEditor(text: $viewModel.negative)
-                                .padding()
-                            Spacer()
-                            
-                            Text("Lora \(viewModel.enabledLoras.count)").font(.title2)
-                            ForEach($viewModel.loras) { $lora in
-                                
-                                HStack {
-                                    Text("\(lora.name) \(                                    lora.weight.formatted(.number.precision(.fractionLength(2...2))))")
-                                     Slider(value: $lora.weight)
-                                }.padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
-                            }
-                            
-                            Text("Seed")
-                            Text("\(viewModel.seed, format: .number.grouping(.never))")
-                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
-                                .onTapGesture {
-                                    viewModel.newSeed()
-                                }
-                        }.onDisappear {
-                            guard !viewModel.loading else {
-                                return
-                            }
-                            viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)                        }
-                    })
-                }
-                .background(.white)
-                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 10, height: 10)))
-                .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
-                .frame(width: imageSize + 20)
                 
                 ZStack {
                     if let image = viewModel.output {
@@ -141,13 +125,83 @@ struct PencilDrawingiPhoneView: View {
                         }
                     }
                 }.frame(height: imageSize)
+                
+                HStack {
+                    Text(viewModel.prompt)
+                        .padding()
+                        .frame(maxHeight: 50)
+                }
+                .background(.white)
+                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 10, height: 10)))
+                .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
+                .frame(width: imageSize + 20)
+                
                 Spacer()
-                    .frame(height: 20)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func promptOverlay() -> some View {
+        VStack {
+            HStack {
+                Button("Clear Canvas") {
+                    viewModel.drawing = nil
+                }
+                .buttonStyle(.bordered)
+                .padding()
+                .foregroundColor(.red)
+
+                Button("History") {
+                    viewModel.showTooltip = false
+                    flowState.coverItem = .sdHistory
+                }
+                .buttonStyle(.bordered)
+                .padding()
             }
 
+            Text("Prompt").font(.title2)
+            TextEditor(text: $viewModel.prompt)
+                .padding() // TODO: fix keyboard
+            Spacer()
+
+            Text("Negative Prompt").font(.title2)
+            TextEditor(text: $viewModel.negative)
+                .padding()
+            Spacer()
+        }
+    }
+    
+    @ViewBuilder
+    func loraOverlay() -> some View {
+        VStack {
+
+            Text("Lora \(viewModel.enabledLoras.count)").font(.title2)
+            ForEach($viewModel.loras) { $lora in
+                
+                HStack {
+                    Text("\(lora.name)").frame(width: 220)
+                    Slider(value: $lora.weight, in: 0.0...2.0)
+                    Text("\(                                    lora.weight.formatted(.number.precision(.fractionLength(2...2))))")
+                }.padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
+            }
+            
+//            Text("Seed")
+//            Text("\(viewModel.seed, format: .number.grouping(.never))")
+//                .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+//                .onTapGesture {
+//                    viewModel.newSeed()
+//                }
+        }.onDisappear {
+            guard !viewModel.loading else {
+                return
+            }
+            viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
         }
     }
 }
+
+
 
 
 #Preview {
