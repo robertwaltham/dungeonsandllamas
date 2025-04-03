@@ -27,6 +27,10 @@
 		D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058AD2BBB1A14003E6668 /* LandingView.swift */; };
 		D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058B02BBB1EC7003E6668 /* GenerationService.swift */; };
 		D178EAEB2D9C9C36001828E2 /* GradientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D178EAEA2D9C9C32001828E2 /* GradientView.swift */; };
+		D180B7CC2D9E137F0055CB3D /* MijickCamera in Frameworks */ = {isa = PBXBuildFile; productRef = D180B7CB2D9E137F0055CB3D /* MijickCamera */; };
+		D180B7CE2D9E13A70055CB3D /* CameraTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D180B7CD2D9E13A40055CB3D /* CameraTestView.swift */; };
+		D180B7D12D9E16550055CB3D /* MijickCamera in Frameworks */ = {isa = PBXBuildFile; productRef = D180B7D02D9E16550055CB3D /* MijickCamera */; };
+		D180B7D32D9E2ABE0055CB3D /* BracketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D180B7D22D9E2ABB0055CB3D /* BracketView.swift */; };
 		D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */; };
 		D1DC04342BCDCC02007BC5D2 /* PencilDrawingiPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04332BCDCC02007BC5D2 /* PencilDrawingiPadView.swift */; };
 		D1DC04362BCF2813007BC5D2 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04352BCF2813007BC5D2 /* FileService.swift */; };
@@ -59,6 +63,8 @@
 		D17058AD2BBB1A14003E6668 /* LandingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingView.swift; sourceTree = "<group>"; };
 		D17058B02BBB1EC7003E6668 /* GenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationService.swift; sourceTree = "<group>"; };
 		D178EAEA2D9C9C32001828E2 /* GradientView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradientView.swift; sourceTree = "<group>"; };
+		D180B7CD2D9E13A40055CB3D /* CameraTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraTestView.swift; sourceTree = "<group>"; };
+		D180B7D22D9E2ABB0055CB3D /* BracketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BracketView.swift; sourceTree = "<group>"; };
 		D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingStreamTestView.swift; sourceTree = "<group>"; };
 		D1DC04332BCDCC02007BC5D2 /* PencilDrawingiPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilDrawingiPadView.swift; sourceTree = "<group>"; };
 		D1DC04352BCF2813007BC5D2 /* FileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileService.swift; sourceTree = "<group>"; };
@@ -74,6 +80,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D180B7D12D9E16550055CB3D /* MijickCamera in Frameworks */,
+				D180B7CC2D9E137F0055CB3D /* MijickCamera in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -148,6 +156,7 @@
 				D17058AD2BBB1A14003E6668 /* LandingView.swift */,
 				D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */,
 				D16CAE612BB4C04D00ECA710 /* ItemGeneratorView.swift */,
+				D180B7D22D9E2ABB0055CB3D /* BracketView.swift */,
 				D1320E072BD5C12D00EEEDCC /* Photo.swift */,
 				D1DC04372BCF2C74007BC5D2 /* SDHistoryView.swift */,
 				D166A8942BDBFD380028100A /* ModelSettingsView.swift */,
@@ -168,6 +177,7 @@
 		D17058AF2BBB1DDD003E6668 /* Test Views */ = {
 			isa = PBXGroup;
 			children = (
+				D180B7CD2D9E13A40055CB3D /* CameraTestView.swift */,
 				D16CAE582BB3AD0600ECA710 /* AccelerometerTestView.swift */,
 				D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */,
 				D17058AB2BBB198C003E6668 /* NavigationTestView.swift */,
@@ -215,7 +225,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1530;
-				LastUpgradeCheck = 1530;
+				LastUpgradeCheck = 1630;
 				TargetAttributes = {
 					D16CAE442BB3724000ECA710 = {
 						CreatedOnToolsVersion = 15.3;
@@ -231,6 +241,9 @@
 				Base,
 			);
 			mainGroup = D16CAE3C2BB3724000ECA710;
+			packageReferences = (
+				D180B7CF2D9E16550055CB3D /* XCRemoteSwiftPackageReference "Camera" */,
+			);
 			productRefGroup = D16CAE462BB3724000ECA710 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -264,6 +277,7 @@
 				D1DC04382BCF2C74007BC5D2 /* SDHistoryView.swift in Sources */,
 				D166A8952BDBFD380028100A /* ModelSettingsView.swift in Sources */,
 				D16CAE5D2BB3C09B00ECA710 /* Secrets.swift in Sources */,
+				D180B7D32D9E2ABE0055CB3D /* BracketView.swift in Sources */,
 				D16CAE4B2BB3724000ECA710 /* ContentView.swift in Sources */,
 				D16CAE5B2BB3C06700ECA710 /* LargeLangageModelClient.swift in Sources */,
 				D1DC043F2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift in Sources */,
@@ -280,6 +294,7 @@
 				D16CAE5F2BB3C59E00ECA710 /* APITestView.swift in Sources */,
 				D1DC04412BD037AB007BC5D2 /* LandingiPhoneView.swift in Sources */,
 				D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */,
+				D180B7CE2D9E13A70055CB3D /* CameraTestView.swift in Sources */,
 				D166A8972BE00CA60028100A /* DelegateToSupressWarning.swift in Sources */,
 				D166A89C2BE00D590028100A /* APIError.swift in Sources */,
 				D17058A92BBB1956003E6668 /* ContentLink.swift in Sources */,
@@ -324,6 +339,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = P87URHZFZ4;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -387,6 +403,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = P87URHZFZ4;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -416,10 +433,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"DungeonsAndLlamas/Preview Content\"";
-				DEVELOPMENT_TEAM = P87URHZFZ4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DungeonsAndLlamas/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take pictures and stuff";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Save generated images to your library";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -436,7 +453,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -449,10 +466,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"DungeonsAndLlamas/Preview Content\"";
-				DEVELOPMENT_TEAM = P87URHZFZ4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DungeonsAndLlamas/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take pictures and stuff";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Save generated images to your library";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -469,7 +486,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -496,6 +513,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D180B7CA2D9E137F0055CB3D /* XCRemoteSwiftPackageReference "swift6_1" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FutureSeth/Camera/tree/bugfix/swift6_1";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.1;
+			};
+		};
+		D180B7CF2D9E16550055CB3D /* XCRemoteSwiftPackageReference "Camera" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FutureSeth/Camera";
+			requirement = {
+				branch = bugfix/swift6_1;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D180B7CB2D9E137F0055CB3D /* MijickCamera */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D180B7CA2D9E137F0055CB3D /* XCRemoteSwiftPackageReference "swift6_1" */;
+			productName = MijickCamera;
+		};
+		D180B7D02D9E16550055CB3D /* MijickCamera */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D180B7CF2D9E16550055CB3D /* XCRemoteSwiftPackageReference "Camera" */;
+			productName = MijickCamera;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D16CAE3D2BB3724000ECA710 /* Project object */;
 }

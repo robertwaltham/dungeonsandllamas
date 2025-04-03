@@ -123,6 +123,16 @@ struct SDHistoryView: View {
                                     .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
                                 }
                                 
+                                Button {
+                                    flowState.nextLink(.bracket(history: history))
+                                } label: {
+                                    HStack {
+                                        Label("Batch", systemImage: "list.bullet.clipboard")
+                                    }
+                                    .foregroundColor(.yellow)
+                                }
+                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
+                                
                             }
                             
                         }

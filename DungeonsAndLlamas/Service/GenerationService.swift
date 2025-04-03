@@ -30,12 +30,16 @@ class GenerationService {
         var error: String?
     }
     
-    struct LoraInvocation: Identifiable {
+    struct LoraInvocation: Identifiable, Hashable {
         var id: String {
             name
         }
         var name: String
         var weight: Double
+        
+        var description: String {
+            "\(name) \(weight.formatted(.number.precision(.fractionLength(0...2))))"
+        }
     }
     
     enum Service {
@@ -327,7 +331,72 @@ class GenerationService {
         }
     }
     
-    private func promptAdd(lora: LoraInvocation) -> String {
+    struct Bracket: Identifiable {
+        let firstLora: LoraInvocation
+        let secondLora: LoraInvocation
+        let result: UIImage
+        
+        var id: String {
+            return result.hash.description
+        }
+    }
+    
+    func bracketImage(input: UIImage, prompt: String, negativePrompt: String, seed: Int, firstLora: String, secondLora: String, bracketSteps: Int, maxWeight: Double, minWeight: Double, loading: Binding<Bool>, progress: Binding<StableDiffusionClient.Progress?>) -> AsyncThrowingStream<Bracket, Error> {
+
+        guard let base64Image = input.pngData()?.base64EncodedString() else {
+            fatalError("can't convert image")
+        }
+        
+        guard bracketSteps > 0 else {
+            fatalError("divide by zero")
+        }
+        
+        var sdOptions = StableDiffusionClient.GenerationOptions(prompt: prompt, negativePrompt: negativePrompt, size: imageSize, steps: steps, sampler: selectedSampler, initImages: [base64Image])
+        sdOptions.seed = seed
+        
+        loading.wrappedValue = true
+
+        
+        return AsyncThrowingStream<Bracket, Error> { continuation in
+            
+            Task.init {
+                let loraIncrement: Double = (maxWeight - minWeight) / Double(bracketSteps - 1)
+                var count = 0
+                for i in 0..<bracketSteps {
+                    for j in 0..<bracketSteps {
+                        var options = sdOptions
+                        do {
+                            let firstLoraInvocation = LoraInvocation(name: firstLora, weight: minWeight + loraIncrement * Double(i))
+                            let secondLoraInvocation = LoraInvocation(name: secondLora, weight: minWeight + loraIncrement * Double(j))
+                            print("\(firstLoraInvocation) \(secondLoraInvocation)")
+                            options.prompt = "\(prompt) \(self.promptAdd(lora: firstLoraInvocation)) \(self.promptAdd(lora: secondLoraInvocation))"
+                            
+                            let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(options)
+                            
+                            if let string = strings.first,
+                               let data = Data(base64Encoded: string),
+                               let image = UIImage(data: data) {
+                                continuation.yield(Bracket(firstLora: firstLoraInvocation, secondLora: secondLoraInvocation, result: image))
+                            }
+                            
+                            count += 1
+                            print("generated: \(count)")
+                            if count >= bracketSteps * bracketSteps {
+                                continuation.finish()
+                            }
+                        } catch {
+                            continuation.finish(throwing: error)
+                            print(error)
+                        }
+                    }
+                }
+            }
+            
+        }
+        
+    }
+    
+    private nonisolated func promptAdd(lora: LoraInvocation) -> String {
         return " <lora:\(lora.name):\(lora.weight.formatted(.number.precision(.fractionLength(0...1))))>"
     }
     
@@ -413,6 +482,7 @@ class GenerationService {
         entry.end = Date.now
         entry.size = 512
         entry.steps = 21
+        entry.seed = Int.random(in: 1...100)
         
         for i in 0..<30 {
             var newEntry = entry

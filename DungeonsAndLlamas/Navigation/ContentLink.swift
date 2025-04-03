@@ -31,4 +31,5 @@ enum ContentLink: Identifiable, Hashable {
     case itemGenerator
     case sdHistory
     case modelInfo
+    case bracket(history: GenerationService.SDHistoryEntry)
 }

@@ -160,7 +160,7 @@ actor StableDiffusionClient {
     }
     
     func generateBase64EncodedImages(_ options: GenerationOptions) async throws -> [String] {
-        
+        print(options.prompt)
         let endpoint: Endpoint = options.initImages != nil ? .generateSDimg2img : .generateSDtxt2img
         var request = try StableDiffusionClient.request(endpoint: endpoint, method: .post, timeout: 600)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")

@@ -23,7 +23,7 @@ struct ContentFlowCoordinator<Content: View>: View {
     }
     
     let content: () -> Content
-
+    
     var body: some View {
         NavigationStack(path: $flowState.path) {
             ZStack {
@@ -48,10 +48,10 @@ extension ContentFlowCoordinator {
             switch link {
             case .drawing:
                 PencilDrawingiPhoneView(flowState: flowState, generationService: generationService)
-//                    .navigationTitle("Drawing")
+                //                    .navigationTitle("Drawing")
             case .drawingFrom(let history):
                 PencilDrawingiPhoneView(flowState: flowState, generationService: generationService, history: history)
-//                    .navigationTitle("Drawing")
+                //                    .navigationTitle("Drawing")
             case .accelerometer:
                 AccelerometerTestView(flowState: flowState)
             case .apiTest:
@@ -64,6 +64,9 @@ extension ContentFlowCoordinator {
             case .modelInfo:
                 ModelSettingsView(flowState: flowState, generationService: generationService)
                     .navigationTitle("Model Info")
+            case .bracket(history: let history):
+                BracketView(flowState: flowState, generationService: generationService, history: history)
+                
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
@@ -91,13 +94,16 @@ extension ContentFlowCoordinator {
             case .modelInfo:
                 ModelSettingsView(flowState: flowState, generationService: generationService)
                     .navigationTitle("Model Info")
+            case .bracket(history: let history):
+                BracketView(flowState: flowState, generationService: generationService, history: history)
+                
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
                 }
             }
         }
-
+        
     }
     
     @MainActor @ViewBuilder private func linkDestination(link: ContentLink) -> some View {

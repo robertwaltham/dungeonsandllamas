@@ -1,0 +1,24 @@
+{
+  "originHash" : "c98e2d8733b0809da04939e0ce4ded8fcca15dbb473a39355ad8f4404502d634",
+  "pins" : [
+    {
+      "identity" : "camera",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/FutureSeth/Camera",
+      "state" : {
+        "branch" : "bugfix/swift6_1",
+        "revision" : "5029a47605248224bc9580aba842fb8919da2ec2"
+      }
+    },
+    {
+      "identity" : "timer",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Mijick/Timer",
+      "state" : {
+        "revision" : "342371c33c3f084d82a4818447ba77d858064c85",
+        "version" : "2.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}
