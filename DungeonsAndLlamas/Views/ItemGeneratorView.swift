@@ -128,7 +128,7 @@ class ItemGeneratorViewModel {
         }
         Task.init {
             do {
-                for try await obj in await llmClient.asyncStreamGenerate(prompt: "Describe the item in this image in 50 words or less", base64Image: imageData){
+                for try await obj in await llmClient.asyncStreamGenerate(prompt: "Describe the item in this image in 50 words or less", base64Image: imageData, model: LargeLangageModelClient.Model(name: "todo", modifiedAt: "", size: 0, digest: "", details: LargeLangageModelClient.ModelDetails(format: "", family: "", parameterSize: "", quantizationLevel: ""))){
                     if !obj.done {
                         itemDescription += obj.response
                     }

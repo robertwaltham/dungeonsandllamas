@@ -20,14 +20,14 @@ actor LargeLangageModelClient {
         case get = "GET"
         case post = "POST"
     }
-
+    
     struct Result: Codable {
         var model: String
         var createdAt: String // not actually an iso8601 date
         var response: String
         var done: Bool
     }
-
+    
     struct ModelDetails: Codable, Hashable {
         var format: String
         var family: String
@@ -35,9 +35,9 @@ actor LargeLangageModelClient {
         var parameterSize: String
         var quantizationLevel: String
     }
-
+    
     struct Model: Codable, Identifiable, Hashable {
-
+        
         var id: String {
             digest
         }
@@ -47,11 +47,11 @@ actor LargeLangageModelClient {
         var digest: String // hash
         var details: ModelDetails
     }
-
+    
     struct ModelResponse: Codable {
         var models: [Model]
     }
-
+    
     struct ModelInfo: Codable {
         var license: String
         var modelfile: String
@@ -77,7 +77,7 @@ actor LargeLangageModelClient {
         e.dateEncodingStrategy = .iso8601
         return e
     }
-        
+    
     //MARK: - Init
     
     init () {
@@ -143,17 +143,20 @@ actor LargeLangageModelClient {
         
         return try decoder.decode(ModelInfo.self, from: data)
     }
- 
+    
     func asyncStreamGenerate(prompt: String, model: Model) -> AsyncThrowingStream<Result, Error> {
+        
+        struct Payload: Encodable {
+            let model: String
+            let prompt: String
+            let stream: Bool
+        }
+        
         return AsyncThrowingStream<Result, Error> { continuation in
             Task.detached {
                 var request = try LargeLangageModelClient.request(endpoint: .generate, method: .post)
                 
-                request.httpBody = try await self.encoder.encode([
-                    "model": model.name,
-                    "prompt": prompt,
-                    "stream": "true"
-                ])
+                request.httpBody = try await self.encoder.encode(Payload(model: model.name, prompt: prompt, stream: true))
                 
                 do {
                     let (bytes, response) = try await self.session.bytes(for: request, delegate: DelegateToSupressWarning())
@@ -161,6 +164,11 @@ actor LargeLangageModelClient {
                         throw APIError.requestError("no request")
                     }
                     guard httpResponse.statusCode == 200 else {
+                        //                        print(String(bytes: bytes, encoding: .utf8))
+                        for try await line in bytes.lines {
+                            print(line)
+                        }
+                        
                         throw APIError.requestError("status code: \(httpResponse.statusCode)")
                     }
                     for try await line in bytes.lines {
@@ -180,17 +188,18 @@ actor LargeLangageModelClient {
         }
     }
     
-    func asyncStreamGenerate(prompt: String, base64Image: String) -> AsyncThrowingStream<Result, Error> {
+    func asyncStreamGenerate(prompt: String, base64Image: String, model: Model) -> AsyncThrowingStream<Result, Error> {
+        struct Payload: Encodable {
+            let model: String
+            let prompt: String
+            let stream: Bool
+            let images: [String]
+        }
         return AsyncThrowingStream<Result, Error> { continuation in
             Task.init {
                 var request = try LargeLangageModelClient.request(endpoint: .generate, method: .post)
                 
-                request.httpBody = try encoder.encode([
-                    "model": "llava", // TODO: pickable img->text model
-                    "prompt": prompt,
-                    "stream": "true",
-                    "images": "[\(base64Image)]"
-                ])
+                request.httpBody = try encoder.encode(Payload(model: model.name, prompt: prompt, stream: true, images: [base64Image]))
                 
                 do {
                     let (bytes, response) = try await session.bytes(for: request, delegate: DelegateToSupressWarning())
@@ -198,6 +207,9 @@ actor LargeLangageModelClient {
                         throw APIError.requestError("no request")
                     }
                     guard httpResponse.statusCode == 200 else {
+                        for try await line in bytes.lines {
+                            print(line)
+                        }
                         throw APIError.requestError("status code: \(httpResponse.statusCode)")
                     }
                     for try await line in bytes.lines {
