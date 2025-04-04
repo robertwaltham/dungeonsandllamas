@@ -26,7 +26,9 @@ struct DatabaseTestView: View {
                                 VStack {
                                     Text(entry.id)
                                     Text(entry.sequence.description)
-                                    Text(entry.session)
+                                    if let lora = entry.loras.first {
+                                        Text("\(lora.name) \(lora.weight.formatted())")
+                                    }
                                 }
                             }
                         } else {

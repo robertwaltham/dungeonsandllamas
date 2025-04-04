@@ -47,6 +47,7 @@ class DatabaseService {
     func createTables() {
         do {
             try ImageHistoryModel.createTable(db: db)
+            try LoraHistoryModel.createTable(db: db)
         } catch {
             fatalError(error.localizedDescription)
         }
@@ -62,6 +63,64 @@ extension DatabaseService {
             return []
         }
     }
+}
+
+struct LoraHistoryModel: Codable, Identifiable, Hashable {
+    var id: String
+    fileprivate static var idExp: SQLite.Expression<String> {
+        Expression<String>("id")
+    }
+    var name: String
+    fileprivate static var nameExp: SQLite.Expression<String> {
+        Expression<String>("name")
+    }
+    var weight: Double
+    fileprivate static var weightExp: SQLite.Expression<Double> {
+        Expression<Double>("weight")
+    }
+    var historyModelId: String
+    fileprivate static var historyModelIdExp: SQLite.Expression<String> {
+        Expression<String>("history_model_id")
+    }
+    
+    fileprivate static func table() -> Table {
+        return Table("lora_history")
+    }
+    
+    fileprivate static func createTable(db: Connection) throws {
+        try db.run(
+            table().create(ifNotExists: true) { t in
+                t.column(idExp, primaryKey: true)
+                t.column(nameExp)
+                t.column(weightExp)
+                t.column(historyModelIdExp)
+            }
+        )
+    }
+    
+    fileprivate func save(db: Connection) throws { // TODO: what about mutability
+        try db.run(
+            LoraHistoryModel.table().insert(
+                LoraHistoryModel.idExp <- id,
+                LoraHistoryModel.nameExp <- name,
+                LoraHistoryModel.weightExp <- weight,
+                LoraHistoryModel.historyModelIdExp <- historyModelId
+            )
+        )
+    }
+    
+    fileprivate static func load(db: Connection, parentId: String) throws -> [LoraHistoryModel] {
+        var result = [LoraHistoryModel]()
+        for entry in try db.prepare(table().filter(historyModelIdExp == parentId)) {
+            result.append(LoraHistoryModel(id: entry[idExp],
+                                           name: entry[nameExp],
+                                           weight: entry[weightExp],
+                                           historyModelId:
+                                            entry[historyModelIdExp]))
+        }
+        return result
+    }
+
 }
 
 
@@ -136,6 +195,8 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         Expression<Int>("sequence")
     }
     
+    var loras: [LoraHistoryModel]
+    
     fileprivate func save(db: Connection) throws { // TODO: what about mutability
         try db.run(ImageHistoryModel.table().insert(
             ImageHistoryModel.idExp <- id,
@@ -155,11 +216,17 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             ImageHistoryModel.sessionExp <- session,
             ImageHistoryModel.sequenceExp <- sequence,
         ))
+        
+        for lora in loras {
+            try lora.save(db: db)
+        }
     }
     
     fileprivate static func load(db: Connection) throws -> [ImageHistoryModel] {
         var result = [ImageHistoryModel]()
         for entry in try db.prepare(table()) {
+            
+            let loras = try LoraHistoryModel.load(db: db, parentId: entry[idExp])
             result.append(ImageHistoryModel(id: entry[idExp],
                                             start: entry[startExp],
                                             end: entry[endExp],
@@ -175,7 +242,8 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                             drawingFilePath: entry[drawingFilePathExp],
                                             errorDescription: entry[errorDescriptionExp],
                                             session: entry[sessionExp],
-                                            sequence: entry[sequenceExp]))
+                                            sequence: entry[sequenceExp],
+                                            loras: loras))
         }
         return result
     }
@@ -217,7 +285,8 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                       size: 512,
                                       seed: 0,
                                       session: NSUUID().uuidString,
-                                      sequence: 0)
+                                      sequence: 0,
+                                      loras: [])
         entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
         entry.outputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
         
@@ -227,6 +296,13 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             entry.sequence = i % 5
             if i % 5 == 0 {
                 entry.session = NSUUID().uuidString
+            }
+            if i % 2 == 0 {
+                entry.loras = [
+                    LoraHistoryModel(id: NSUUID().uuidString, name: "Add Details", weight: Double.random(in: 0.0...1.0), historyModelId: entry.id)
+                ]
+            } else {
+                entry.loras = []
             }
             entry.id = NSUUID().uuidString
             try entry.save(db: db)
