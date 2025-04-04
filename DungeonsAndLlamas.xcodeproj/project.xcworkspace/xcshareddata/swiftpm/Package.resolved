@@ -1,5 +1,5 @@
 {
-  "originHash" : "c98e2d8733b0809da04939e0ce4ded8fcca15dbb473a39355ad8f4404502d634",
+  "originHash" : "2d3736b568b2bee1df685783542d190c09d3f8eec2d537fae401419bb34247f0",
   "pins" : [
     {
       "identity" : "camera",
@@ -8,6 +8,15 @@
       "state" : {
         "branch" : "bugfix/swift6_1",
         "revision" : "5029a47605248224bc9580aba842fb8919da2ec2"
+      }
+    },
+    {
+      "identity" : "sqlite.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stephencelis/SQLite.swift",
+      "state" : {
+        "revision" : "a95fc6df17d108bd99210db5e8a9bac90fe984b8",
+        "version" : "0.15.3"
       }
     },
     {
