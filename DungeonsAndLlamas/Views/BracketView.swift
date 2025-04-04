@@ -75,8 +75,14 @@ struct BracketView: View {
                             Spacer()
                             HStack {
                                 ProgressView(value: viewModel.progress?.progress ?? 0)
-                                Text("\(viewModel.brackets.count) / \(viewModel.bracketSteps * viewModel.bracketSteps)")
+                                if viewModel.thirdBracketLora == nil {
+                                    Text("\(viewModel.brackets.count) / \(viewModel.bracketSteps * viewModel.bracketSteps)")
+                                } else {
+                                    Text("\(viewModel.brackets.count) / \(viewModel.bracketSteps * viewModel.bracketSteps * viewModel.bracketSteps)")
+                                }
+
                             }
+                            .padding()
                             .frame(width: 400)
                         }
                     }
@@ -88,6 +94,8 @@ struct BracketView: View {
                             Text(lora.name).tag(lora)
                         }
                     }
+                    .disabled(viewModel.loading)
+
                     
                     Picker("second lora", selection:$viewModel.secondBracketLora) {
                         Text("pick second lora").tag(nil as GenerationService.LoraInvocation?)
@@ -95,6 +103,15 @@ struct BracketView: View {
                             Text(lora.name).tag(lora)
                         }
                     }
+                    .disabled(viewModel.loading)
+                    
+                    Picker("third lora", selection:$viewModel.thirdBracketLora) {
+                        Text("pick third lora").tag(nil as GenerationService.LoraInvocation?)
+                        ForEach(viewModel.loras, id:\.self) { lora in
+                            Text(lora.name).tag(lora)
+                        }
+                    }
+                    .disabled(viewModel.loading)
                 }
                 HStack {
                     Button("Generate Brackets") {
@@ -111,21 +128,24 @@ struct BracketView: View {
                     HStack {
                         Text("Min Weight")
                         Picker("min", selection: $viewModel.bracketMin) {
-                            ForEach(0..<5) { value in
+                            ForEach(-10..<5) { value in
                                 let weight = Double(value) / 10.0
                                 Text(weight.formatted(.number.precision(.fractionLength(0...2)))).tag(weight)
                             }
                         }
+                        .disabled(viewModel.loading)
+
                     }
                     
                     HStack {
                         Text("Max Weight")
                         Picker("max", selection: $viewModel.bracketMax) {
-                            ForEach(6..<11) { value in
+                            ForEach(6..<13) { value in
                                 let weight = Double(value) / 10.0
                                 Text(weight.formatted(.number.precision(.fractionLength(0...2)))).tag(weight)
                             }
                         }
+                        .disabled(viewModel.loading)
                     }
                     
                     HStack {
@@ -135,6 +155,12 @@ struct BracketView: View {
                                 Text("\(value)").tag(value)
                             }
                         }
+                        .disabled(viewModel.loading)
+                    }
+                    
+                    HStack {
+                        Text("Seed")
+                        Text("\(viewModel.seed)")
                     }
                 }
                 Spacer()
@@ -143,7 +169,8 @@ struct BracketView: View {
 
                 } else {
                     ScrollView {
-                        LazyVGrid(columns: [ GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]) {
+                        let columns: [GridItem] = (0..<viewModel.bracketSteps).map {_ in return GridItem(.flexible())}
+                        LazyVGrid(columns: columns) {
                             ForEach(viewModel.brackets) { bracket in
                                 
                                 ZStack {
@@ -153,8 +180,13 @@ struct BracketView: View {
                                     
                                     VStack {
                                         Spacer()
-                                        Text(bracket.firstLora.description)
-                                        Text(bracket.secondLora.description)
+                                        
+                                        if let third = bracket.thirdLora {
+                                            Text("\(bracket.firstLora.weight.formatted(.number.precision(.fractionLength(0...2)))) |  \(bracket.secondLora.weight.formatted(.number.precision(.fractionLength(0...2)))) | \(third.weight.formatted(.number.precision(.fractionLength(0...2))))")
+                                        } else {
+                                            Text("\(bracket.firstLora.weight.formatted(.number.precision(.fractionLength(0...2)))) |  \(bracket.secondLora.weight.formatted(.number.precision(.fractionLength(0...2))))")
+                                        }
+
                                     }
                                 }
                                 .shadow(radius: 2)

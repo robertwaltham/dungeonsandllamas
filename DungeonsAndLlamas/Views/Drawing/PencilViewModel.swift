@@ -59,6 +59,8 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     var brackets: [GenerationService.Bracket] = []
     var firstBracketLora: GenerationService.LoraInvocation?
     var secondBracketLora: GenerationService.LoraInvocation?
+    var thirdBracketLora: GenerationService.LoraInvocation?
+
     var bracketSteps: Int = 3
     var bracketMin: Double = 0.0
     var bracketMax: Double = 1.0
@@ -131,7 +133,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
 
         Task.init {
-            for try await obj in generationService.bracketImage(input: input, prompt: prompt, negativePrompt: negative, seed: seed, firstLora: firstBracketLora.name, secondLora: secondBracketLora.name, bracketSteps: bracketSteps, maxWeight: bracketMax, minWeight: bracketMin, loading: loading, progress: progress) {
+            for try await obj in generationService.bracketImage(input: input, prompt: prompt, negativePrompt: negative, seed: seed, firstLora: firstBracketLora.name, secondLora: secondBracketLora.name, thirdLora: thirdBracketLora?.name, bracketSteps: bracketSteps, maxWeight: bracketMax, minWeight: bracketMin, loading: loading, progress: progress) {
                 brackets.append(obj)
             }
             loading.wrappedValue = false

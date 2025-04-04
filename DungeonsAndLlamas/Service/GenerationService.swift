@@ -334,6 +334,7 @@ class GenerationService {
     struct Bracket: Identifiable {
         let firstLora: LoraInvocation
         let secondLora: LoraInvocation
+        let thirdLora: LoraInvocation?
         let result: UIImage
         
         var id: String {
@@ -341,7 +342,7 @@ class GenerationService {
         }
     }
     
-    func bracketImage(input: UIImage, prompt: String, negativePrompt: String, seed: Int, firstLora: String, secondLora: String, bracketSteps: Int, maxWeight: Double, minWeight: Double, loading: Binding<Bool>, progress: Binding<StableDiffusionClient.Progress?>) -> AsyncThrowingStream<Bracket, Error> {
+    func bracketImage(input: UIImage, prompt: String, negativePrompt: String, seed: Int, firstLora: String, secondLora: String, thirdLora: String?, bracketSteps: Int, maxWeight: Double, minWeight: Double, loading: Binding<Bool>, progress: Binding<StableDiffusionClient.Progress?>) -> AsyncThrowingStream<Bracket, Error> {
 
         guard let base64Image = input.pngData()?.base64EncodedString() else {
             fatalError("can't convert image")
@@ -368,22 +369,48 @@ class GenerationService {
                         do {
                             let firstLoraInvocation = LoraInvocation(name: firstLora, weight: minWeight + loraIncrement * Double(i))
                             let secondLoraInvocation = LoraInvocation(name: secondLora, weight: minWeight + loraIncrement * Double(j))
-                            print("\(firstLoraInvocation) \(secondLoraInvocation)")
-                            options.prompt = "\(prompt) \(self.promptAdd(lora: firstLoraInvocation)) \(self.promptAdd(lora: secondLoraInvocation))"
                             
-                            let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(options)
-                            
-                            if let string = strings.first,
-                               let data = Data(base64Encoded: string),
-                               let image = UIImage(data: data) {
-                                continuation.yield(Bracket(firstLora: firstLoraInvocation, secondLora: secondLoraInvocation, result: image))
+                            if let thirdLora {
+                                for k in 0..<bracketSteps {
+                                    let thirdLoraInvocation = LoraInvocation(name: thirdLora, weight: minWeight + loraIncrement * Double(k))
+
+                                    print("\(firstLoraInvocation) \(secondLoraInvocation) \(thirdLoraInvocation)")
+                                    options.prompt = "\(prompt) \(self.promptAdd(lora: firstLoraInvocation)) \(self.promptAdd(lora: secondLoraInvocation)) \(self.promptAdd(lora: thirdLoraInvocation)) "
+                                    
+                                    let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(options)
+                                    
+                                    if let string = strings.first,
+                                       let data = Data(base64Encoded: string),
+                                       let image = UIImage(data: data) {
+                                        continuation.yield(Bracket(firstLora: firstLoraInvocation, secondLora: secondLoraInvocation, thirdLora: thirdLoraInvocation, result: image))
+                                    }
+                                    
+                                    count += 1
+                                    print("generated: \(count)")
+                                    if count >= bracketSteps * bracketSteps * bracketSteps {
+                                        continuation.finish()
+                                    }
+                                }
+                                
+                            } else {
+                                print("\(firstLoraInvocation) \(secondLoraInvocation)")
+                                options.prompt = "\(prompt) \(self.promptAdd(lora: firstLoraInvocation)) \(self.promptAdd(lora: secondLoraInvocation))"
+                                
+                                let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(options)
+                                
+                                if let string = strings.first,
+                                   let data = Data(base64Encoded: string),
+                                   let image = UIImage(data: data) {
+                                    continuation.yield(Bracket(firstLora: firstLoraInvocation, secondLora: secondLoraInvocation, thirdLora: nil, result: image))
+                                }
+                                
+                                count += 1
+                                print("generated: \(count)")
+                                if count >= bracketSteps * bracketSteps {
+                                    continuation.finish()
+                                }
                             }
-                            
-                            count += 1
-                            print("generated: \(count)")
-                            if count >= bracketSteps * bracketSteps {
-                                continuation.finish()
-                            }
+
                         } catch {
                             continuation.finish(throwing: error)
                             print(error)
@@ -397,7 +424,7 @@ class GenerationService {
     }
     
     private nonisolated func promptAdd(lora: LoraInvocation) -> String {
-        return " <lora:\(lora.name):\(lora.weight.formatted(.number.precision(.fractionLength(0...1))))>"
+        return " <lora:\(lora.name):\(lora.weight.formatted(.number.precision(.fractionLength(0...2))))>"
     }
     
     func interrogate(image: UIImage, output: Binding<String?>) {
