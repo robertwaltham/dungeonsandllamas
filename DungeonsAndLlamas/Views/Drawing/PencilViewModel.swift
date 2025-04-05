@@ -107,7 +107,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     }
     
     @MainActor
-    func generate(output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
+    func generate(output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>, drawingScale: CGFloat) {
         if let drawing {
             generationService.image(prompt: prompt,
                                     promptAddon: promptAdd,
@@ -117,6 +117,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                                     session: session,
                                     sequence: sequence,
                                     drawing: drawing,
+                                    drawingScale: drawingScale,
                                     output: output,
                                     progress: progress,
                                     loading: loading)

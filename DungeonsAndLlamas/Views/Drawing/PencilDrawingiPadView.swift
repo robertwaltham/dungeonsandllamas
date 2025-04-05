@@ -47,7 +47,7 @@ struct PencilDrawingiPadView: View {
                         guard !viewModel.loading, generateOnChange else {
                             return
                         }
-                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: 512)
                     }
                 
                 TextField("Prompt", text: $viewModel.prompt)
@@ -116,7 +116,7 @@ struct PencilDrawingiPadView: View {
                         guard !viewModel.loading else {
                             return
                         }
-                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: 512)
                     } label: {
                         
                         HStack {
@@ -133,7 +133,7 @@ struct PencilDrawingiPadView: View {
                             return
                         }
                         viewModel.newSeed()
-                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: 512)
                     } label: {
                         
                         HStack {

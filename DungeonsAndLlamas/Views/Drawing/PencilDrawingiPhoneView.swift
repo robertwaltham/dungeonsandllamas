@@ -37,7 +37,6 @@ struct PencilDrawingiPhoneView: View {
     
     var body: some View {
         ZStack {
-//            Color(white: 0.7).ignoresSafeArea()
             GradientView(type: .greyscale).ignoresSafeArea()
             VStack {
                 HStack {
@@ -108,7 +107,7 @@ struct PencilDrawingiPhoneView: View {
                         guard !viewModel.loading else {
                             return
                         }
-                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: imageSize)
                     }
                 
                 ZStack {
@@ -211,7 +210,7 @@ struct PencilDrawingiPhoneView: View {
         guard !viewModel.loading else {
             return
         }
-        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: imageSize)
     }
 }
 

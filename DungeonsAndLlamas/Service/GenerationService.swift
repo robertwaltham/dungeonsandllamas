@@ -287,13 +287,14 @@ class GenerationService {
                session: String,
                sequence: Int,
                drawing: PKDrawing,
+               drawingScale: CGFloat,
                output: Binding<UIImage?>,
                progress: Binding<StableDiffusionClient.Progress?>,
                loading: Binding<Bool>) {
         
         loading.wrappedValue = true
         
-        var image = drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0)
+        var image = drawing.image(from: CGRect(x: 0, y: 0, width: drawingScale, height: drawingScale), scale: 1.0)
         
         if imageSize != 512 { // TODO: canvas size instead of resizing
             image = image.resized(to: CGSize(width: imageSize, height: imageSize))
