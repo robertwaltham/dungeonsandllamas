@@ -28,7 +28,7 @@ struct PencilDrawingiPadView: View {
     }
     
     @MainActor
-    init(flowState: ContentFlowState, generationService: GenerationService, history: GenerationService.SDHistoryEntry) {
+    init(flowState: ContentFlowState, generationService: GenerationService, history: ImageHistoryModel) {
         let viewModel = PencilViewModel(generationService: generationService)
         viewModel.load(history: history)
         self.viewModel = viewModel
@@ -216,7 +216,7 @@ struct PencilDrawingiPadView: View {
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
-    service.generateHistoryForTesting()
+    service.setupForTesting()
     Task {
         service.getModels()
     }

@@ -23,6 +23,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     let generationService = GenerationService()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        generationService.db.setup()
         generationService.checkStatusIfNeeded()
         generationService.loadHistory()
         generationService.getModels()

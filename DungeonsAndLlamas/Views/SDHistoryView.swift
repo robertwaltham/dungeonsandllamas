@@ -10,14 +10,14 @@ import SwiftUI
 struct SDHistoryView: View {
     @State var flowState: ContentFlowState
     @State var generationService: GenerationService
-    @State var presentedHistory: GenerationService.SDHistoryEntry?
+    @State var presentedHistory: ImageHistoryModel?
     @State var filter: String?
     @State var loraFilter: String?
     @State var saved: String?
     
     @ViewBuilder
     @MainActor
-    func info(history: GenerationService.SDHistoryEntry) -> some View {
+    func info(history: ImageHistoryModel) -> some View {
         HStack {
             
             Text(history.prompt)
@@ -79,13 +79,13 @@ struct SDHistoryView: View {
                         VStack {
                             
                             HStack {
-                                ForEach(history.loras ?? []) { lora in
+                                ForEach(history.loras) { lora in
                                     Text(lora.name + ":")
                                     Text(lora.weight, format: .number.precision(.fractionLength(0...2)))
                                 }
-                                Text(history.sampler ?? StableDiffusionClient.defaultSampler.name)
-                                Text("Steps: \(history.steps ?? 20)")
-                                Text("Size: \(history.size ?? 512)")
+                                Text(history.sampler)
+                                Text("Steps: \(history.steps)")
+                                Text("Size: \(history.size)")
                             }
                             
                             HStack {
@@ -111,7 +111,7 @@ struct SDHistoryView: View {
                                         .foregroundColor(.purple)
                                 }
                                 
-                                if history.drawingPath != nil {
+                                if history.drawingFilePath != nil {
                                     Button {
                                         flowState.nextLink(.drawingFrom(history: history))
                                     } label: {
@@ -143,13 +143,13 @@ struct SDHistoryView: View {
                     
                     let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
                     LazyVGrid(columns: columns) {
-                        ForEach(generationService.SDHistory.filter({ e in
+                        ForEach(generationService.imageHistory.filter({ e in
                             var result = true
                             if let filter {
                                 result = e.model == filter
                             }
                             if let loraFilter, result {
-                                result = (e.loras ?? []).contains { e in
+                                result = e.loras.contains { e in
                                     e.name == loraFilter
                                 }
                             }
@@ -179,7 +179,7 @@ struct SDHistoryView: View {
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
-    service.generateHistoryForTesting()
+    service.setupForTesting()
     
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {
         SDHistoryView(flowState: flowState, generationService: service)

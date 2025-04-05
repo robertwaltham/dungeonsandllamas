@@ -16,7 +16,7 @@ struct BracketView: View {
     
     let imageSize: CGFloat = 200
     
-    init(flowState: ContentFlowState, generationService: GenerationService, history: GenerationService.SDHistoryEntry) {
+    init(flowState: ContentFlowState, generationService: GenerationService, history: ImageHistoryModel) {
         self.flowState = flowState
         self.viewModel = PencilViewModel(generationService: generationService)
         self.generationService = generationService
@@ -204,12 +204,12 @@ struct BracketView: View {
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
-    service.generateHistoryForTesting()
+    service.setupForTesting()
     Task {
         service.getModels()
     }
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {
-        BracketView(flowState: flowState, generationService: service, history: service.SDHistory.first!)
+        BracketView(flowState: flowState, generationService: service, history: service.imageHistory.first!)
     }
 }
 

@@ -25,7 +25,7 @@ struct LandingView: View {
                 }
             }
             .onAppear {
-                history = generationService.SDHistory.filter{ entry in
+                history = generationService.imageHistory.filter { entry in
                     entry.errorDescription == nil
                 }
                 .shuffled()
@@ -35,10 +35,10 @@ struct LandingView: View {
                 }
             }
             .onReceive(timer) { input in
-                withAnimation(.linear(duration: 1.0)){
+                withAnimation(.linear(duration: 1.0)) {
                     if history.count > 1 {
                         let random = Int.random(in: 0..<history.count - 1) // TODO: fix bug with last cell sliding animation
-                        let img = generationService.loadOutputImage(history: generationService.SDHistory.randomElement()!)
+                        let img = generationService.loadOutputImage(history: generationService.imageHistory.randomElement()!)
                         if history.firstIndex(of: img) == nil {
                             history[random] = img
                         }
@@ -135,7 +135,7 @@ struct LandingView: View {
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
-    service.generateHistoryForTesting()
+    service.setupForTesting()
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {
         LandingView(flowState: flowState, generationService: service)
     }

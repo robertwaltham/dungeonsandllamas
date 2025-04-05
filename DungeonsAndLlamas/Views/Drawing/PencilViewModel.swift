@@ -66,14 +66,14 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     var bracketMax: Double = 1.0
     
     @MainActor
-    func load(history: GenerationService.SDHistoryEntry) {
+    func load(history: ImageHistoryModel) {
         drawing = generationService.loadDrawing(history: history)
         prompt = history.prompt
         output = generationService.loadOutputImage(history: history)
         input = generationService.loadInputImage(history: history)
 
         for i in 0..<loras.count {
-            loras[i].weight = history.loras?.first { lora in lora.name == loras[i].name }?.weight ?? 0
+            loras[i].weight = history.loras.first { lora in lora.name == loras[i].name }?.weight ?? 0
             
             if loras[i].weight > 0 {
                 if firstBracketLora == nil {
@@ -83,13 +83,13 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                 }
             }
         }
-        promptAdd = history.promptAdd
-        seed = history.seed ?? -1
+//        promptAdd = history.promptAdd
+        seed = history.seed
         generationService.selectedSampler = generationService.sdSamplers.first { sampler in
             sampler.name == history.sampler
         } ?? StableDiffusionClient.defaultSampler
-        generationService.steps = history.steps ?? 20
-        generationService.imageSize = history.size ?? 512
+        generationService.steps = history.steps
+        generationService.imageSize = history.size
     }
     
     @MainActor

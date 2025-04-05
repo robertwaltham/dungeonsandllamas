@@ -18,6 +18,7 @@ class GenerationService {
     var stableDiffusionClient = StableDiffusionClient()
     
     var fileService = FileService()
+    var db = DatabaseService()
     
     static let statusCheckInterval = 2.0
     
@@ -60,6 +61,7 @@ class GenerationService {
     
     var LLMHistory = [LLMHistoryEntry]()
     var SDHistory = [SDHistoryEntry]()
+    var imageHistory = [ImageHistoryModel]()
     
     var imageSize = 512
     var steps = 20
@@ -72,7 +74,13 @@ class GenerationService {
     //MARK: - History
     
     func loadHistory() {
-        // TODO: Migrate history properly
+        imageHistory = db.loadHistory()
+        if imageHistory.count == 0 {
+            migrateHistory()
+        }
+    }
+    
+    func migrateHistory() {
         SDHistory = fileService.loadSDHistory()
         
         for i in 0..<SDHistory.count {
@@ -81,6 +89,31 @@ class GenerationService {
                 SDHistory[i].loras = [SDHistoryEntry.LoraHistoryEntry]()
                 SDHistory[i].loras?.append(SDHistoryEntry.LoraHistoryEntry(name: loraName, weight: loraWeight))
             }
+            let history = SDHistory[i]
+            let id = NSUUID().uuidString
+            let loras: [LoraHistoryModel] = (history.loras ?? []).map { entry in
+                return LoraHistoryModel(id: NSUUID().uuidString,
+                                 name: "",
+                                 weight: 1,
+                                 historyModelId: id)
+            }
+            let entry = ImageHistoryModel(id: id,
+                                          start: history.start,
+                                          end: history.end,
+                                          prompt: history.prompt,
+                                          model: history.model,
+                                          sampler: history.sampler ?? "",
+                                          steps: history.steps ?? 20,
+                                          size: history.size ?? 512,
+                                          seed: history.seed ?? -1,
+                                          inputFilePath: history.inputFilePath,
+                                          outputFilePath: history.outputFilePaths.first,
+                                          drawingFilePath: history.drawingPath,
+                                          errorDescription: history.errorDescription,
+                                          session: NSUUID().uuidString,
+                                          sequence: 0,
+                                          loras: loras)
+            db.save(history: entry)
         }
     }
     
@@ -88,12 +121,24 @@ class GenerationService {
         return fileService.loadImage(path: history.outputFilePaths.first ?? "") // TODO: error handling
     }
     
+    func loadOutputImage(history: ImageHistoryModel) -> UIImage {
+        return fileService.loadImage(path: history.outputFilePath ?? "") // TODO: error handling
+    }
+    
     func loadInputImage(history: SDHistoryEntry) -> UIImage {
+        return fileService.loadImage(path: history.inputFilePath ?? "") // TODO: error handling
+    }
+    
+    func loadInputImage(history: ImageHistoryModel) -> UIImage {
         return fileService.loadImage(path: history.inputFilePath ?? "") // TODO: error handling
     }
     
     func loadDrawing(history: SDHistoryEntry) -> PKDrawing {
         return fileService.load(path: history.drawingPath ?? "") // TODO: error handling
+    }
+    
+    func loadDrawing(history: ImageHistoryModel) -> PKDrawing {
+        return fileService.load(path: history.drawingFilePath ?? "") // TODO: error handling
     }
     
     func lastPrompt() -> String {
@@ -501,25 +546,27 @@ class GenerationService {
     
     //MARK: - Testing
     
-    func generateHistoryForTesting() {
+    func setupForTesting() {
         
-        var entry = SDHistoryEntry(prompt: "a cat in a fancy hat, with a really long prompt that doesn't fit on the page properly, best quality, realistic, etc etc", negativePrompt: "negative prompt", model: "model")
-        entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
-        entry.outputFilePaths = [fileService.save(image: UIImage(named: "lighthouse")!)]
-        entry.end = Date.now
-        entry.size = 512
-        entry.steps = 21
-        entry.seed = Int.random(in: 1...100)
-        
-        for i in 0..<30 {
-            var newEntry = entry
-            newEntry.start = Date.now.addingTimeInterval(TimeInterval(i))
-            if i > 5 {
-                newEntry.loraWeight = 0.5
-                newEntry.lora = "lora_name_0.015"
-            }
-            SDHistory.append(newEntry)
-        }
+//        var entry = SDHistoryEntry(prompt: "a cat in a fancy hat, with a really long prompt that doesn't fit on the page properly, best quality, realistic, etc etc", negativePrompt: "negative prompt", model: "model")
+//        entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
+//        entry.outputFilePaths = [fileService.save(image: UIImage(named: "lighthouse")!)]
+//        entry.end = Date.now
+//        entry.size = 512
+//        entry.steps = 21
+//        entry.seed = Int.random(in: 1...100)
+//        
+//        for i in 0..<30 {
+//            var newEntry = entry
+//            newEntry.start = Date.now.addingTimeInterval(TimeInterval(i))
+//            if i > 5 {
+//                newEntry.loraWeight = 0.5
+//                newEntry.lora = "lora_name_0.015"
+//            }
+//            SDHistory.append(newEntry)
+//        }
+        db.setupForTesting(fileService: fileService)
+        loadHistory()
     }
 }
 

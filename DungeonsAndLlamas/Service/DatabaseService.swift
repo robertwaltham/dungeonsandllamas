@@ -19,12 +19,16 @@ class DatabaseService {
         do {
             try ImageHistoryModel.generateHistoryForTesting(db: db, fileService: fileService)
         } catch {
-            print(error.localizedDescription)
             print(error)
         }
     }
     
-    func connect() {
+    func setup() {
+        connect()
+        createTables()
+    }
+    
+    fileprivate func connect() {
         let path = NSSearchPathForDirectoriesInDomains(
             .documentDirectory, .userDomainMask, true
         ).first!
@@ -36,7 +40,7 @@ class DatabaseService {
         }
     }
     
-    func connectForTesting() {
+    fileprivate func connectForTesting() {
         do {
             db = try Connection() // in memory
         } catch {
@@ -44,7 +48,7 @@ class DatabaseService {
         }
     }
     
-    func createTables() {
+    fileprivate func createTables() {
         do {
             try ImageHistoryModel.createTable(db: db)
             try LoraHistoryModel.createTable(db: db)
@@ -61,6 +65,14 @@ extension DatabaseService {
         } catch {
             print(error)
             return []
+        }
+    }
+    
+    func save(history: ImageHistoryModel) {
+        do {
+            try history.save(db: db)
+        } catch {
+            print(error)
         }
     }
 }
