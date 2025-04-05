@@ -68,6 +68,8 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     var bracketMin: Double = 0.0
     var bracketMax: Double = 1.0
     
+    var saved: Bool = false
+    
     @MainActor func clear() {
         drawing = nil
         output = nil
@@ -119,6 +121,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                                     progress: progress,
                                     loading: loading)
             sequence += 1
+            saved = false
         }
     }
     

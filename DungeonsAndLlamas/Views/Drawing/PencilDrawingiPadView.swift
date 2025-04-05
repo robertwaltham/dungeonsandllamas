@@ -205,6 +205,49 @@ struct PencilDrawingiPadView: View {
                     }
                     .padding()
                     
+                    if let output = viewModel.output {
+                        let photo = Photo(image:Image(uiImage:output), caption: viewModel.prompt, description: viewModel.prompt)
+                        
+                        ShareLink(item: photo,
+                                  message: Text(viewModel.prompt) ,
+                                  preview: SharePreview(viewModel.prompt,
+                                  image: photo))
+                        .padding()
+                    } else {
+                        Label("Share...", systemImage: "square.and.arrow.up")
+                        .padding()
+                        .foregroundColor(.blue)
+                    }
+
+                    
+                    if !viewModel.saved {
+                        let label = HStack {
+                            Label("Save", systemImage: "photo.badge.arrow.down.fill")
+                        }
+                        .foregroundColor(.purple)
+                        
+                        if let output = viewModel.output {
+                            Button {
+                                UIImageWriteToSavedPhotosAlbum(output, nil, nil, nil)
+                                withAnimation(.bouncy) {
+                                    viewModel.saved = true
+                                }
+                            } label: {
+                                label
+                            }
+                            .padding()
+                            .disabled(viewModel.loading)
+                        } else {
+                            label
+                                .padding()
+                        }
+
+                    } else {
+                        Text("Saved!")
+                            .padding()
+                            .foregroundColor(.purple)
+                    }
+                    
                     
                     Button {
                         viewModel.clear()

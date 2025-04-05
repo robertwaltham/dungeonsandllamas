@@ -136,7 +136,7 @@ class GenerationService {
     
     func promptsFromHistory() -> [String] {
         var result = Set<String>()
-        for h in SDHistory {
+        for h in imageHistory {
             result.insert(h.prompt)
         }
         return result.sorted()
@@ -144,7 +144,7 @@ class GenerationService {
     
     func modelsFromHistory() -> [String] {
         var result = Set<String>()
-        for h in SDHistory {
+        for h in imageHistory {
             result.insert(h.model)
         }
         return result.sorted()
@@ -152,8 +152,8 @@ class GenerationService {
     
     func lorasFromHistory() -> [String] {
         var result = Set<String>()
-        for h in SDHistory {
-            for lora in h.loras ?? [] {
+        for h in imageHistory {
+            for lora in h.loras {
                 result.insert(lora.name)
             }
         }
