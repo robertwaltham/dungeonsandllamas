@@ -96,6 +96,63 @@ actor StableDiffusionClient {
         
         var name: String
         var alias: String
+        
+        struct Metadata: Codable, Hashable {
+            var ssSdModelName: String?
+            var ssBaseModelVersion: String?
+            var ssResolution: String?
+            var ssOutputName: String?
+            var ssTagFrequency: [String: [String: Int]]?
+            var modelSpecTitle: String?
+            var modelSpecArchitecture: String?
+            
+            private enum CodingKeys : String, CodingKey {
+                case ssSdModelName
+                case ssBaseModelVersion
+                case ssResolution
+                case ssOutputName
+                case modelSpecTitle = "modelspec.title"
+                case modelSpecArchitecture = "modelspec.architecture"
+                case ssTagFrequency
+            }
+        }
+        
+        var metadata: Metadata
+        
+        var activation: String? {
+            switch name {
+                
+//                add-detail-xl
+//                add_detail
+//            case "aidma-Image Upgrader-SD1.5-V0.1":
+//                return ""
+//                Digital_Impressionist_SD1.5
+//                epi_noiseoffset2
+//                Ghibli_v6
+//                Hyper-SD15-2steps-lora
+//                Hyper-SD15-8steps-lora
+            case "Ink scenery":
+                return "white background, scenery, ink, mountains, water, trees"
+//                more_details
+//                pixel-art-xl-v1.1
+            case "ral-frctlgmtry-sd15":
+                return "ral-frctlgmtry"
+            case "to8contrast-1-5":
+                return "to8contrast style"
+            case "watercolor":
+                return "watercolor"
+            case "WatercolorSD1V2":
+                return "watercolor"
+//                xl_more_art-full_v1
+                
+            case "lora": // for testing
+                return "actiation"
+                
+            default:
+                    return nil
+            }
+            
+        }
     }
 
     struct Sampler: Codable, Identifiable, Hashable {
@@ -160,6 +217,7 @@ actor StableDiffusionClient {
     }
     
     func generateBase64EncodedImages(_ options: GenerationOptions) async throws -> [String] {
+        print(options.prompt)
         let endpoint: Endpoint = options.initImages != nil ? .generateSDimg2img : .generateSDtxt2img
         var request = try StableDiffusionClient.request(endpoint: endpoint, method: .post, timeout: 600)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")

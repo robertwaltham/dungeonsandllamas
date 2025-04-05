@@ -12,13 +12,14 @@ struct ModelSettingsView: View {
     @State var generationService: GenerationService
     
     var body: some View {
-        VStack() {
-            Spacer().frame(maxHeight: 20)
+        ScrollView() {
+
             Text("Stable Diffusion")
                 .font(.largeTitle)
                 .padding(EdgeInsets(top: 0, leading: 0, bottom: 20, trailing: 0))
             
-            Text("Models").font(.title)
+            Text("Models")
+                .font(.title)
 
             VStack(alignment: .leading) {
                 ForEach(generationService.sdModels) { model in
@@ -48,7 +49,17 @@ struct ModelSettingsView: View {
  
             VStack(alignment: .leading) {
                 ForEach(generationService.sdLoras) { lora in
-                    Text(lora.alias)
+                    HStack {
+                        Text(lora.name)
+                        Spacer()
+                        Button {
+                            flowState.presentedItem = .lora(lora: lora)
+                        } label: {
+                            Label("", systemImage: "info.circle")
+                        }
+                    }
+                    .frame(maxWidth: 700)
+                    
                 }
             }
 
@@ -95,7 +106,6 @@ struct ModelSettingsView: View {
             
             Spacer()
 
-
             Text("Large Language Model")
                 .font(.largeTitle)
                 .padding(EdgeInsets(top: 0, leading: 0, bottom: 30, trailing: 0))
@@ -113,14 +123,14 @@ struct ModelSettingsView: View {
                 }
             }
             
-            Spacer()
-//            
+//
 //            Button("Reload Model Info") {
 //                generationService.getModels()
 //            }
 //            .padding()
 //            .buttonStyle(.bordered)
         }
+        .frame(width: .infinity)
         .onAppear {
             generationService.getModels()
         }

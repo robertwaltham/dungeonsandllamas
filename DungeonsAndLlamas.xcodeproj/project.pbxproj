@@ -42,6 +42,7 @@
 		D1F839CF2DA07C350028E034 /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F839CE2DA07C320028E034 /* DatabaseService.swift */; };
 		D1F839D22DA07C580028E034 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = D1F839D12DA07C580028E034 /* SQLite */; };
 		D1F839D42DA08EF90028E034 /* DatabaseTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F839D32DA08EF60028E034 /* DatabaseTestView.swift */; };
+		D1F839D62DA0E7F70028E034 /* LoraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F839D52DA0E7F40028E034 /* LoraView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -78,6 +79,7 @@
 		D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingiPhoneView.swift; sourceTree = "<group>"; };
 		D1F839CE2DA07C320028E034 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		D1F839D32DA08EF60028E034 /* DatabaseTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseTestView.swift; sourceTree = "<group>"; };
+		D1F839D52DA0E7F40028E034 /* LoraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -166,8 +168,8 @@
 				D180B7D22D9E2ABB0055CB3D /* BracketView.swift */,
 				D1320E072BD5C12D00EEEDCC /* Photo.swift */,
 				D1DC04372BCF2C74007BC5D2 /* SDHistoryView.swift */,
-				D166A8942BDBFD380028100A /* ModelSettingsView.swift */,
 				D178EAEA2D9C9C32001828E2 /* GradientView.swift */,
+				D1F839D72DA0E8950028E034 /* Model Info */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -203,6 +205,15 @@
 				D1DC043C2BD03011007BC5D2 /* PencilViewModel.swift */,
 			);
 			path = Drawing;
+			sourceTree = "<group>";
+		};
+		D1F839D72DA0E8950028E034 /* Model Info */ = {
+			isa = PBXGroup;
+			children = (
+				D166A8942BDBFD380028100A /* ModelSettingsView.swift */,
+				D1F839D52DA0E7F40028E034 /* LoraView.swift */,
+			);
+			path = "Model Info";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -298,6 +309,7 @@
 				D1DC04342BCDCC02007BC5D2 /* PencilDrawingiPadView.swift in Sources */,
 				D1DC04362BCF2813007BC5D2 /* FileService.swift in Sources */,
 				D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */,
+				D1F839D62DA0E7F70028E034 /* LoraView.swift in Sources */,
 				D166A89A2BE00D370028100A /* StableDiffusionClient.swift in Sources */,
 				D1DC043A2BCF4685007BC5D2 /* PencilCanvasView.swift in Sources */,
 				D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */,

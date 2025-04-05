@@ -18,7 +18,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         self.generationService = generationService
         self.prompt = generationService.lastPrompt()
         self.loras = generationService.sdLoras.map { lora in
-            GenerationService.LoraInvocation.init(name: lora.name, weight: 0)
+            GenerationService.LoraInvocation.init(name: lora.name, weight: 0, activation: lora.activation)
         }
         withObservationTracking {
             _ = generationService.sdLoras
@@ -159,7 +159,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
 
         Task.init {
-            for try await obj in generationService.bracketImage(input: input, prompt: prompt, negativePrompt: negative, seed: seed, firstLora: firstBracketLora.name, secondLora: secondBracketLora.name, thirdLora: thirdBracketLora?.name, bracketSteps: bracketSteps, maxWeight: bracketMax, minWeight: bracketMin, loading: loading, progress: progress) {
+            for try await obj in generationService.bracketImage(input: input, prompt: prompt, negativePrompt: negative, seed: seed, firstLora: firstBracketLora, secondLora: secondBracketLora, thirdLora: thirdBracketLora, bracketSteps: bracketSteps, maxWeight: bracketMax, minWeight: bracketMin, loading: loading, progress: progress) {
                 brackets.append(obj)
             }
             loading.wrappedValue = false

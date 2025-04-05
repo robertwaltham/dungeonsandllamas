@@ -37,6 +37,7 @@ class GenerationService {
         }
         var name: String
         var weight: Double
+        var activation: String?
         
         var description: String {
             "\(name) \(weight.formatted(.number.precision(.fractionLength(0...2))))"
@@ -405,9 +406,9 @@ class GenerationService {
                       prompt: String,
                       negativePrompt: String,
                       seed: Int,
-                      firstLora: String,
-                      secondLora: String,
-                      thirdLora: String?,
+                      firstLora: LoraInvocation,
+                      secondLora: LoraInvocation,
+                      thirdLora: LoraInvocation?,
                       bracketSteps: Int,
                       maxWeight: Double,
                       minWeight: Double,
@@ -437,12 +438,12 @@ class GenerationService {
                     for j in 0..<bracketSteps {
                         var options = sdOptions
                         do {
-                            let firstLoraInvocation = LoraInvocation(name: firstLora, weight: minWeight + loraIncrement * Double(i))
-                            let secondLoraInvocation = LoraInvocation(name: secondLora, weight: minWeight + loraIncrement * Double(j))
+                            let firstLoraInvocation = LoraInvocation(name: firstLora.name, weight: minWeight + loraIncrement * Double(i), activation: firstLora.activation)
+                            let secondLoraInvocation = LoraInvocation(name: secondLora.name, weight: minWeight + loraIncrement * Double(j), activation: secondLora.activation)
                             
                             if let thirdLora {
                                 for k in 0..<bracketSteps {
-                                    let thirdLoraInvocation = LoraInvocation(name: thirdLora, weight: minWeight + loraIncrement * Double(k))
+                                    let thirdLoraInvocation = LoraInvocation(name: thirdLora.name, weight: minWeight + loraIncrement * Double(k), activation: thirdLora.activation)
 
                                     print("\(firstLoraInvocation) \(secondLoraInvocation) \(thirdLoraInvocation)")
                                     options.prompt = "\(prompt) \(self.promptAdd(lora: firstLoraInvocation)) \(self.promptAdd(lora: secondLoraInvocation)) \(self.promptAdd(lora: thirdLoraInvocation)) "
@@ -491,7 +492,7 @@ class GenerationService {
     }
     
     private nonisolated func promptAdd(lora: LoraInvocation) -> String {
-        return " <lora:\(lora.name):\(lora.weight.formatted(.number.precision(.fractionLength(0...2))))>"
+        return " <lora:\(lora.name):\(lora.weight.formatted(.number.precision(.fractionLength(0...2))))> \(lora.activation ?? "")"
     }
     
     func interrogate(image: UIImage, output: Binding<String?>) {

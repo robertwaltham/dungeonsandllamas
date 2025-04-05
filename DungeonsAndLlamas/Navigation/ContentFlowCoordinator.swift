@@ -66,7 +66,8 @@ extension ContentFlowCoordinator {
                     .navigationTitle("Model Info")
             case .bracket(history: let history):
                 BracketView(flowState: flowState, generationService: generationService, history: history)
-                
+            case .lora(lora: let lora):
+                LoraView(lora: lora)
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
@@ -96,6 +97,8 @@ extension ContentFlowCoordinator {
                     .navigationTitle("Model Info")
             case .bracket(history: let history):
                 BracketView(flowState: flowState, generationService: generationService, history: history)
+            case .lora(lora: let lora):
+                LoraView(lora: lora)
                 
             default:
                 VStack {

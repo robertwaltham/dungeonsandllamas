@@ -32,4 +32,5 @@ enum ContentLink: Identifiable, Hashable {
     case sdHistory
     case modelInfo
     case bracket(history: ImageHistoryModel)
+    case lora(lora: StableDiffusionClient.Lora)
 }
