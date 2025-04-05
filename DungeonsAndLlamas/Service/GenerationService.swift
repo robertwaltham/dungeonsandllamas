@@ -60,7 +60,7 @@ class GenerationService {
     var selectedSampler = StableDiffusionClient.defaultSampler // default
     
     var LLMHistory = [LLMHistoryEntry]()
-    var SDHistory = [SDHistoryEntry]()
+    fileprivate var SDHistory = [SDHistoryEntry]() // TODO: Remove
     var imageHistory = [ImageHistoryModel]()
     
     var imageSize = 512
@@ -80,7 +80,7 @@ class GenerationService {
         }
     }
     
-    func migrateHistory() {
+    func migrateHistory() { // TODO: remove
         SDHistory = fileService.loadSDHistory()
         
         for i in 0..<SDHistory.count {
@@ -117,24 +117,12 @@ class GenerationService {
         }
     }
     
-    func loadOutputImage(history: SDHistoryEntry) -> UIImage {
-        return fileService.loadImage(path: history.outputFilePaths.first ?? "") // TODO: error handling
-    }
-    
     func loadOutputImage(history: ImageHistoryModel) -> UIImage {
         return fileService.loadImage(path: history.outputFilePath ?? "") // TODO: error handling
     }
     
-    func loadInputImage(history: SDHistoryEntry) -> UIImage {
-        return fileService.loadImage(path: history.inputFilePath ?? "") // TODO: error handling
-    }
-    
     func loadInputImage(history: ImageHistoryModel) -> UIImage {
         return fileService.loadImage(path: history.inputFilePath ?? "") // TODO: error handling
-    }
-    
-    func loadDrawing(history: SDHistoryEntry) -> PKDrawing {
-        return fileService.load(path: history.drawingPath ?? "") // TODO: error handling
     }
     
     func loadDrawing(history: ImageHistoryModel) -> PKDrawing {
@@ -290,7 +278,17 @@ class GenerationService {
         }
     }
     
-    func image(prompt: String, promptAddon: String?, negativePrompt: String, loras: [LoraInvocation] = [], seed: Int, drawing: PKDrawing, output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
+    func image(prompt: String,
+               promptAddon: String?,
+               negativePrompt: String,
+               loras: [LoraInvocation] = [],
+               seed: Int,
+               session: String,
+               sequence: Int,
+               drawing: PKDrawing,
+               output: Binding<UIImage?>,
+               progress: Binding<StableDiffusionClient.Progress?>,
+               loading: Binding<Bool>) {
         
         loading.wrappedValue = true
         
@@ -303,7 +301,12 @@ class GenerationService {
             return
         }
         
-        var sdOptions = StableDiffusionClient.GenerationOptions(prompt: prompt, negativePrompt: negativePrompt, size: imageSize, steps: steps, sampler: selectedSampler, initImages: [base64Image])
+        var sdOptions = StableDiffusionClient.GenerationOptions(prompt: prompt,
+                                                                negativePrompt: negativePrompt,
+                                                                size: imageSize,
+                                                                steps: steps,
+                                                                sampler: selectedSampler,
+                                                                initImages: [base64Image])
         
         sdOptions.seed = seed
         storedPrompt = prompt
@@ -317,21 +320,32 @@ class GenerationService {
                 _ = await modelTask?.result // TODO: handle error case
             }
             
-            var history = SDHistoryEntry(prompt: prompt, promptAdd: promptAddon, negativePrompt: negativePrompt, model: selectedSDModel?.modelName ?? "none")
-            history.inputFilePath = fileService.save(image: image)
-            history.drawingPath = fileService.save(drawing: drawing)
-            history.seed = seed
-            history.sampler = selectedSampler.name
-            history.steps = steps
-            history.size = imageSize
-            history.loras = loras.map { lora in
-                SDHistoryEntry.LoraHistoryEntry(name: lora.name, weight: lora.weight)
-            }
-                        
             var fullPrompt = prompt
             if let promptAddon {
                 fullPrompt += promptAddon
             }
+            
+            let id = NSUUID().uuidString
+            var history = ImageHistoryModel(id: id,
+                                            start: Date.now,
+                                            prompt: fullPrompt,
+                                            model: selectedSDModel?.modelName ?? "none",
+                                            sampler: selectedSampler.name,
+                                            steps: steps,
+                                            size: imageSize,
+                                            seed: seed,
+                                            inputFilePath: fileService.save(image: image),
+                                            drawingFilePath: fileService.save(drawing: drawing),
+                                            session: session,
+                                            sequence: sequence,
+                                            loras: loras.map({ lora in
+                LoraHistoryModel(id: NSUUID().uuidString,
+                                 name: lora.name,
+                                 weight: lora.weight,
+                                 historyModelId: id)
+            }))
+                        
+    
             
             if loras.count > 0 {
                 fullPrompt += " "
@@ -350,16 +364,16 @@ class GenerationService {
                    let image = UIImage(data: data) {
                     output.wrappedValue = image
                     history.end = Date.now
-                    history.outputFilePaths = [fileService.save(image: image)]
+                    history.outputFilePath = fileService.save(image: image)
                 }
             } catch {
                 history.errorDescription = error.localizedDescription
                 print(error)
             }
             loading.wrappedValue = false
-            
-            fileService.save(history: history)
-            SDHistory.append(history)
+
+            db.save(history: history)
+            imageHistory.append(history)
         }
         
         Task.init {
@@ -387,7 +401,18 @@ class GenerationService {
         }
     }
     
-    func bracketImage(input: UIImage, prompt: String, negativePrompt: String, seed: Int, firstLora: String, secondLora: String, thirdLora: String?, bracketSteps: Int, maxWeight: Double, minWeight: Double, loading: Binding<Bool>, progress: Binding<StableDiffusionClient.Progress?>) -> AsyncThrowingStream<Bracket, Error> {
+    func bracketImage(input: UIImage,
+                      prompt: String,
+                      negativePrompt: String,
+                      seed: Int,
+                      firstLora: String,
+                      secondLora: String,
+                      thirdLora: String?,
+                      bracketSteps: Int,
+                      maxWeight: Double,
+                      minWeight: Double,
+                      loading: Binding<Bool>,
+                      progress: Binding<StableDiffusionClient.Progress?>) -> AsyncThrowingStream<Bracket, Error> {
 
         guard let base64Image = input.pngData()?.base64EncodedString() else {
             fatalError("can't convert image")
@@ -431,14 +456,12 @@ class GenerationService {
                                     }
                                     
                                     count += 1
-                                    print("generated: \(count)")
                                     if count >= bracketSteps * bracketSteps * bracketSteps {
                                         continuation.finish()
                                     }
                                 }
                                 
                             } else {
-                                print("\(firstLoraInvocation) \(secondLoraInvocation)")
                                 options.prompt = "\(prompt) \(self.promptAdd(lora: firstLoraInvocation)) \(self.promptAdd(lora: secondLoraInvocation))"
                                 
                                 let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(options)
@@ -450,7 +473,6 @@ class GenerationService {
                                 }
                                 
                                 count += 1
-                                print("generated: \(count)")
                                 if count >= bracketSteps * bracketSteps {
                                     continuation.finish()
                                 }
@@ -512,7 +534,7 @@ class GenerationService {
         var errorDescription: String?
     }
     
-    struct SDHistoryEntry: Codable, Identifiable, Hashable {
+    struct SDHistoryEntry: Codable, Identifiable, Hashable { // TODO: remove
         var id: Date {
             start
         }
@@ -547,24 +569,6 @@ class GenerationService {
     //MARK: - Testing
     
     func setupForTesting() {
-        
-//        var entry = SDHistoryEntry(prompt: "a cat in a fancy hat, with a really long prompt that doesn't fit on the page properly, best quality, realistic, etc etc", negativePrompt: "negative prompt", model: "model")
-//        entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
-//        entry.outputFilePaths = [fileService.save(image: UIImage(named: "lighthouse")!)]
-//        entry.end = Date.now
-//        entry.size = 512
-//        entry.steps = 21
-//        entry.seed = Int.random(in: 1...100)
-//        
-//        for i in 0..<30 {
-//            var newEntry = entry
-//            newEntry.start = Date.now.addingTimeInterval(TimeInterval(i))
-//            if i > 5 {
-//                newEntry.loraWeight = 0.5
-//                newEntry.lora = "lora_name_0.015"
-//            }
-//            SDHistory.append(newEntry)
-//        }
         db.setupForTesting(fileService: fileService)
         loadHistory()
     }

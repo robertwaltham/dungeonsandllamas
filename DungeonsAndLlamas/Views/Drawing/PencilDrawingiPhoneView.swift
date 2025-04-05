@@ -94,7 +94,7 @@ struct PencilDrawingiPhoneView: View {
                         generate()
                     } label: {
                         HStack {
-                            Label("", systemImage: "dice")
+                            Label("Seed", systemImage: "dice")
                         }
                         .foregroundColor(.red)
                     }
@@ -159,7 +159,7 @@ struct PencilDrawingiPhoneView: View {
         VStack {
             HStack {
                 Button("Clear Canvas") {
-                    viewModel.drawing = nil
+                    viewModel.clear()
                 }
                 .buttonStyle(.bordered)
                 .padding()
@@ -201,12 +201,7 @@ struct PencilDrawingiPhoneView: View {
                 }.padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
             }
             Spacer()
-//            Text("Seed")
-//            Text("\(viewModel.seed, format: .number.grouping(.never))")
-//                .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
-//                .onTapGesture {
-//                    viewModel.newSeed()
-//                }
+
         }.onDisappear {
             generate()
         }

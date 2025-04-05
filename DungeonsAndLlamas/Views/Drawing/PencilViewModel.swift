@@ -40,6 +40,9 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     var prompt: String
     var promptAdd: String?
     
+    var session = NSUUID().uuidString
+    var sequence = 0
+    
     var negative = ""//"worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, duplicate, ugly, monochrome, horror, geometry, mutation, disgusting"
     
     var loading = false
@@ -65,12 +68,22 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     var bracketMin: Double = 0.0
     var bracketMax: Double = 1.0
     
+    @MainActor func clear() {
+        drawing = nil
+        output = nil
+        input = nil
+        sequence = 0
+        session = NSUUID().uuidString
+    }
+    
     @MainActor
     func load(history: ImageHistoryModel) {
         drawing = generationService.loadDrawing(history: history)
         prompt = history.prompt
         output = generationService.loadOutputImage(history: history)
         input = generationService.loadInputImage(history: history)
+        session = history.session
+        sequence = history.sequence
 
         for i in 0..<loras.count {
             loras[i].weight = history.loras.first { lora in lora.name == loras[i].name }?.weight ?? 0
@@ -83,7 +96,6 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                 }
             }
         }
-//        promptAdd = history.promptAdd
         seed = history.seed
         generationService.selectedSampler = generationService.sdSamplers.first { sampler in
             sampler.name == history.sampler
@@ -95,7 +107,18 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     @MainActor
     func generate(output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
         if let drawing {
-            generationService.image(prompt: prompt, promptAddon: promptAdd, negativePrompt: negative, loras: enabledLoras, seed: seed, drawing: drawing, output: output, progress: progress, loading: loading)
+            generationService.image(prompt: prompt,
+                                    promptAddon: promptAdd,
+                                    negativePrompt: negative,
+                                    loras: enabledLoras,
+                                    seed: seed,
+                                    session: session,
+                                    sequence: sequence,
+                                    drawing: drawing,
+                                    output: output,
+                                    progress: progress,
+                                    loading: loading)
+            sequence += 1
         }
     }
     

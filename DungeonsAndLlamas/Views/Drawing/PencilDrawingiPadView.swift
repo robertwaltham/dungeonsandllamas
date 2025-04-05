@@ -111,39 +111,37 @@ struct PencilDrawingiPadView: View {
             HStack {
                 Spacer()
                 VStack {
-                    Button("Clear") {
-                        viewModel.drawing = nil
-                    }
-                    .buttonStyle(.bordered)
-                    .padding()
-                    .foregroundColor(.red)
-                    
-                    Toggle("", isOn: $generateOnChange)
-                        .frame(maxWidth: 0)
-                    
-                    Button("Go Again") {
+                                
+                    Button {
                         guard !viewModel.loading else {
                             return
                         }
                         viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                    } label: {
+                        
+                        HStack {
+                            Label("Generate", systemImage: "play.rectangle")
+                        }
+                        .foregroundColor(.blue)
+
                     }
-                    .buttonStyle(.bordered)
                     .padding()
-                    .foregroundColor(.green)
                     
-                    let adds = generationService.suggestedPromptAdds()
-                    Picker("Prompt Add", selection: $promptAdd) {
-                        Label(" Add", systemImage: "plus.app").tag(nil as String?)
-                        ForEach(adds.keys.map({$0}), id:\.self) { label in
-                            Text(label).tag(label as String?)
+                    
+                    Button {
+                        guard !viewModel.loading else {
+                            return
                         }
-                    }.onChange(of: promptAdd) { _, newValue in
-                        if let newValue {
-                            viewModel.promptAdd = newValue
-                        } else {
-                            viewModel.promptAdd = nil
+                        viewModel.newSeed()
+                        viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading)
+                    } label: {
+                        
+                        HStack {
+                            Label("Seed", systemImage: "dice")
                         }
+                        .foregroundColor(.blue)
                     }
+                    .padding()
 
                     Button {
                         viewModel.showTooltip.toggle()
@@ -152,7 +150,7 @@ struct PencilDrawingiPadView: View {
                         HStack {
                             Label("Tool", systemImage: "paintbrush.pointed")
                         }
-                        .foregroundColor(.green)
+                        .foregroundColor(.purple)
 
                     }
                     .padding()
@@ -188,20 +186,37 @@ struct PencilDrawingiPadView: View {
                         .frame(minWidth: 500)
                         .padding()
                     }
-
-                    
-                    Text("Seed")
-                    Text("\(viewModel.seed, format: .number.grouping(.never))")
-                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
-                        .onTapGesture {
-                            viewModel.newSeed()
-                        }
-                    
-                    Button("History") {
+                               
+                    Button {
                         viewModel.showTooltip = false
                         flowState.coverItem = .sdHistory
+                    } label: {
+                        
+                        HStack {
+                            Label("History", systemImage: "books.vertical.fill")
+                        }
+                        .foregroundColor(.green)
+                        
+                        HStack {
+                            Text("\(viewModel.sequence)")
+                        }
+                        .foregroundColor(.black)
+
                     }
-                    .buttonStyle(.bordered)
+                    .padding()
+                    
+                    
+                    Button {
+                        viewModel.clear()
+                    } label: {
+                        
+                        HStack {
+                            Label("Clear", systemImage: "clear")
+                        }
+                        .foregroundColor(.red)
+
+                    }
+                    .disabled(viewModel.loading)
                     .padding()
                     
                 }
