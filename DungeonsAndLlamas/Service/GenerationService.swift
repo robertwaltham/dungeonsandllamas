@@ -39,8 +39,24 @@ class GenerationService {
         var weight: Double
         var activation: String?
         
+        var bracketSteps: Int = 0
+        var bracketMin: Double = 0
+        var bracketMax: Double = 0
+        
         var description: String {
             "\(name) \(weight.formatted(.number.precision(.fractionLength(0...2))))"
+        }
+        
+        var increment: Double {
+            guard bracketSteps > 0 else {
+                return 0
+            }
+            
+            return (bracketMax - bracketMin) / Double(bracketSteps - 1)
+        }
+        
+        mutating func calculateWeight(step: Int) {
+            weight = bracketMin + (increment * Double(step))
         }
     }
     
@@ -63,6 +79,7 @@ class GenerationService {
     var LLMHistory = [LLMHistoryEntry]()
     fileprivate var SDHistory = [SDHistoryEntry]() // TODO: Remove
     var imageHistory = [ImageHistoryModel]()
+    var lastHistory: ImageHistoryModel?
     
     var imageSize = 512
     var steps = 20
@@ -376,6 +393,7 @@ class GenerationService {
 
             db.save(history: history)
             imageHistory.append(history)
+            lastHistory = history
         }
         
         Task.init {
@@ -392,7 +410,7 @@ class GenerationService {
         }
     }
     
-    struct Bracket: Identifiable {
+    struct Bracket: Identifiable, Hashable {
         let firstLora: LoraInvocation
         let secondLora: LoraInvocation
         let thirdLora: LoraInvocation?
@@ -409,19 +427,12 @@ class GenerationService {
                       seed: Int,
                       firstLora: LoraInvocation,
                       secondLora: LoraInvocation,
-                      thirdLora: LoraInvocation?,
-                      bracketSteps: Int,
-                      maxWeight: Double,
-                      minWeight: Double,
+                      thirdLora: LoraInvocation,
                       loading: Binding<Bool>,
                       progress: Binding<StableDiffusionClient.Progress?>) -> AsyncThrowingStream<Bracket, Error> {
 
         guard let base64Image = input.pngData()?.base64EncodedString() else {
             fatalError("can't convert image")
-        }
-        
-        guard bracketSteps > 0 else {
-            fatalError("divide by zero")
         }
         
         var sdOptions = StableDiffusionClient.GenerationOptions(prompt: prompt, negativePrompt: negativePrompt, size: imageSize, steps: steps, sampler: selectedSampler, initImages: [base64Image])
@@ -433,18 +444,23 @@ class GenerationService {
         return AsyncThrowingStream<Bracket, Error> { continuation in
             
             Task.init {
-                let loraIncrement: Double = (maxWeight - minWeight) / Double(bracketSteps - 1)
+                
+                let target = firstLora.bracketSteps * secondLora.bracketSteps * (thirdLora.bracketSteps > 0 ? thirdLora.bracketSteps : 1)
+
                 var count = 0
-                for i in 0..<bracketSteps {
-                    for j in 0..<bracketSteps {
+                var firstLoraInvocation = firstLora
+                var secondLoraInvocation = secondLora
+                for i in 0..<firstLora.bracketSteps {
+                    firstLoraInvocation.calculateWeight(step: i)
+                    for j in 0..<secondLora.bracketSteps {
+                        secondLoraInvocation.calculateWeight(step: j)
+
                         var options = sdOptions
                         do {
-                            let firstLoraInvocation = LoraInvocation(name: firstLora.name, weight: minWeight + loraIncrement * Double(i), activation: firstLora.activation)
-                            let secondLoraInvocation = LoraInvocation(name: secondLora.name, weight: minWeight + loraIncrement * Double(j), activation: secondLora.activation)
-                            
-                            if let thirdLora {
-                                for k in 0..<bracketSteps {
-                                    let thirdLoraInvocation = LoraInvocation(name: thirdLora.name, weight: minWeight + loraIncrement * Double(k), activation: thirdLora.activation)
+                            if thirdLora.bracketSteps > 0 {
+                                for k in 0..<thirdLora.bracketSteps {
+                                    var thirdLoraInvocation = thirdLora
+                                    thirdLoraInvocation.calculateWeight(step: k)
 
                                     print("\(firstLoraInvocation) \(secondLoraInvocation) \(thirdLoraInvocation)")
                                     options.prompt = "\(prompt) \(self.promptAdd(lora: firstLoraInvocation)) \(self.promptAdd(lora: secondLoraInvocation)) \(self.promptAdd(lora: thirdLoraInvocation)) "
@@ -458,7 +474,7 @@ class GenerationService {
                                     }
                                     
                                     count += 1
-                                    if count >= bracketSteps * bracketSteps * bracketSteps {
+                                    if count >= target {
                                         continuation.finish()
                                     }
                                 }
@@ -475,14 +491,14 @@ class GenerationService {
                                 }
                                 
                                 count += 1
-                                if count >= bracketSteps * bracketSteps {
+                                if count >= target {
                                     continuation.finish()
                                 }
                             }
 
                         } catch {
-                            continuation.finish(throwing: error)
                             print(error)
+                            continuation.finish(throwing: error)
                         }
                     }
                 }

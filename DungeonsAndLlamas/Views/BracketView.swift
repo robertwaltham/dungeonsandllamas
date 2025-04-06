@@ -28,7 +28,6 @@ struct BracketView: View {
         ZStack {
             GradientView(type: .greyscale)
             VStack {
-                Text(viewModel.prompt)
                 ZStack {
                     HStack {
                         ZStack {
@@ -69,46 +68,194 @@ struct BracketView: View {
                                 Spacer()
                             }
                         }.frame(maxHeight: imageSize)
+                        
+
                     }
                     if viewModel.loading {
                         VStack {
                             Spacer()
                             HStack {
                                 ProgressView(value: viewModel.progress?.progress ?? 0)
-                                if viewModel.thirdBracketLora == nil {
-                                    Text("\(viewModel.brackets.count) / \(viewModel.bracketSteps * viewModel.bracketSteps)")
-                                } else {
-                                    Text("\(viewModel.brackets.count) / \(viewModel.bracketSteps * viewModel.bracketSteps * viewModel.bracketSteps)")
-                                }
-
+                                Text("\(viewModel.brackets.count) / \(viewModel.bracketCount())")
                             }
                             .padding()
                             .frame(width: 400)
                         }
                     }
                 }.frame(height: 220)
-                HStack {
-                    Picker("first lora", selection:$viewModel.firstBracketLora) {
-                        Text("pick first lora").tag(nil as GenerationService.LoraInvocation?)
-                        ForEach(viewModel.loras, id:\.self) { lora in
-                            Text(lora.name).tag(lora)
-                        }
-                    }
-                    .disabled(viewModel.loading)
+                VStack {
 
-                    
-                    Picker("second lora", selection:$viewModel.secondBracketLora) {
-                        Text("pick second lora").tag(nil as GenerationService.LoraInvocation?)
-                        ForEach(viewModel.loras, id:\.self) { lora in
-                            Text(lora.name).tag(lora)
+                    HStack {
+                        
+                        let nameBinding = Binding {
+                            viewModel.firstBracketLora.name
+                        } set: { value in
+                            viewModel.firstBracketLora.name = value
+                        }
+                        
+                        Picker("First Lora", selection: nameBinding) {
+                            Text("First Lora").tag("n/a")
+                            ForEach(viewModel.loras, id:\.self) { lora in
+                                Text(lora.name).tag(lora.name)
+                            }
+                        }
+                        
+                        let minBinding = Binding {
+                            viewModel.firstBracketLora.bracketMin
+                        } set: { value in
+                            viewModel.firstBracketLora.bracketMin = value
+                        }
+
+                        Text("Min")
+                        Picker("Min", selection: minBinding) {
+                            ForEach(-5..<8) { value in
+                                let weight = Double(value) / 10.0
+                                Text(formatted(weight)).tag(weight)
+                            }
+                        }
+                        
+                        let maxBinding = Binding {
+                            viewModel.firstBracketLora.bracketMax
+                        } set: { value in
+                            viewModel.firstBracketLora.bracketMax = value
+                        }
+
+                        Text("Max")
+                        Picker("Max", selection: maxBinding) {
+                            ForEach(5..<12) { value in
+                                let weight = Double(value) / 10.0
+                                Text(formatted(weight)).tag(weight)
+                            }
+                        }
+                        
+                        let stepBinding = Binding {
+                            viewModel.firstBracketLora.bracketSteps
+                        } set: { value in
+                            viewModel.firstBracketLora.bracketSteps = value
+                        }
+
+                        Text("Steps")
+                        Picker("Steps", selection: stepBinding) {
+                            ForEach(3..<6) { value in
+                                Text(value.description).tag(value)
+                            }
                         }
                     }
                     .disabled(viewModel.loading)
                     
-                    Picker("third lora", selection:$viewModel.thirdBracketLora) {
-                        Text("pick third lora").tag(nil as GenerationService.LoraInvocation?)
-                        ForEach(viewModel.loras, id:\.self) { lora in
-                            Text(lora.name).tag(lora)
+                    HStack {
+                        
+                        let nameBinding = Binding {
+                            viewModel.secondBracketLora.name
+                        } set: { value in
+                            viewModel.secondBracketLora.name = value
+                        }
+                        
+                        Picker("Second Lora", selection: nameBinding) {
+                            Text("Second Lora").tag("n/a")
+                            ForEach(viewModel.loras, id:\.self) { lora in
+                                Text(lora.name).tag(lora.name)
+                            }
+                        }
+                        
+                        let minBinding = Binding {
+                            viewModel.secondBracketLora.bracketMin
+                        } set: { value in
+                            viewModel.secondBracketLora.bracketMin = value
+                        }
+
+                        Text("Min")
+                        Picker("Min", selection: minBinding) {
+                            ForEach(-5..<8) { value in
+                                let weight = Double(value) / 10.0
+                                Text(formatted(weight)).tag(weight)
+                            }
+                        }
+                        
+                        let maxBinding = Binding {
+                            viewModel.secondBracketLora.bracketMax
+                        } set: { value in
+                            viewModel.secondBracketLora.bracketMax = value
+                        }
+
+                        Text("Max")
+                        Picker("Max", selection: maxBinding) {
+                            ForEach(5..<12) { value in
+                                let weight = Double(value) / 10.0
+                                Text(formatted(weight)).tag(weight)
+                            }
+                        }
+                        
+                        let stepBinding = Binding {
+                            viewModel.secondBracketLora.bracketSteps
+                        } set: { value in
+                            viewModel.secondBracketLora.bracketSteps = value
+                        }
+
+                        Text("Steps")
+                        Picker("Steps", selection: stepBinding) {
+                            ForEach(3..<6) { value in
+                                Text(value.description).tag(value)
+                            }
+                        }
+                    }
+                    .disabled(viewModel.loading)
+                    
+                    HStack {
+                        
+                        let nameBinding = Binding {
+                            viewModel.thirdBracketLora.name
+                        } set: { value in
+                            viewModel.thirdBracketLora.name = value
+                        }
+                        
+                        Picker("Third Lora", selection: nameBinding) {
+                            Text("Third Lora").tag("n/a")
+                            ForEach(viewModel.loras, id:\.self) { lora in
+                                Text(lora.name).tag(lora.name)
+                            }
+                        }
+                        
+                        let minBinding = Binding {
+                            viewModel.thirdBracketLora.bracketMin
+                        } set: { value in
+                            viewModel.thirdBracketLora.bracketMin = value
+                        }
+
+                        Text("Min")
+                        Picker("Min", selection: minBinding) {
+                            ForEach(-5..<8) { value in
+                                let weight = Double(value) / 10.0
+                                Text(formatted(weight)).tag(weight)
+                            }
+                        }
+                        
+                        let maxBinding = Binding {
+                            viewModel.thirdBracketLora.bracketMax
+                        } set: { value in
+                            viewModel.thirdBracketLora.bracketMax = value
+                        }
+
+                        Text("Max")
+                        Picker("Max", selection: maxBinding) {
+                            ForEach(5..<12) { value in
+                                let weight = Double(value) / 10.0
+                                Text(formatted(weight)).tag(weight)
+                            }
+                        }
+                        
+                        let stepBinding = Binding {
+                            viewModel.thirdBracketLora.bracketSteps
+                        } set: { value in
+                            viewModel.thirdBracketLora.bracketSteps = value
+                        }
+
+                        Text("Steps")
+                        Picker("Steps", selection: stepBinding) {
+                            Text("n/a").tag(0)
+                            ForEach(3..<6) { value in
+                                Text(value.description).tag(value)
+                            }
                         }
                     }
                     .disabled(viewModel.loading)
@@ -125,53 +272,15 @@ struct BracketView: View {
                     .padding()
                     .foregroundColor(.green)
                     
-                    HStack {
-                        Text("Min Weight")
-                        Picker("min", selection: $viewModel.bracketMin) {
-                            ForEach(-10..<5) { value in
-                                let weight = Double(value) / 10.0
-                                Text(weight.formatted(.number.precision(.fractionLength(0...2)))).tag(weight)
-                            }
-                        }
-                        .disabled(viewModel.loading)
-
-                    }
-                    
-                    HStack {
-                        Text("Max Weight")
-                        Picker("max", selection: $viewModel.bracketMax) {
-                            ForEach(6..<13) { value in
-                                let weight = Double(value) / 10.0
-                                Text(weight.formatted(.number.precision(.fractionLength(0...2)))).tag(weight)
-                            }
-                        }
-                        .disabled(viewModel.loading)
-                    }
-                    
-                    HStack {
-                        Text("Steps")
-                        Picker("steps", selection: $viewModel.bracketSteps) {
-                            ForEach(3..<6) { value in
-                                Text("\(value)").tag(value)
-                            }
-                        }
-                        .disabled(viewModel.loading)
-                    }
-                    
-                    HStack {
-                        Text("Seed")
-                        Text("\(viewModel.seed)")
-                    }
+                    Text(viewModel.prompt)
                 }
                 Spacer()
                 
-                if viewModel.brackets.count == 0 {
-
-                } else {
+                if viewModel.brackets.count > 0  {
                     ScrollView {
-                        let columns: [GridItem] = (0..<viewModel.bracketSteps).map {_ in return GridItem(.flexible())}
+                        let columns: [GridItem] = (0..<4).map {_ in return GridItem(.flexible())}
                         LazyVGrid(columns: columns) {
-                            ForEach(viewModel.brackets) { bracket in
+                            ForEach(viewModel.brackets, id: \.self) { bracket in
                                 
                                 ZStack {
                                     Image(uiImage: bracket.result)
@@ -182,9 +291,9 @@ struct BracketView: View {
                                         Spacer()
                                         
                                         if let third = bracket.thirdLora {
-                                            Text("\(bracket.firstLora.weight.formatted(.number.precision(.fractionLength(0...2)))) |  \(bracket.secondLora.weight.formatted(.number.precision(.fractionLength(0...2)))) | \(third.weight.formatted(.number.precision(.fractionLength(0...2))))")
+                                            Text("\(formatted(bracket.firstLora.weight)) |  \(formatted(bracket.secondLora.weight)) | \(formatted(third.weight))")
                                         } else {
-                                            Text("\(bracket.firstLora.weight.formatted(.number.precision(.fractionLength(0...2)))) |  \(bracket.secondLora.weight.formatted(.number.precision(.fractionLength(0...2))))")
+                                            Text("\(formatted(bracket.firstLora.weight)) |  \(formatted(bracket.secondLora.weight))")
                                         }
 
                                     }
@@ -199,6 +308,10 @@ struct BracketView: View {
             }
         }
     }
+    
+    private func formatted(_ input: Double) -> String {
+        return input.formatted(.number.precision(.fractionLength(0...2)))
+    }
 }
 
 #Preview {
@@ -208,8 +321,17 @@ struct BracketView: View {
     Task {
         service.getModels()
     }
+    let view = BracketView(flowState: flowState, generationService: service, history: service.imageHistory.first!)
+    for _ in 0..<9 {
+        view.viewModel.brackets.append(
+            GenerationService.Bracket.init(firstLora: GenerationService.LoraInvocation.init(name: "first lora", weight: Double.random(in: 0.0...1.0)),
+                                           secondLora: GenerationService.LoraInvocation.init(name: "second lora", weight: Double.random(in: 0.0...1.0)),
+                                           thirdLora: nil,
+                                           result: UIImage(named: "lighthouse")!)
+        )
+    }
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {
-        BracketView(flowState: flowState, generationService: service, history: service.imageHistory.first!)
+        return view
     }
 }
 

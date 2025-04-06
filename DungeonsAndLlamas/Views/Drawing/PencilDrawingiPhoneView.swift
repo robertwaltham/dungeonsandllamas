@@ -212,6 +212,18 @@ struct PencilDrawingiPhoneView: View {
         }
         viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: imageSize)
     }
+    
+    func bracket() {
+        guard !viewModel.loading else {
+            return
+        }
+        
+        guard let history = generationService.lastHistory else {
+            return
+        }
+        
+        flowState.nextLink(.bracket(history: history))
+    }
 }
 
 

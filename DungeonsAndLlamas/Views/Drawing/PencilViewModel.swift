@@ -60,13 +60,9 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     }
     
     var brackets: [GenerationService.Bracket] = []
-    var firstBracketLora: GenerationService.LoraInvocation?
-    var secondBracketLora: GenerationService.LoraInvocation?
-    var thirdBracketLora: GenerationService.LoraInvocation?
-
-    var bracketSteps: Int = 3
-    var bracketMin: Double = 0.0
-    var bracketMax: Double = 1.0
+    var firstBracketLora = GenerationService.LoraInvocation(name: "n/a", weight: 0, bracketSteps: 3, bracketMin: 0.0, bracketMax: 1.0)
+    var secondBracketLora = GenerationService.LoraInvocation(name: "n/a", weight: 0, bracketSteps: 3, bracketMin: 0.0, bracketMax: 1.0)
+    var thirdBracketLora = GenerationService.LoraInvocation(name: "n/a", weight: 0, bracketSteps: 0, bracketMin: 0.0, bracketMax: 1.0)
     
     var saved: Bool = false
     
@@ -87,14 +83,20 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         session = history.session
         sequence = history.sequence
 
+        var loadedCount = 0
         for i in 0..<loras.count {
             loras[i].weight = history.loras.first { lora in lora.name == loras[i].name }?.weight ?? 0
             
             if loras[i].weight > 0 {
-                if firstBracketLora == nil {
-                    firstBracketLora = loras[i]
-                } else if secondBracketLora == nil {
-                    secondBracketLora = loras[i]
+                if loadedCount == 0 {
+                    firstBracketLora.name = loras[i].name
+                    loadedCount += 1;
+                } else if loadedCount == 1 {
+                    secondBracketLora.name = loras[i].name
+                    loadedCount += 1;
+                } else if loadedCount == 2 {
+                    thirdBracketLora.name = loras[i].name
+                    loadedCount += 1;
                 }
             }
         }
@@ -126,16 +128,20 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
     }
     
+    func bracketCount() -> Int {
+        return firstBracketLora.bracketSteps * secondBracketLora.bracketSteps * (thirdBracketLora.bracketSteps > 0 ? thirdBracketLora.bracketSteps : 1)
+    }
+    
     @MainActor
     func generateBrackets(progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
         brackets = []
         guard let input else {
             return
         }
-        guard let firstBracketLora else {
+        guard firstBracketLora.bracketSteps > 0 else {
             return
         }
-        guard let secondBracketLora else {
+        guard secondBracketLora.bracketSteps > 0 else {
             return
         }
         print("generating")
@@ -160,7 +166,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
 
         Task.init {
-            for try await obj in generationService.bracketImage(input: input, prompt: prompt, negativePrompt: negative, seed: seed, firstLora: firstBracketLora, secondLora: secondBracketLora, thirdLora: thirdBracketLora, bracketSteps: bracketSteps, maxWeight: bracketMax, minWeight: bracketMin, loading: loading, progress: progress) {
+            for try await obj in generationService.bracketImage(input: input, prompt: prompt, negativePrompt: negative, seed: seed, firstLora: firstBracketLora, secondLora: secondBracketLora, thirdLora: thirdBracketLora, loading: loading, progress: progress) {
                 brackets.append(obj)
             }
             loading.wrappedValue = false
@@ -168,3 +174,4 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
     }
 }
+

@@ -197,10 +197,10 @@ struct PencilDrawingiPadView: View {
                         }
                         .foregroundColor(.green)
                         
-                        HStack {
-                            Text("\(viewModel.sequence)")
-                        }
-                        .foregroundColor(.black)
+//                        HStack {
+//                            Text("\(viewModel.sequence)")
+//                        }
+//                        .foregroundColor(.black)
 
                     }
                     .padding()
@@ -248,6 +248,19 @@ struct PencilDrawingiPadView: View {
                             .foregroundColor(.purple)
                     }
                     
+                    Button {
+                        bracket()
+                    } label: {
+                        
+                        HStack {
+                            Label("Bracket", systemImage: "list.bullet.clipboard")
+                        }
+                        .foregroundColor(.yellow)
+
+                    }
+                    .disabled(viewModel.loading)
+                    .padding()
+                    
                     
                     Button {
                         viewModel.clear()
@@ -268,6 +281,18 @@ struct PencilDrawingiPadView: View {
             }
             .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
         }
+    }
+    
+    func bracket() {
+        guard !viewModel.loading else {
+            return
+        }
+        
+        guard let history = generationService.lastHistory else {
+            return
+        }
+        
+        flowState.nextLink(.bracket(history: history))
     }
 }
 
