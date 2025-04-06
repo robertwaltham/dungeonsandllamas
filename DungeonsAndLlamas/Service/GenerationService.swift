@@ -428,7 +428,8 @@ class GenerationService {
                       secondLora: LoraInvocation,
                       thirdLora: LoraInvocation,
                       loading: Binding<Bool>,
-                      progress: Binding<StableDiffusionClient.Progress?>) -> AsyncThrowingStream<Bracket, Error> {
+                      progress: Binding<StableDiffusionClient.Progress?>,
+                      cancel: Binding<Bool>) -> AsyncThrowingStream<Bracket, Error> {
 
         guard let base64Image = input.pngData()?.base64EncodedString() else {
             fatalError("can't convert image")
@@ -438,7 +439,7 @@ class GenerationService {
         sdOptions.seed = seed
         
         loading.wrappedValue = true
-
+        cancel.wrappedValue = false
         
         return AsyncThrowingStream<Bracket, Error> { continuation in
             
@@ -485,6 +486,11 @@ class GenerationService {
                                     if count >= target {
                                         continuation.finish()
                                     }
+                                    if cancel.wrappedValue {
+                                        print("cancelled")
+                                        continuation.finish()
+                                        return
+                                    }
                                 }
                                 
                             } else {
@@ -507,6 +513,11 @@ class GenerationService {
                                 count += 1
                                 if count >= target {
                                     continuation.finish()
+                                }
+                                if cancel.wrappedValue {
+                                    print("cancelled")
+                                    continuation.finish()
+                                    return
                                 }
                             }
 

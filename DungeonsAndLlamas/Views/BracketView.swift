@@ -14,6 +14,7 @@ struct BracketView: View {
     @State var viewModel: PencilViewModel
     @State var generationService: GenerationService
     @State private var showingPopover = false
+    @State var cancel = true
     
     let imageSize: CGFloat = 200
     
@@ -271,16 +272,29 @@ struct BracketView: View {
                     .disabled(viewModel.loading)
                 }
                 HStack {
-                    Button("Generate Brackets") {
-                        guard !viewModel.loading else {
-                            return
+                    
+                    VStack {
+                        if !cancel {
+                            Button("Cancel") {
+                                cancel = true
+                            }
+                            .buttonStyle(.bordered)
+                            .padding()
+                            .foregroundColor(.red)
+                        } else {
+                            Button("Generate Brackets") {
+                                guard !viewModel.loading else {
+                                    return
+                                }
+                                viewModel.generateBrackets(progress: $viewModel.progress, loading: $viewModel.loading, cancel: $cancel)
+                            }
+                            .disabled(viewModel.loading)
+                            .buttonStyle(.bordered)
+                            .padding()
+                            .foregroundColor(.green)
                         }
-                        viewModel.generateBrackets(progress: $viewModel.progress, loading: $viewModel.loading)
-                    }
-                    .disabled(viewModel.loading)
-                    .buttonStyle(.bordered)
-                    .padding()
-                    .foregroundColor(.green)
+
+                    }.frame(minWidth: 225)
                     
                     Text(viewModel.prompt)
                 }

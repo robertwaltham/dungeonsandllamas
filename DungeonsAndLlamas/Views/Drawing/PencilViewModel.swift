@@ -167,7 +167,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     }
     
     @MainActor
-    func generateBrackets(progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
+    func generateBrackets(progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>, cancel: Binding<Bool>) {
         guard let input else {
             return
         }
@@ -181,6 +181,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         brackets = []
         print("generating")
         loading.wrappedValue = true
+        cancel.wrappedValue = false
         
         Task.detached {
             // TODO: inherit known values from options
@@ -197,7 +198,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
 
         Task.init {
-            for try await obj in generationService.bracketImage(input: input, prompt: prompt, negativePrompt: negative, seed: seed, firstLora: firstBracketLora, secondLora: secondBracketLora, thirdLora: thirdBracketLora, loading: loading, progress: progress) {
+            for try await obj in generationService.bracketImage(input: input, prompt: prompt, negativePrompt: negative, seed: seed, firstLora: firstBracketLora, secondLora: secondBracketLora, thirdLora: thirdBracketLora, loading: loading, progress: progress, cancel: cancel) {
                 brackets.append(obj)
             }
             loading.wrappedValue = false
