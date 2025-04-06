@@ -65,6 +65,8 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     var thirdBracketLora = GenerationService.LoraInvocation(name: "n/a", weight: 0, bracketSteps: 0, bracketMin: 0.0, bracketMax: 1.0)
     
     var saved: Bool = false
+    var loadedHistory: ImageHistoryModel?
+    var savedBrackets = [String]()
     
     @MainActor func clear() {
         drawing = nil
@@ -90,12 +92,15 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
             if loras[i].weight > 0 {
                 if loadedCount == 0 {
                     firstBracketLora.name = loras[i].name
+                    firstBracketLora.activation = loras[i].activation
                     loadedCount += 1;
                 } else if loadedCount == 1 {
                     secondBracketLora.name = loras[i].name
+                    secondBracketLora.activation = loras[i].activation
                     loadedCount += 1;
                 } else if loadedCount == 2 {
                     thirdBracketLora.name = loras[i].name
+                    thirdBracketLora.activation = loras[i].activation
                     loadedCount += 1;
                 }
             }
@@ -106,6 +111,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         } ?? StableDiffusionClient.defaultSampler
         generationService.steps = history.steps
         generationService.imageSize = history.size
+        loadedHistory = history
     }
     
     @MainActor
@@ -133,17 +139,46 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     }
     
     @MainActor
+    func save(bracket: GenerationService.Bracket) {
+        loadedHistory?.sequence += 1 // TODO: make database own sequences
+        
+        guard let loadedHistory else {
+            return
+        }
+        
+        guard !savedBrackets.contains(bracket.id) else {
+            return
+        }
+        
+        var newHistory = loadedHistory
+        newHistory.id = bracket.id
+        newHistory.outputFilePath = generationService.fileService.save(image: bracket.result)
+        newHistory.loras = []
+        newHistory.loras.append(LoraHistoryModel(id: NSUUID().uuidString, name: bracket.firstLora.name, weight: bracket.firstLora.weight, historyModelId: newHistory.id))
+        newHistory.loras.append(LoraHistoryModel(id: NSUUID().uuidString, name: bracket.secondLora.name, weight: bracket.secondLora.weight, historyModelId: newHistory.id))
+        if let thirdLora = bracket.thirdLora {
+            newHistory.loras.append(LoraHistoryModel(id: NSUUID().uuidString, name: thirdLora.name, weight: thirdLora.weight, historyModelId: newHistory.id))
+        }
+        
+        generationService.db.save(history: newHistory)
+        generationService.imageHistory.append(newHistory)
+        savedBrackets.append(bracket.id)
+        print("saved")
+    }
+    
+    @MainActor
     func generateBrackets(progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>) {
-        brackets = []
         guard let input else {
             return
         }
-        guard firstBracketLora.bracketSteps > 0 else {
+        guard firstBracketLora.bracketSteps > 0 && firstBracketLora.name !=  "n/a" else {
             return
         }
-        guard secondBracketLora.bracketSteps > 0 else {
+        guard secondBracketLora.bracketSteps > 0 && secondBracketLora.name != "n/a" else {
             return
         }
+        
+        brackets = []
         print("generating")
         loading.wrappedValue = true
         
@@ -153,10 +188,6 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
             do {
                 while loading.wrappedValue == true {
                     progress.wrappedValue = try await self.generationService.stableDiffusionClient.imageGenerationProgress()
-                    
-                    if let prog = progress.wrappedValue {
-                        print("eta:\(prog.etaRelative) count:\(prog.state.jobCount)")
-                    }
 
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }

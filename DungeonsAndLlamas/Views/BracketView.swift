@@ -13,6 +13,7 @@ struct BracketView: View {
     @State var flowState: ContentFlowState
     @State var viewModel: PencilViewModel
     @State var generationService: GenerationService
+    @State private var showingPopover = false
     
     let imageSize: CGFloat = 200
     
@@ -27,7 +28,7 @@ struct BracketView: View {
     var body: some View {
         ZStack {
             GradientView(type: .greyscale)
-            VStack {
+            ScrollView {
                 ZStack {
                     HStack {
                         ZStack {
@@ -91,6 +92,9 @@ struct BracketView: View {
                             viewModel.firstBracketLora.name
                         } set: { value in
                             viewModel.firstBracketLora.name = value
+                            viewModel.firstBracketLora.activation = viewModel.loras.first(where: { lora in
+                                lora.name == value
+                            })?.activation // TODO: fix this stupid garbage
                         }
                         
                         Picker("First Lora", selection: nameBinding) {
@@ -149,6 +153,9 @@ struct BracketView: View {
                             viewModel.secondBracketLora.name
                         } set: { value in
                             viewModel.secondBracketLora.name = value
+                            viewModel.secondBracketLora.activation = viewModel.loras.first(where: { lora in
+                                lora.name == value
+                            })?.activation // TODO: fix this stupid garbage
                         }
                         
                         Picker("Second Lora", selection: nameBinding) {
@@ -207,6 +214,9 @@ struct BracketView: View {
                             viewModel.thirdBracketLora.name
                         } set: { value in
                             viewModel.thirdBracketLora.name = value
+                            viewModel.thirdBracketLora.activation = viewModel.loras.first(where: { lora in
+                                lora.name == value
+                            })?.activation // TODO: fix this stupid garbage
                         }
                         
                         Picker("Third Lora", selection: nameBinding) {
@@ -276,32 +286,44 @@ struct BracketView: View {
                 }
                 Spacer()
                 
+
                 if viewModel.brackets.count > 0  {
-                    ScrollView {
-                        let columns: [GridItem] = (0..<4).map {_ in return GridItem(.flexible())}
-                        LazyVGrid(columns: columns) {
-                            ForEach(viewModel.brackets, id: \.self) { bracket in
+                    let columns: [GridItem] = (0..<4).map {_ in return GridItem(.flexible())}
+                    LazyVGrid(columns: columns) {
+                        ForEach(viewModel.brackets, id: \.self) { bracket in
+                            ZStack {
+                                Image(uiImage: bracket.result)
+                                    .resizable()
+                                    .scaledToFit()
                                 
-                                ZStack {
-                                    Image(uiImage: bracket.result)
-                                        .resizable()
-                                        .scaledToFit()
+                                VStack {
                                     
-                                    VStack {
-                                        Spacer()
-                                        
-                                        if let third = bracket.thirdLora {
-                                            Text("\(formatted(bracket.firstLora.weight)) |  \(formatted(bracket.secondLora.weight)) | \(formatted(third.weight))")
-                                        } else {
-                                            Text("\(formatted(bracket.firstLora.weight)) |  \(formatted(bracket.secondLora.weight))")
+                                    if viewModel.savedBrackets.contains(bracket.id) {
+                                        Text("Saved!")
+                                            .foregroundColor(.yellow)
+                                    } else {
+                                        Button {
+                                            viewModel.save(bracket: bracket)
+                                            
+                                        } label: {
+                                            Label("Save", systemImage: "square.and.arrow.down")
                                         }
-
+                                        .foregroundColor(.yellow)
                                     }
-                                }
-                                .shadow(radius: 2)
-                                .frame(maxHeight: 320)
 
+                                    
+                                    Spacer()
+                                    
+                                    if let third = bracket.thirdLora {
+                                        Text("\(formatted(bracket.firstLora.weight)) |  \(formatted(bracket.secondLora.weight)) | \(formatted(third.weight))")
+                                    } else {
+                                        Text("\(formatted(bracket.firstLora.weight)) |  \(formatted(bracket.secondLora.weight))")
+                                    }
+                                    
+                                }
                             }
+                            .shadow(radius: 2)
+                            .frame(maxHeight: 320)
                         }
                     }
                 }
@@ -322,11 +344,13 @@ struct BracketView: View {
         service.getModels()
     }
     let view = BracketView(flowState: flowState, generationService: service, history: service.imageHistory.first!)
-    for _ in 0..<9 {
+    for _ in 0..<27 {
         view.viewModel.brackets.append(
             GenerationService.Bracket.init(firstLora: GenerationService.LoraInvocation.init(name: "first lora", weight: Double.random(in: 0.0...1.0)),
                                            secondLora: GenerationService.LoraInvocation.init(name: "second lora", weight: Double.random(in: 0.0...1.0)),
                                            thirdLora: nil,
+                                           start: Date.now,
+                                           end: Date.now,
                                            result: UIImage(named: "lighthouse")!)
         )
     }

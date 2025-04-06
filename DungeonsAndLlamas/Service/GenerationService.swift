@@ -411,14 +411,13 @@ class GenerationService {
     }
     
     struct Bracket: Identifiable, Hashable {
+        let id = NSUUID().uuidString
         let firstLora: LoraInvocation
         let secondLora: LoraInvocation
         let thirdLora: LoraInvocation?
+        let start: Date
+        let end: Date
         let result: UIImage
-        
-        var id: String {
-            return result.hash.description
-        }
     }
     
     func bracketImage(input: UIImage,
@@ -457,6 +456,8 @@ class GenerationService {
 
                         var options = sdOptions
                         do {
+                            let start = Date.now
+
                             if thirdLora.bracketSteps > 0 {
                                 for k in 0..<thirdLora.bracketSteps {
                                     var thirdLoraInvocation = thirdLora
@@ -470,7 +471,14 @@ class GenerationService {
                                     if let string = strings.first,
                                        let data = Data(base64Encoded: string),
                                        let image = UIImage(data: data) {
-                                        continuation.yield(Bracket(firstLora: firstLoraInvocation, secondLora: secondLoraInvocation, thirdLora: thirdLoraInvocation, result: image))
+                                        continuation.yield(
+                                            Bracket(firstLora: firstLoraInvocation,
+                                                    secondLora: secondLoraInvocation,
+                                                    thirdLora: thirdLoraInvocation,
+                                                    start: start,
+                                                    end: Date.now,
+                                                    result: image)
+                                        )
                                     }
                                     
                                     count += 1
@@ -487,7 +495,13 @@ class GenerationService {
                                 if let string = strings.first,
                                    let data = Data(base64Encoded: string),
                                    let image = UIImage(data: data) {
-                                    continuation.yield(Bracket(firstLora: firstLoraInvocation, secondLora: secondLoraInvocation, thirdLora: nil, result: image))
+                                    continuation.yield(
+                                        Bracket(firstLora: firstLoraInvocation,
+                                                secondLora: secondLoraInvocation,
+                                                thirdLora: nil,
+                                                start: start,
+                                                end: Date.now,
+                                                result: image))
                                 }
                                 
                                 count += 1

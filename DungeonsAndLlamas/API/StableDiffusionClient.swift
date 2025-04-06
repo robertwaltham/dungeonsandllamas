@@ -132,7 +132,7 @@ actor StableDiffusionClient {
 //                Hyper-SD15-2steps-lora
 //                Hyper-SD15-8steps-lora
             case "Ink scenery":
-                return "white background, scenery, ink, mountains, water, trees"
+                return "ink"
 //                more_details
 //                pixel-art-xl-v1.1
             case "ral-frctlgmtry-sd15":
