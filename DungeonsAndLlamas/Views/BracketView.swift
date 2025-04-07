@@ -78,7 +78,7 @@ struct BracketView: View {
                             Spacer()
                             HStack {
                                 ProgressView(value: viewModel.progress?.progress ?? 0)
-                                Text("\(viewModel.brackets.count) / \(viewModel.bracketCount())")
+                                Text("\(viewModel.bracketResult.count) / \(viewModel.bracketCount())")
                             }
                             .padding()
                             .frame(width: 400)
@@ -301,10 +301,10 @@ struct BracketView: View {
                 Spacer()
                 
 
-                if viewModel.brackets.count > 0  {
+                if viewModel.bracketResult.count > 0  {
                     let columns: [GridItem] = (0..<4).map {_ in return GridItem(.flexible())}
                     LazyVGrid(columns: columns) {
-                        ForEach(viewModel.brackets, id: \.self) { bracket in
+                        ForEach(viewModel.bracketResult, id: \.self) { bracket in
                             ZStack {
                                 Image(uiImage: bracket.result)
                                     .resizable()
@@ -312,7 +312,7 @@ struct BracketView: View {
                                 
                                 VStack {
                                     
-                                    if viewModel.savedBrackets.contains(bracket.id) {
+                                    if viewModel.savedResults.contains(bracket.id) {
                                         Text("Saved!")
                                             .foregroundColor(.yellow)
                                     } else {
@@ -359,7 +359,7 @@ struct BracketView: View {
     }
     let view = BracketView(flowState: flowState, generationService: service, history: service.imageHistory.first!)
     for _ in 0..<27 {
-        view.viewModel.brackets.append(
+        view.viewModel.bracketResult.append(
             GenerationService.Bracket.init(firstLora: GenerationService.LoraInvocation.init(name: "first lora", weight: Double.random(in: 0.0...1.0)),
                                            secondLora: GenerationService.LoraInvocation.init(name: "second lora", weight: Double.random(in: 0.0...1.0)),
                                            thirdLora: nil,

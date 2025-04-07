@@ -59,14 +59,18 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         seed = Int.random(in: 0...Int(Int16.max))
     }
     
-    var brackets: [GenerationService.Bracket] = []
+    var bracketResult: [GenerationService.Bracket] = []
     var firstBracketLora = GenerationService.LoraInvocation(name: "n/a", weight: 0, bracketSteps: 3, bracketMin: 0.0, bracketMax: 1.0)
     var secondBracketLora = GenerationService.LoraInvocation(name: "n/a", weight: 0, bracketSteps: 3, bracketMin: 0.0, bracketMax: 1.0)
     var thirdBracketLora = GenerationService.LoraInvocation(name: "n/a", weight: 0, bracketSteps: 0, bracketMin: 0.0, bracketMax: 1.0)
+    var savedResults = [String]()
+    var stepResult: [GenerationService.Step] = []
+    var stepStart: Int = 20
+    var stepEnd: Int = 23
+
     
     var saved: Bool = false
     var loadedHistory: ImageHistoryModel?
-    var savedBrackets = [String]()
     
     @MainActor func clear() {
         drawing = nil
@@ -146,7 +150,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
             return
         }
         
-        guard !savedBrackets.contains(bracket.id) else {
+        guard !savedResults.contains(bracket.id) else {
             return
         }
         
@@ -162,8 +166,83 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         
         generationService.db.save(history: newHistory)
         generationService.imageHistory.append(newHistory)
-        savedBrackets.append(bracket.id)
+        savedResults.append(bracket.id)
         print("saved")
+    }
+    
+    @MainActor
+    func save(stepResult: GenerationService.Step) {
+        loadedHistory?.sequence += 1 // TODO: make database own sequences
+        
+        guard let loadedHistory else {
+            return
+        }
+        
+        guard !savedResults.contains(stepResult.id) else {
+            return
+        }
+        
+        var newHistory = loadedHistory
+        newHistory.id = stepResult.id
+        newHistory.outputFilePath = generationService.fileService.save(image: stepResult.result)
+        newHistory.steps = stepResult.steps
+        generationService.db.save(history: newHistory)
+        generationService.imageHistory.append(newHistory)
+        savedResults.append(stepResult.id)
+        print("saved")
+    }
+    
+    @MainActor
+    func generateSteps(progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>, cancel: Binding<Bool>) {
+        
+        guard let input else {
+            print("no input")
+            return
+        }
+        
+        guard let loadedHistory else {
+            print("no history")
+            return
+        }
+        
+//        guard stepStart < stepEnd else {
+//            return
+//        }
+        stepResult = []
+        print("generating")
+        loading.wrappedValue = true
+        cancel.wrappedValue = false
+        
+        Task.detached {
+            // TODO: inherit known values from options
+            progress.wrappedValue = StableDiffusionClient.Progress(progress: 0, etaRelative: 0, state: StableDiffusionClient.Progress.State.initial())
+            do {
+                while loading.wrappedValue == true {
+                    progress.wrappedValue = try await self.generationService.stableDiffusionClient.imageGenerationProgress()
+
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                }
+            } catch {
+                print(error)
+            }
+        }
+        
+        Task.init {
+            for try await obj in generationService.stepImage(input: input,
+                                                             stepStart: stepStart,
+                                                             stepEnd: stepEnd,
+                                                             history: loadedHistory,
+                                                             loading: loading,
+                                                             progress: progress,
+                                                             cancel: cancel) {
+                
+                stepResult.append(obj)
+            }
+            loading.wrappedValue = false
+            cancel.wrappedValue = true
+            print("finished")
+        }
+        
     }
     
     @MainActor
@@ -178,7 +257,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
             return
         }
         
-        brackets = []
+        bracketResult = []
         print("generating")
         loading.wrappedValue = true
         cancel.wrappedValue = false
@@ -198,10 +277,21 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
 
         Task.init {
-            for try await obj in generationService.bracketImage(input: input, prompt: prompt, negativePrompt: negative, seed: seed, firstLora: firstBracketLora, secondLora: secondBracketLora, thirdLora: thirdBracketLora, loading: loading, progress: progress, cancel: cancel) {
-                brackets.append(obj)
+            for try await obj in generationService.bracketImage(input: input,
+                                                                prompt: prompt,
+                                                                negativePrompt: negative,
+                                                                seed: seed,
+                                                                firstLora: firstBracketLora,
+                                                                secondLora: secondBracketLora,
+                                                                thirdLora: thirdBracketLora,
+                                                                loading: loading,
+                                                                progress: progress,
+                                                                cancel: cancel) {
+                bracketResult.append(obj)
             }
             loading.wrappedValue = false
+            cancel.wrappedValue = true
+
             print("finished")
         }
     }

@@ -68,6 +68,8 @@ extension ContentFlowCoordinator {
                 BracketView(flowState: flowState, generationService: generationService, history: history)
             case .lora(lora: let lora):
                 LoraView(lora: lora)
+            case .step(history: let history):
+                StepView(flowState: flowState, generationService: generationService, history: history)
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
@@ -99,7 +101,8 @@ extension ContentFlowCoordinator {
                 BracketView(flowState: flowState, generationService: generationService, history: history)
             case .lora(lora: let lora):
                 LoraView(lora: lora)
-                
+            case .step(history: let history):
+                StepView(flowState: flowState, generationService: generationService, history: history)
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)

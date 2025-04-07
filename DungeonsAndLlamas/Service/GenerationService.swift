@@ -420,6 +420,77 @@ class GenerationService {
         let result: UIImage
     }
     
+    struct Step: Identifiable, Hashable {
+        let id = NSUUID().uuidString
+        let steps: Int
+        let start: Date
+        let end: Date
+        let result: UIImage
+    }
+    
+    func stepImage(input: UIImage,
+                   stepStart: Int,
+                   stepEnd: Int,
+                   history: ImageHistoryModel,
+                   loading: Binding<Bool>,
+                   progress: Binding<StableDiffusionClient.Progress?>,
+                   cancel: Binding<Bool>) -> AsyncThrowingStream<Step, Error>  {
+        
+        guard let base64Image = input.pngData()?.base64EncodedString() else {
+            fatalError("can't convert image")
+        }
+        
+        var sdOptions = StableDiffusionClient.GenerationOptions(prompt: history.prompt,
+                                                                negativePrompt: history.negativePrompt ?? "",
+                                                                size: imageSize,
+                                                                steps: steps,
+                                                                sampler: selectedSampler,
+                                                                initImages: [base64Image])
+        sdOptions.seed = history.seed
+        
+        if history.loras.count > 0 {
+            sdOptions.prompt += " "
+            sdOptions.prompt += history.loras.map { lora in
+                promptAdd(lora: LoraInvocation(name: lora.name, weight: lora.weight))
+            }.joined(separator: " ")
+        }
+        
+        print(sdOptions.prompt)
+        
+        loading.wrappedValue = true
+        cancel.wrappedValue = false
+        
+        return AsyncThrowingStream<Step, Error> { continuation in
+            
+            Task.init {
+                
+                for i in stepStart...stepEnd {
+                    
+                    let start = Date.now
+                    sdOptions.steps = i
+                    let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(sdOptions)
+                    let end = Date.now
+                    if let string = strings.first,
+                       let data = Data(base64Encoded: string),
+                       let image = UIImage(data: data) {
+                        continuation.yield(
+                            Step(steps: i, start: start, end: end, result: image)
+                        )
+                    }
+                    
+                    if cancel.wrappedValue {
+                        print("cancelled")
+                        continuation.finish()
+                        return
+                    }
+                }
+                
+                continuation.finish()
+                
+            }
+        }
+    }
+    
     func bracketImage(input: UIImage,
                       prompt: String,
                       negativePrompt: String,
