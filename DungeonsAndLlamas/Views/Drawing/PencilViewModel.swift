@@ -193,7 +193,10 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     }
     
     @MainActor
-    func generateSteps(progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>, cancel: Binding<Bool>) {
+    func generateSteps(progress: Binding<StableDiffusionClient.Progress?>,
+                       loading: Binding<Bool>,
+                       cancel: Binding<Bool>,
+                       iterateSamplers: Bool) {
         
         guard let input else {
             print("no input")
@@ -232,6 +235,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                                                              stepStart: stepStart,
                                                              stepEnd: stepEnd,
                                                              history: loadedHistory,
+                                                             iterateSampers: iterateSamplers,
                                                              loading: loading,
                                                              progress: progress,
                                                              cancel: cancel) {

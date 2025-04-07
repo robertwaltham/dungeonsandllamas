@@ -426,12 +426,14 @@ class GenerationService {
         let start: Date
         let end: Date
         let result: UIImage
+        let sampler: String
     }
     
     func stepImage(input: UIImage,
                    stepStart: Int,
                    stepEnd: Int,
                    history: ImageHistoryModel,
+                   iterateSampers: Bool,
                    loading: Binding<Bool>,
                    progress: Binding<StableDiffusionClient.Progress?>,
                    cancel: Binding<Bool>) -> AsyncThrowingStream<Step, Error>  {
@@ -464,26 +466,53 @@ class GenerationService {
             
             Task.init {
                 
-                for i in stepStart...stepEnd {
+                if iterateSampers {
                     
-                    let start = Date.now
-                    sdOptions.steps = i
-                    let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(sdOptions)
-                    let end = Date.now
-                    if let string = strings.first,
-                       let data = Data(base64Encoded: string),
-                       let image = UIImage(data: data) {
-                        continuation.yield(
-                            Step(steps: i, start: start, end: end, result: image)
-                        )
+                    for sampler in sdSamplers {
+                        for j in stepStart...stepEnd {
+                            let start = Date.now
+                            sdOptions.steps = j
+                            sdOptions.samplerName = sampler.name
+                            let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(sdOptions)
+                            let end = Date.now
+                            if let string = strings.first,
+                               let data = Data(base64Encoded: string),
+                               let image = UIImage(data: data) {
+                                continuation.yield(
+                                    Step(steps: j, start: start, end: end, result: image, sampler: sdOptions.samplerName)
+                                )
+                            }
+                            
+                            if cancel.wrappedValue {
+                                print("cancelled")
+                                continuation.finish()
+                                return
+                            }
+                        }
                     }
-                    
-                    if cancel.wrappedValue {
-                        print("cancelled")
-                        continuation.finish()
-                        return
+                } else {
+                    for i in stepStart...stepEnd {
+                        
+                        let start = Date.now
+                        sdOptions.steps = i
+                        let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(sdOptions)
+                        let end = Date.now
+                        if let string = strings.first,
+                           let data = Data(base64Encoded: string),
+                           let image = UIImage(data: data) {
+                            continuation.yield(
+                                Step(steps: i, start: start, end: end, result: image, sampler: selectedSampler.name)
+                            )
+                        }
+                        
+                        if cancel.wrappedValue {
+                            print("cancelled")
+                            continuation.finish()
+                            return
+                        }
                     }
                 }
+
                 
                 continuation.finish()
                 
