@@ -237,6 +237,8 @@ class GenerationService {
                 
                 sdLoras = try await stableDiffusionClient.loras()
                 
+//                try await stableDiffusionClient.scriptInfo()
+                
             } catch {
                 print(error)
             }
@@ -410,6 +412,124 @@ class GenerationService {
         }
     }
     
+    func inpaint(prompt: String,
+                 negativePrompt: String,
+                 loras: [LoraInvocation] = [],
+                 seed: Int,
+                 session: String,
+                 sequence: Int,
+                 maskDrawing: PKDrawing,
+                 input: UIImage,
+                 drawingScale: CGFloat,
+                 inpaintOptions: StableDiffusionClient.SoftInpaintingOptions,
+                 output: Binding<UIImage?>,
+                 progress: Binding<StableDiffusionClient.Progress?>,
+                 loading: Binding<Bool>) {
+        
+        loading.wrappedValue = true
+
+        var mask = maskDrawing.image(from: CGRect(x: 0, y: 0, width: drawingScale, height: drawingScale), scale: 1.0)
+        
+        if imageSize != 512 { // TODO: canvas size instead of resizing
+            mask = mask.resized(to: CGSize(width: imageSize, height: imageSize))
+        }
+        guard let base64Mask = mask.pngData()?.base64EncodedString() else {
+            return
+        }
+        
+        guard let base64Image = input.pngData()?.base64EncodedString() else {
+            return
+        }
+        
+        var sdOptions = StableDiffusionClient.GenerationOptions(prompt: prompt,
+                                                                negativePrompt: negativePrompt,
+                                                                size: imageSize,
+                                                                steps: steps,
+                                                                sampler: selectedSampler,
+                                                                initImages: [base64Image],
+                                                                mask: base64Mask,
+                                                                inPaintingOptions: inpaintOptions)
+        sdOptions.seed = seed
+        storedPrompt = prompt
+        
+        Task.init {
+            
+            if selectedSDModel == nil {
+                if modelTask == nil {
+                    getModels()
+                }
+                _ = await modelTask?.result // TODO: handle error case
+            }
+            
+            var fullPrompt = prompt
+            
+//            let id = NSUUID().uuidString
+//            var history = ImageHistoryModel(id: id,
+//                                            start: Date.now,
+//                                            prompt: fullPrompt,
+//                                            model: selectedSDModel?.modelName ?? "none",
+//                                            sampler: selectedSampler.name,
+//                                            steps: steps,
+//                                            size: imageSize,
+//                                            seed: seed,
+//                                            inputFilePath: fileService.save(image: image),
+//                                            drawingFilePath: fileService.save(drawing: drawing),
+//                                            session: session,
+//                                            sequence: sequence,
+//                                            loras: loras.map({ lora in
+//                LoraHistoryModel(id: NSUUID().uuidString,
+//                                 name: lora.name,
+//                                 weight: lora.weight,
+//                                 historyModelId: id)
+//            }))
+                        
+    
+            
+            if loras.count > 0 {
+                fullPrompt += " "
+                fullPrompt += loras.map { lora in
+                    promptAdd(lora: lora)
+                }.joined(separator: " ")
+            }
+
+            sdOptions.prompt = fullPrompt
+            
+            do {
+                let strings = try await stableDiffusionClient.generateBase64EncodedImages(sdOptions)
+                
+                if let string = strings.first,
+                   let data = Data(base64Encoded: string),
+                   let image = UIImage(data: data) {
+                    output.wrappedValue = image
+//                    history.end = Date.now
+//                    history.outputFilePath = fileService.save(image: image)
+                }
+            } catch {
+//                history.errorDescription = error.localizedDescription
+                print(error)
+            }
+            loading.wrappedValue = false
+
+//            db.save(history: history)
+//            imageHistory.append(history)
+//            lastHistory = history
+        }
+        
+        Task.init {
+            // TODO: inherit known values from options
+            progress.wrappedValue = StableDiffusionClient.Progress(progress: 0, etaRelative: 0, state: StableDiffusionClient.Progress.State.initial())
+            do {
+                while loading.wrappedValue == true {
+                    progress.wrappedValue = try await self.stableDiffusionClient.imageGenerationProgress()
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                }
+            } catch {
+                print(error)
+            }
+        }
+        
+    }
+    
     struct Bracket: Identifiable, Hashable {
         let id = NSUUID().uuidString
         let firstLora: LoraInvocation
@@ -427,6 +547,10 @@ class GenerationService {
         let end: Date
         let result: UIImage
         let sampler: String
+        
+        var formattedTime: String {
+            start.distance(to: end).formatted(.number.precision(.fractionLength(0...2)))
+        }
     }
     
     func stepImage(input: UIImage,
@@ -453,12 +577,13 @@ class GenerationService {
         if history.loras.count > 0 {
             sdOptions.prompt += " "
             sdOptions.prompt += history.loras.map { lora in
-                promptAdd(lora: LoraInvocation(name: lora.name, weight: lora.weight))
+                let activation = sdLoras.first(where: { loadedLora in
+                    loadedLora.name == lora.name // TODO: fix this garbage
+                })?.activation ?? ""
+                return promptAdd(lora: LoraInvocation(name: lora.name, weight: lora.weight, activation: activation))
             }.joined(separator: " ")
         }
-        
-        print(sdOptions.prompt)
-        
+                
         loading.wrappedValue = true
         cancel.wrappedValue = false
         
@@ -564,7 +689,6 @@ class GenerationService {
                                     var thirdLoraInvocation = thirdLora
                                     thirdLoraInvocation.calculateWeight(step: k)
 
-                                    print("\(firstLoraInvocation) \(secondLoraInvocation) \(thirdLoraInvocation)")
                                     options.prompt = "\(prompt) \(self.promptAdd(lora: firstLoraInvocation)) \(self.promptAdd(lora: secondLoraInvocation)) \(self.promptAdd(lora: thirdLoraInvocation)) "
                                     
                                     let strings = try await self.stableDiffusionClient.generateBase64EncodedImages(options)

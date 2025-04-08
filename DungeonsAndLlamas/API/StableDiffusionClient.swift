@@ -19,6 +19,7 @@ actor StableDiffusionClient {
         case loras = "/sd/sdapi/v1/loras"
         case samplers = "/sd/sdapi/v1/samplers"
         case interrogate = "/sd/sdapi/v1/interrogate"
+        case scriptInfo = "/sd/sdapi/v1/script-info"
     }
     
     private enum Method: String {
@@ -36,8 +37,19 @@ actor StableDiffusionClient {
         var seed: Int?
         var samplerName: String
         var initImages: [String]?
+        var mask: String?
+        var alwaysonScripts: [String: [String: [SoftInpaintingOptions]]]? = nil
         
-        init(prompt: String, negativePrompt: String = "", size: Int = 512, steps: Int = 20, batchSize: Int = 1, sampler: Sampler = StableDiffusionClient.defaultSampler, initImages: [String]? = nil) {
+        init(prompt: String,
+             negativePrompt: String = "",
+             size: Int = 512,
+             steps: Int = 20,
+             batchSize: Int = 1,
+             sampler: Sampler = StableDiffusionClient.defaultSampler,
+             initImages: [String]? = nil,
+             mask: String? = nil,
+             inPaintingOptions: SoftInpaintingOptions? = nil) {
+            
             self.prompt = prompt
             self.negativePrompt = negativePrompt
             self.width = size
@@ -46,6 +58,48 @@ actor StableDiffusionClient {
             self.batchSize = batchSize
             self.samplerName = sampler.name
             self.initImages = initImages
+            self.mask = mask
+            
+            if let inPaintingOptions {
+                alwaysonScripts = [
+                    "soft inpainting": [
+                        "args": [
+                            inPaintingOptions
+                        ]
+                    ]
+                ]
+            }
+        }
+    }
+    
+    /*
+     {
+         "Soft inpainting": True,
+         "Schedule bias": 1,
+         "Preservation strength": 0.5,
+         "Transition contrast boost": 4,
+         "Mask influence": 0,
+         "Difference threshold": 0.5,
+         "Difference contrast": 2,
+     },
+     */
+    struct SoftInpaintingOptions: Codable {
+        var softInpainting = true
+        var scheduleBias = 1.0 // 1-8 step 0.1
+        var preservationStrength = 0.5 // 1-8 step 0.05
+        var transitionContrastBoost = 4.0 // 1-32 step 0.5
+        var maskInfluence = 0.0 // 0-1 step 0.05
+        var differenceThreshold = 0.5 // 0-8 step 0.25
+        var differenceContrast = 2 // 0-8 step 0.25
+        
+        private enum CodingKeys : String, CodingKey {
+            case softInpainting = "Soft inpainting"
+            case scheduleBias = "Schedule bias"
+            case preservationStrength = "Preservation strength"
+            case transitionContrastBoost = "Transition contrast boost"
+            case maskInfluence = "Mask influence"
+            case differenceThreshold = "Difference threshold"
+            case differenceContrast = "Difference contrast"
         }
     }
 
@@ -214,6 +268,19 @@ actor StableDiffusionClient {
         }
         
         return httpResponse.statusCode == 200
+    }
+    
+    func scriptInfo() async throws {
+        let request = try StableDiffusionClient.request(endpoint: .scriptInfo, method: .get)
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)")
+        }
+        
+        print(String(data: data, encoding: .utf8) ?? "no data")
     }
     
     func generateBase64EncodedImages(_ options: GenerationOptions) async throws -> [String] {

@@ -14,6 +14,7 @@ struct SDHistoryView: View {
     @State var filter: String?
     @State var loraFilter: String?
     @State var saved: String?
+    @State var columns = 4
     
     @ViewBuilder
     @MainActor
@@ -45,6 +46,13 @@ struct SDHistoryView: View {
                         Text("Lora Filter").tag(nil as String?)
                         ForEach(generationService.lorasFromHistory(), id: \.self) { lora in
                             Text(lora).tag(lora as String?)
+                        }
+                    }
+                    
+                    Text("Cols")
+                    Picker("End", selection: $columns) {
+                        ForEach(3..<10) { i in
+                            Text("\(i)").tag(i)
                         }
                     }
                     Spacer()
@@ -143,6 +151,16 @@ struct SDHistoryView: View {
                                 }
                                 .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
                                 
+                                Button {
+                                    flowState.nextLink(.inpaint(history: history))
+                                } label: {
+                                    HStack {
+                                        Label("InPaint", systemImage: "paintbrush.pointed")
+                                    }
+                                    .foregroundColor(.green)
+                                }
+                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
+                                
                             }
                             
                         }
@@ -151,7 +169,7 @@ struct SDHistoryView: View {
                 
                 ScrollView {
                     
-                    let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+                    let columns: [GridItem] = (0..<columns).map {_ in return GridItem(.flexible())}
                     LazyVGrid(columns: columns) {
                         ForEach(generationService.imageHistory.filter({ e in
                             var result = true

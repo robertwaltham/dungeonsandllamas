@@ -137,7 +137,8 @@ struct StepView: View {
                         }
                     }
                     .pickerStyle(.wheel)
-                    
+                    .disabled(viewModel.loading)
+
                     Text("End")
                     Picker("End", selection: $viewModel.stepEnd) {
                         ForEach(1..<30) { i in
@@ -145,9 +146,11 @@ struct StepView: View {
                         }
                     }
                     .pickerStyle(.wheel)
-                    
+                    .disabled(viewModel.loading)
+
                     Toggle("Sampler", isOn: $iterateSamplers).padding()
-                    
+                    .disabled(viewModel.loading)
+
                     
                     Text("Cols")
                     Picker("End", selection: $columns) {
@@ -158,7 +161,6 @@ struct StepView: View {
                     
                 }
                 .frame(maxHeight: 125)
-                .disabled(viewModel.loading)
                 
                 if viewModel.stepResult.count > 0  {
                     let columns: [GridItem] = (0..<columns).map {_ in return GridItem(.flexible())}
@@ -186,7 +188,10 @@ struct StepView: View {
                                     
                                     Spacer()
                                     
-                                    Text("\(stepResult.steps) | \(stepResult.sampler)")
+                                    if (iterateSamplers) {
+                                        Text(stepResult.sampler)
+                                    }
+                                    Text("\(stepResult.steps) | \(stepResult.formattedTime)")
                                     
                                 }
                             }
@@ -212,7 +217,7 @@ struct StepView: View {
     let view = StepView(flowState: flowState, generationService: service, history: service.imageHistory.first!)
     for i in 0..<27 {
         view.viewModel.stepResult.append(
-            GenerationService.Step.init(steps: i, start: Date.now.addingTimeInterval(TimeInterval(i)), end: Date.now.addingTimeInterval(TimeInterval(i + 5)), result: UIImage(named: "lighthouse")!, sampler: "sampler \(i)")
+            GenerationService.Step.init(steps: i, start: Date.now.addingTimeInterval(TimeInterval(i)), end: Date.now.addingTimeInterval(TimeInterval(Double(i) + Double.random(in: 0...5))), result: UIImage(named: "lighthouse")!, sampler: "sampler \(i)")
         )
     }
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {

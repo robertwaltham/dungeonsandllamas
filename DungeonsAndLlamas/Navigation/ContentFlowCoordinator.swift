@@ -70,6 +70,9 @@ extension ContentFlowCoordinator {
                 LoraView(lora: lora)
             case .step(history: let history):
                 StepView(flowState: flowState, generationService: generationService, history: history)
+            case .inpaint(history: let history):
+                PencilOverlayDrawingView(flowState: flowState, generationService: generationService, history: history)
+           
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
@@ -103,6 +106,9 @@ extension ContentFlowCoordinator {
                 LoraView(lora: lora)
             case .step(history: let history):
                 StepView(flowState: flowState, generationService: generationService, history: history)
+            case .inpaint(history: let history):
+                PencilOverlayDrawingView(flowState: flowState, generationService: generationService, history: history)
+           
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)

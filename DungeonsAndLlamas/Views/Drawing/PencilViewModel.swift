@@ -38,7 +38,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     var output: UIImage?
     var input: UIImage?
     var prompt: String
-    var promptAdd: String?
+    var promptAdd: String? // TODO: Delete me
     
     var session = NSUUID().uuidString
     var sequence = 0
@@ -67,6 +67,9 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     var stepResult: [GenerationService.Step] = []
     var stepStart: Int = 20
     var stepEnd: Int = 23
+    
+    var inpaintOutput: UIImage?
+    var inpaintOptions: StableDiffusionClient.SoftInpaintingOptions = .init()
 
     
     var saved: Bool = false
@@ -82,6 +85,12 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     
     @MainActor
     func load(history: ImageHistoryModel) {
+        
+        guard loadedHistory?.id != history.id else { // TODO: fix code crimes
+            print("already loaded")
+            return
+        }
+        
         drawing = generationService.loadDrawing(history: history)
         prompt = history.prompt
         output = generationService.loadOutputImage(history: history)
@@ -138,6 +147,27 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
     }
     
+    @MainActor
+    func inpaint(output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>, drawingScale: CGFloat) {
+        if let drawing, let input = self.output {
+            generationService.inpaint(prompt: prompt,
+                                      negativePrompt: negative,
+                                      loras: enabledLoras,
+                                      seed: seed,
+                                      session: session,
+                                      sequence: sequence,
+                                      maskDrawing: drawing,
+                                      input: input,
+                                      drawingScale: drawingScale,
+                                      inpaintOptions: inpaintOptions,
+                                      output: output,
+                                      progress: progress,
+                                      loading: loading)
+            sequence += 1
+            saved = false
+        }
+    }
+    
     func bracketCount() -> Int {
         return firstBracketLora.bracketSteps * secondBracketLora.bracketSteps * (thirdBracketLora.bracketSteps > 0 ? thirdBracketLora.bracketSteps : 1)
     }
@@ -186,6 +216,10 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         newHistory.id = stepResult.id
         newHistory.outputFilePath = generationService.fileService.save(image: stepResult.result)
         newHistory.steps = stepResult.steps
+        newHistory.sampler = stepResult.sampler
+        for i in 0..<newHistory.loras.count {
+            newHistory.loras[i].id = NSUUID().uuidString
+        }
         generationService.db.save(history: newHistory)
         generationService.imageHistory.append(newHistory)
         savedResults.append(stepResult.id)

@@ -263,6 +263,20 @@ struct PencilDrawingiPadView: View {
                     
                     
                     Button {
+                        inpaint()
+                    } label: {
+                        
+                        HStack {
+                            Label("Inpaint", systemImage: "paintbrush.pointed")
+                        }
+                        .foregroundColor(.yellow)
+
+                    }
+                    .disabled(viewModel.loading)
+                    .padding()
+                    
+                    
+                    Button {
                         viewModel.clear()
                     } label: {
                         
@@ -280,6 +294,20 @@ struct PencilDrawingiPadView: View {
                 .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
             }
             .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
+            
+            HStack {
+                Spacer()
+                VStack {
+                    Spacer()
+                    VStack {
+                        Picker("Sampler", selection: $viewModel.generationService.selectedSampler) {
+                            ForEach(viewModel.generationService.sdSamplers, id:\.self) { sampler in
+                                Text(sampler.name).id(sampler)
+                            }
+                        }
+                    }.padding()
+                }
+            }
         }
     }
     
@@ -293,6 +321,18 @@ struct PencilDrawingiPadView: View {
         }
         
         flowState.nextLink(.bracket(history: history))
+    }
+    
+    func inpaint() {
+        guard !viewModel.loading else {
+            return
+        }
+        
+        guard let history = generationService.lastHistory else {
+            return
+        }
+        
+        flowState.nextLink(.inpaint(history: history))
     }
 }
 

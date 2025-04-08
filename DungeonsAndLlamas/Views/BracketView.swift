@@ -15,7 +15,8 @@ struct BracketView: View {
     @State var generationService: GenerationService
     @State private var showingPopover = false
     @State var cancel = true
-    
+    @State var columns = 3
+
     let imageSize: CGFloat = 200
     
     init(flowState: ContentFlowState, generationService: GenerationService, history: ImageHistoryModel) {
@@ -113,7 +114,7 @@ struct BracketView: View {
 
                         Text("Min")
                         Picker("Min", selection: minBinding) {
-                            ForEach(-5..<8) { value in
+                            ForEach(-5..<11) { value in
                                 let weight = Double(value) / 10.0
                                 Text(formatted(weight)).tag(weight)
                             }
@@ -127,7 +128,7 @@ struct BracketView: View {
 
                         Text("Max")
                         Picker("Max", selection: maxBinding) {
-                            ForEach(5..<12) { value in
+                            ForEach(5..<16) { value in
                                 let weight = Double(value) / 10.0
                                 Text(formatted(weight)).tag(weight)
                             }
@@ -174,7 +175,7 @@ struct BracketView: View {
 
                         Text("Min")
                         Picker("Min", selection: minBinding) {
-                            ForEach(-5..<8) { value in
+                            ForEach(-5..<11) { value in
                                 let weight = Double(value) / 10.0
                                 Text(formatted(weight)).tag(weight)
                             }
@@ -188,7 +189,7 @@ struct BracketView: View {
 
                         Text("Max")
                         Picker("Max", selection: maxBinding) {
-                            ForEach(5..<12) { value in
+                            ForEach(5..<16) { value in
                                 let weight = Double(value) / 10.0
                                 Text(formatted(weight)).tag(weight)
                             }
@@ -235,7 +236,7 @@ struct BracketView: View {
 
                         Text("Min")
                         Picker("Min", selection: minBinding) {
-                            ForEach(-5..<8) { value in
+                            ForEach(-5..<11) { value in
                                 let weight = Double(value) / 10.0
                                 Text(formatted(weight)).tag(weight)
                             }
@@ -249,7 +250,7 @@ struct BracketView: View {
 
                         Text("Max")
                         Picker("Max", selection: maxBinding) {
-                            ForEach(5..<12) { value in
+                            ForEach(5..<16) { value in
                                 let weight = Double(value) / 10.0
                                 Text(formatted(weight)).tag(weight)
                             }
@@ -297,12 +298,19 @@ struct BracketView: View {
                     }.frame(minWidth: 225)
                     
                     Text(viewModel.prompt)
+                    
+                    Text("Cols")
+                    Picker("End", selection: $columns) {
+                        ForEach(3..<10) { i in
+                            Text("\(i)").tag(i)
+                        }
+                    }
                 }
                 Spacer()
                 
 
                 if viewModel.bracketResult.count > 0  {
-                    let columns: [GridItem] = (0..<4).map {_ in return GridItem(.flexible())}
+                    let columns: [GridItem] = (0..<columns).map {_ in return GridItem(.flexible())}
                     LazyVGrid(columns: columns) {
                         ForEach(viewModel.bracketResult, id: \.self) { bracket in
                             ZStack {

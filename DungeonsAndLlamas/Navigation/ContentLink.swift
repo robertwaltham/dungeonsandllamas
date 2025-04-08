@@ -34,4 +34,6 @@ enum ContentLink: Identifiable, Hashable {
     case bracket(history: ImageHistoryModel)
     case step(history: ImageHistoryModel)
     case lora(lora: StableDiffusionClient.Lora)
+    case inpaint(history: ImageHistoryModel)
+
 }

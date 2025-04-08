@@ -130,7 +130,6 @@ struct ModelSettingsView: View {
 //            .padding()
 //            .buttonStyle(.bordered)
         }
-        .frame(width: .infinity)
         .onAppear {
             generationService.getModels()
         }

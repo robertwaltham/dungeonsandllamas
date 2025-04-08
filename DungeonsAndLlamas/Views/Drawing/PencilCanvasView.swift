@@ -14,6 +14,17 @@ struct PencilCanvasView: UIViewRepresentable {
     var drawing: Binding<PKDrawing?>
     var showTooltip: Binding<Bool>
     var contentSize: Binding<Int>
+    var opaque = true
+    var tool: PKTool? = nil
+    
+    init(drawing: Binding<PKDrawing?>, showTooltip: Binding<Bool>, contentSize: Binding<Int>, opaque: Bool = true,
+         tool: PKTool? = nil) {
+        self.drawing = drawing
+        self.showTooltip = showTooltip
+        self.contentSize = contentSize
+        self.opaque = opaque
+        self.tool = tool
+    }
     
     func makeUIView(context: Context) -> PKCanvasView {
         let view = PKCanvasView()
@@ -25,13 +36,19 @@ struct PencilCanvasView: UIViewRepresentable {
         if let drawing = drawing.wrappedValue {
             view.drawing = drawing
         }
+        view.isOpaque = opaque
         
-        let picker = PKToolPicker()
-        picker.addObserver(context.coordinator)
-        picker.addObserver(view)
-        picker.setVisible(true, forFirstResponder: view)
-        view.becomeFirstResponder()
-        context.coordinator.picker = picker
+        if let tool {
+            view.tool = tool
+        } else {
+            let picker = PKToolPicker()
+            picker.addObserver(context.coordinator)
+            picker.addObserver(view)
+            picker.setVisible(true, forFirstResponder: view)
+            view.becomeFirstResponder()
+            context.coordinator.picker = picker
+        }
+
 
         return view
     }
@@ -41,9 +58,7 @@ struct PencilCanvasView: UIViewRepresentable {
             context.coordinator.skipUpdate = true
             uiView.drawing = PKDrawing()
         }
-        
-//        uiView.contentSize = CGSize(width: contentSize.wrappedValue, height: contentSize.wrappedValue)
-        
+                
         if showTooltip.wrappedValue {
             DispatchQueue.main.async {
                 uiView.becomeFirstResponder()

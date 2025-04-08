@@ -164,7 +164,6 @@ actor LargeLangageModelClient {
                         throw APIError.requestError("no request")
                     }
                     guard httpResponse.statusCode == 200 else {
-                        //                        print(String(bytes: bytes, encoding: .utf8))
                         for try await line in bytes.lines {
                             print(line)
                         }
