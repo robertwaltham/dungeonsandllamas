@@ -8,6 +8,7 @@
 import SQLite
 import Foundation
 import UIKit
+import PencilKit
 
 class DatabaseService {
     private var db: Connection!
@@ -300,7 +301,12 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                       sequence: 0,
                                       loras: [])
         entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
-        entry.outputFilePath = fileService.save(image: UIImage(named: "catglasses")!)
+        entry.outputFilePath = fileService.save(image: UIImage(named: "trees")!)
+        let drawingUrl = Bundle.main.url(forResource: "fancycat", withExtension: "drawing")!
+        let drawingData = try! Data(contentsOf: drawingUrl)
+        let drawing = try! PKDrawing(data: drawingData)
+        entry.drawingFilePath = fileService.save(drawing: drawing)
+        
         
         for i in 0..<30 {
             entry.start = Date.now.addingTimeInterval(TimeInterval(i))

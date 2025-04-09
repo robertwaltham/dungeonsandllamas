@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D10D1DD52DA6EDD900746F53 /* inpaint.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD42DA6EDD900746F53 /* inpaint.drawing */; };
+		D10D1DD72DA6F0F500746F53 /* fancycat.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD62DA6F0F500746F53 /* fancycat.drawing */; };
 		D1320E082BD5C12D00EEEDCC /* Photo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1320E072BD5C12D00EEEDCC /* Photo.swift */; };
 		D166A8952BDBFD380028100A /* ModelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D166A8942BDBFD380028100A /* ModelSettingsView.swift */; };
 		D166A8972BE00CA60028100A /* DelegateToSupressWarning.swift in Sources */ = {isa = PBXBuildFile; fileRef = D166A8962BE00CA60028100A /* DelegateToSupressWarning.swift */; };
@@ -48,6 +50,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D10D1DD42DA6EDD900746F53 /* inpaint.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = inpaint.drawing; sourceTree = "<group>"; };
+		D10D1DD62DA6F0F500746F53 /* fancycat.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = fancycat.drawing; sourceTree = "<group>"; };
 		D1320E072BD5C12D00EEEDCC /* Photo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Photo.swift; sourceTree = "<group>"; };
 		D166A8942BDBFD380028100A /* ModelSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSettingsView.swift; sourceTree = "<group>"; };
 		D166A8962BE00CA60028100A /* DelegateToSupressWarning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelegateToSupressWarning.swift; sourceTree = "<group>"; };
@@ -100,6 +104,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D10D1DD32DA6EDBE00746F53 /* Test Data */ = {
+			isa = PBXGroup;
+			children = (
+				D10D1DD62DA6F0F500746F53 /* fancycat.drawing */,
+				D10D1DD42DA6EDD900746F53 /* inpaint.drawing */,
+			);
+			path = "Test Data";
+			sourceTree = "<group>";
+		};
 		D166A8982BE00CBF0028100A /* Service */ = {
 			isa = PBXGroup;
 			children = (
@@ -134,6 +147,7 @@
 				D17058A52BBB18D1003E6668 /* Views */,
 				D17058A42BBB18C6003E6668 /* API */,
 				D166A8982BE00CBF0028100A /* Service */,
+				D10D1DD32DA6EDBE00746F53 /* Test Data */,
 				D16CAE4E2BB3724100ECA710 /* Assets.xcassets */,
 				D16CAE502BB3724100ECA710 /* Preview Content */,
 			);
@@ -286,6 +300,8 @@
 			files = (
 				D16CAE522BB3724100ECA710 /* Preview Assets.xcassets in Resources */,
 				D16CAE4F2BB3724100ECA710 /* Assets.xcassets in Resources */,
+				D10D1DD52DA6EDD900746F53 /* inpaint.drawing in Resources */,
+				D10D1DD72DA6F0F500746F53 /* fancycat.drawing in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

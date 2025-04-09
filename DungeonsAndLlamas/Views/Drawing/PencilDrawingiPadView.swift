@@ -218,6 +218,17 @@ struct PencilDrawingiPadView: View {
                         .padding()
                         .foregroundColor(.blue)
                     }
+                    
+//                    if let drawing = viewModel.drawing {
+//                        let drawingFile = Drawing(data: drawing.dataRepresentation(), caption: viewModel.prompt, description: viewModel.prompt)
+//                        let image = drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0)
+//                        let photo = Photo(image: Image(uiImage: image), caption: viewModel.prompt, description: viewModel.prompt)
+//                        
+//                        ShareLink(item: drawingFile,
+//                                  message: Text(viewModel.prompt) ,
+//                                  preview: SharePreview(viewModel.prompt,
+//                                                        image: photo))
+//                    }
 
                     
                     if !viewModel.saved {

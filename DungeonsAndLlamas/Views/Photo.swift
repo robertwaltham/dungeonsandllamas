@@ -22,3 +22,18 @@ extension Photo: Transferable {
     }
 }
 
+struct Drawing: Identifiable {
+    var id = UUID()
+    var data: Data
+    var caption: String
+    var description: String
+}
+
+extension Drawing: Transferable {
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .data) { drawing in
+            drawing.data
+        }
+        .suggestedFileName("filename.drawing")
+    }
+}
