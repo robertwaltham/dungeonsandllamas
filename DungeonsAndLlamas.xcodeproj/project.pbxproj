@@ -10,6 +10,9 @@
 		D10D1DD52DA6EDD900746F53 /* inpaint.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD42DA6EDD900746F53 /* inpaint.drawing */; };
 		D10D1DD72DA6F0F500746F53 /* fancycat.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD62DA6F0F500746F53 /* fancycat.drawing */; };
 		D1320E082BD5C12D00EEEDCC /* Photo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1320E072BD5C12D00EEEDCC /* Photo.swift */; };
+		D15EFDD42DAD808000AFE773 /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD32DAD807A00AFE773 /* PhotoLibraryService.swift */; };
+		D15EFDD62DAD896E00AFE773 /* PhotoLibraryTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD52DAD896A00AFE773 /* PhotoLibraryTestView.swift */; };
+		D15EFDD82DADBCCB00AFE773 /* WebsocketTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD72DADBCC800AFE773 /* WebsocketTestView.swift */; };
 		D166A8952BDBFD380028100A /* ModelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D166A8942BDBFD380028100A /* ModelSettingsView.swift */; };
 		D166A8972BE00CA60028100A /* DelegateToSupressWarning.swift in Sources */ = {isa = PBXBuildFile; fileRef = D166A8962BE00CA60028100A /* DelegateToSupressWarning.swift */; };
 		D166A89A2BE00D370028100A /* StableDiffusionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D166A8992BE00D370028100A /* StableDiffusionClient.swift */; };
@@ -53,6 +56,9 @@
 		D10D1DD42DA6EDD900746F53 /* inpaint.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = inpaint.drawing; sourceTree = "<group>"; };
 		D10D1DD62DA6F0F500746F53 /* fancycat.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = fancycat.drawing; sourceTree = "<group>"; };
 		D1320E072BD5C12D00EEEDCC /* Photo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Photo.swift; sourceTree = "<group>"; };
+		D15EFDD32DAD807A00AFE773 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
+		D15EFDD52DAD896A00AFE773 /* PhotoLibraryTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryTestView.swift; sourceTree = "<group>"; };
+		D15EFDD72DADBCC800AFE773 /* WebsocketTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsocketTestView.swift; sourceTree = "<group>"; };
 		D166A8942BDBFD380028100A /* ModelSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSettingsView.swift; sourceTree = "<group>"; };
 		D166A8962BE00CA60028100A /* DelegateToSupressWarning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelegateToSupressWarning.swift; sourceTree = "<group>"; };
 		D166A8992BE00D370028100A /* StableDiffusionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableDiffusionClient.swift; sourceTree = "<group>"; };
@@ -116,6 +122,7 @@
 		D166A8982BE00CBF0028100A /* Service */ = {
 			isa = PBXGroup;
 			children = (
+				D15EFDD32DAD807A00AFE773 /* PhotoLibraryService.swift */,
 				D1F839CE2DA07C320028E034 /* DatabaseService.swift */,
 				D1DC04352BCF2813007BC5D2 /* FileService.swift */,
 				D17058B02BBB1EC7003E6668 /* GenerationService.swift */,
@@ -205,6 +212,8 @@
 		D17058AF2BBB1DDD003E6668 /* Test Views */ = {
 			isa = PBXGroup;
 			children = (
+				D15EFDD72DADBCC800AFE773 /* WebsocketTestView.swift */,
+				D15EFDD52DAD896A00AFE773 /* PhotoLibraryTestView.swift */,
 				D1F839D32DA08EF60028E034 /* DatabaseTestView.swift */,
 				D180B7CD2D9E13A40055CB3D /* CameraTestView.swift */,
 				D16CAE582BB3AD0600ECA710 /* AccelerometerTestView.swift */,
@@ -320,6 +329,7 @@
 				D1F839CF2DA07C350028E034 /* DatabaseService.swift in Sources */,
 				D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */,
 				D1DC04382BCF2C74007BC5D2 /* SDHistoryView.swift in Sources */,
+				D15EFDD42DAD808000AFE773 /* PhotoLibraryService.swift in Sources */,
 				D166A8952BDBFD380028100A /* ModelSettingsView.swift in Sources */,
 				D16CAE5D2BB3C09B00ECA710 /* Secrets.swift in Sources */,
 				D180B7D32D9E2ABE0055CB3D /* BracketView.swift in Sources */,
@@ -331,6 +341,7 @@
 				D16CAE622BB4C04E00ECA710 /* ItemGeneratorView.swift in Sources */,
 				D1F839D42DA08EF90028E034 /* DatabaseTestView.swift in Sources */,
 				D1DC04342BCDCC02007BC5D2 /* PencilDrawingiPadView.swift in Sources */,
+				D15EFDD82DADBCCB00AFE773 /* WebsocketTestView.swift in Sources */,
 				D1DC04362BCF2813007BC5D2 /* FileService.swift in Sources */,
 				D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */,
 				D1F839D62DA0E7F70028E034 /* LoraView.swift in Sources */,
@@ -340,6 +351,7 @@
 				D17058A72BBB1919003E6668 /* ContentFlowCoordinator.swift in Sources */,
 				D16CAE5F2BB3C59E00ECA710 /* APITestView.swift in Sources */,
 				D1DC04412BD037AB007BC5D2 /* LandingiPhoneView.swift in Sources */,
+				D15EFDD62DAD896E00AFE773 /* PhotoLibraryTestView.swift in Sources */,
 				D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */,
 				D180B7CE2D9E13A70055CB3D /* CameraTestView.swift in Sources */,
 				D166A8972BE00CA60028100A /* DelegateToSupressWarning.swift in Sources */,
@@ -483,11 +495,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DungeonsAndLlamas/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Take pictures and stuff";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Save generated images to your library";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -516,11 +530,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DungeonsAndLlamas/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Take pictures and stuff";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Save generated images to your library";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;

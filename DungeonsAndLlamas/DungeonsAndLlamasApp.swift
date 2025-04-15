@@ -27,6 +27,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         generationService.checkStatusIfNeeded()
         generationService.loadHistory()
         generationService.getModels()
+        generationService.photos.checkAuthStatus()
         return true
     }
     

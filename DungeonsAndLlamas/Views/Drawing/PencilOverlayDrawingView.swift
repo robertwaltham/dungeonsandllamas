@@ -80,15 +80,62 @@ struct PencilOverlayDrawingView: View {
                             
                             HStack {
                                 Text("Schedule Bias")
+                                Spacer()
                                 Slider(value: $viewModel.inpaintOptions.scheduleBias, in: 1.0...8.0, step: 0.1)
+                                    .frame(maxWidth: 230)
                                 Text(formatted(viewModel.inpaintOptions.scheduleBias))
                                     .frame(minWidth: 50)
                             }
                             
+                            HStack {
+                                Text("Preservation Strength")
+                                Spacer()
+                                Slider(value: $viewModel.inpaintOptions.preservationStrength, in: 0.0...8.0, step: 0.05)
+                                    .frame(maxWidth: 230)
+                                Text(formatted(viewModel.inpaintOptions.preservationStrength))
+                                    .frame(minWidth: 50)
+                            }
+                            
+                            
+                            HStack {
+                                Text("Transition Contrast Boost")
+                                Spacer()
+                                Slider(value: $viewModel.inpaintOptions.transitionContrastBoost, in: 1.0...32.0, step: 0.5)
+                                    .frame(maxWidth: 230)
+                                Text(formatted(viewModel.inpaintOptions.transitionContrastBoost))
+                                    .frame(minWidth: 50)
+                            }
+                            
+                            
+                            HStack {
+                                Text("Mask Influence")
+                                Spacer()
+                                Slider(value: $viewModel.inpaintOptions.maskInfluence, in: 0.0...1.0, step: 0.05)
+                                    .frame(maxWidth: 230)
+                                Text(formatted(viewModel.inpaintOptions.maskInfluence))
+                                    .frame(minWidth: 50)
+                            }
+                            
+                            HStack {
+                                Text("Difference Threshold")
+                                Spacer()
+                                Slider(value: $viewModel.inpaintOptions.differenceThreshold, in: 0.0...8.0, step: 0.25)
+                                    .frame(maxWidth: 230)
+                                Text(formatted(viewModel.inpaintOptions.differenceThreshold))
+                                    .frame(minWidth: 50)
+                            }
+                            
+                            HStack {
+                                Text("Difference Contrast")
+                                Spacer()
+                                Slider(value: $viewModel.inpaintOptions.differenceContrast, in: 0.0...8.0, step: 0.25)
+                                    .frame(maxWidth: 230)
+                                Text(formatted(viewModel.inpaintOptions.differenceContrast))
+                                    .frame(minWidth: 50)
+                            }
                             
                         }
                         .onDisappear {
-                            print("dissapear")
                             guard !viewModel.loading else {
                                 return
                             }
@@ -156,7 +203,7 @@ struct PencilOverlayDrawingView: View {
     let drawingData = try! Data(contentsOf: drawingUrl)
     let drawing = try! PKDrawing(data: drawingData)
     
-    var view = PencilOverlayDrawingView(flowState: flowState,
+    let view = PencilOverlayDrawingView(flowState: flowState,
                                         generationService: service,
                                         history: service.imageHistory.first!)
     view.viewModel.drawing = drawing

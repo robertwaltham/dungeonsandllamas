@@ -19,6 +19,7 @@ class GenerationService {
     
     var fileService = FileService()
     var db = DatabaseService()
+    var photos = PhotoLibraryService()
     
     static let statusCheckInterval = 2.0
     
@@ -449,6 +450,7 @@ class GenerationService {
                                                                 initImages: [base64Image],
                                                                 mask: base64Mask,
                                                                 inPaintingOptions: inpaintOptions)
+
         sdOptions.seed = seed
         storedPrompt = prompt
         

@@ -61,7 +61,7 @@ actor StableDiffusionClient {
             self.mask = mask
             
             if let inPaintingOptions {
-                alwaysonScripts = [
+                self.alwaysonScripts = [
                     "soft inpainting": [
                         "args": [
                             inPaintingOptions
@@ -90,7 +90,7 @@ actor StableDiffusionClient {
         var transitionContrastBoost = 4.0 // 1-32 step 0.5
         var maskInfluence = 0.0 // 0-1 step 0.05
         var differenceThreshold = 0.5 // 0-8 step 0.25
-        var differenceContrast = 2 // 0-8 step 0.25
+        var differenceContrast = 2.0 // 0-8 step 0.25
         
         private enum CodingKeys : String, CodingKey {
             case softInpainting = "Soft inpainting"
@@ -238,6 +238,46 @@ actor StableDiffusionClient {
         return e
     }
     
+    private var customEncoder: JSONEncoder {
+        
+        struct AnyKey: CodingKey {
+            var stringValue: String
+            var intValue: Int?
+            
+            init?(stringValue: String) {
+                self.stringValue = AnyKey.camelCaseToSnakeCase(stringValue)
+                self.intValue = nil
+            }
+            
+            init?(intValue: Int) {
+                self.stringValue = String(intValue)
+                self.intValue = intValue
+            }
+            
+            //https://www.codespeedy.com/convert-camel-case-to-snake-case-in-swift/
+            // default camel->snake lowercases the whole string, and the API needs first char uppercase
+            // see: https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/15138
+            static func camelCaseToSnakeCase(_ input: String) -> String {
+                let pattern = "([a-z0-9])([A-Z])"
+                let regex = try! NSRegularExpression(pattern: pattern, options: [])
+                let range = NSRange(location: 0, length: input.utf16.count)
+                let result = regex.stringByReplacingMatches(in: input, options: [], range: range, withTemplate: "$1_$2")
+                return String(result.prefix(1)) + String(result.suffix(result.count - 1)).lowercased()
+            }
+        }
+        
+        let e = JSONEncoder()
+        e.keyEncodingStrategy = .custom { codingPath in
+            if codingPath.last?.intValue != nil {
+                return codingPath.last!
+            } else {
+                return AnyKey(stringValue: codingPath.last!.stringValue)!
+            }
+        }
+        e.dateEncodingStrategy = .iso8601
+        return e
+    }
+    
     //MARK: - Init
     
     init () {
@@ -284,11 +324,15 @@ actor StableDiffusionClient {
     }
     
     func generateBase64EncodedImages(_ options: GenerationOptions) async throws -> [String] {
-        print(options.prompt)
         let endpoint: Endpoint = options.initImages != nil ? .generateSDimg2img : .generateSDtxt2img
         var request = try StableDiffusionClient.request(endpoint: endpoint, method: .post, timeout: 600)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try encoder.encode(options)
+        request.httpBody = try customEncoder.encode(options)
+        
+//        var printableOptions = options
+//        printableOptions.initImages = ["images"]
+//        printableOptions.mask = "mask"
+//        print(String(data: try customEncoder.encode(printableOptions), encoding: .utf8) ?? "")
                 
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -299,6 +343,9 @@ actor StableDiffusionClient {
         }
         
         let responseObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+//        var printableResponse = responseObject!
+//        printableResponse["images"] = ["image"]
+//        print(printableResponse)
         guard let images = responseObject?["images"] as? [String] else {
             throw APIError.requestError("no images")
         }
