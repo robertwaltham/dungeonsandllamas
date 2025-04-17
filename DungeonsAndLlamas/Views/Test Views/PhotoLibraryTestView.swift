@@ -16,14 +16,7 @@ struct PhotoLibraryTestView: View {
     
     var body: some View {
         ScrollView {
-//            Button {
-//                viewModel.getImages(service: generationService)
-//            } label: {
-//                Text("Get Images")
-//            }
-            
-//            LazyVGrid(columns: [.init(), .init(), .init()]) {
-            let size: CGFloat = 350
+            let size: CGFloat = 240
             LazyVStack {
                 ForEach(viewModel.images) { result in
                     HStack(spacing: 10) {
@@ -31,16 +24,33 @@ struct PhotoLibraryTestView: View {
                             .resizable()
                             .scaledToFill()
                             .frame(width: size, height: size)
-                            .clipped()
-                            .background(.gray)
+//                            .clipped()
+                            .background(.gray).onTapGesture {
+                                viewModel.upload(image: result.image, service: generationService)
+                            }
                         
                         if let depth = result.depth {
                             Image(uiImage: depth)
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: size, height: size)
+//                                .clipped()
+                                .background(.gray)
+                                .background(.gray).onTapGesture {
+                                    viewModel.upload(image: depth, service: generationService)
+                                }
+                        }
+                        
+                        if let canny = result.canny {
+                            Image(uiImage: canny)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: size, height: size)
                                 .clipped()
                                 .background(.gray)
+                                .background(.gray).onTapGesture {
+                                    viewModel.upload(image: canny, service: generationService)
+                                }
                         }
                     }
                 
@@ -61,13 +71,14 @@ class PhotoLibraryTestViewModel {
     struct ImageResult: Identifiable {
         var image: UIImage
         var depth: UIImage?
+        var canny: UIImage?
         let index: Int
         
         var id: Int {
             index
         }
     }
-    static let imageCount = 50
+    static let imageCount = 30
     
     var images = (0..<imageCount).map { i in ImageResult(image: UIImage(named: "lighthouse")!, index: i) }
     func getImages(service: GenerationService) {
@@ -75,15 +86,27 @@ class PhotoLibraryTestViewModel {
         Task.init {
             var i = 0
             for await image in service.photos.getImages(limit: PhotoLibraryTestViewModel.imageCount) {
+
                 images[i].image = image.image
                 images[i].depth = image.depth
+                images[i].canny = image.canny
                 i += 1
             }
         }
     }
     
+    func upload(image: UIImage, service: GenerationService) {
+        
+        Task.init {
+            do {
+                let result = try await service.stableDiffusionClient.upload(image: image, filename: NSUUID().uuidString + ".png")
+                print(result ?? "")
+            } catch {
+                print(error)
+            }
 
-
+        }
+    }
 }
 
 #Preview {

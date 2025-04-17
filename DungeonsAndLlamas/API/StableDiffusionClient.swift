@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 actor StableDiffusionClient {
     
@@ -461,4 +462,102 @@ actor StableDiffusionClient {
         return try decoder.decode([String: String].self, from: data)["caption"] ?? "n/a"
     }
     
+    func upload(image: UIImage, filename: String) async throws -> String? {
+        var multipart = MultipartRequest()
+        
+        guard let imageData = image.pngData() else {
+            return nil
+        }
+        
+        multipart.add(
+            key: "file",
+            fileName: filename,
+            fileMimeType: "image/png",
+            fileData: imageData
+        )
+        
+        guard let url = URL(string: "http://192.168.1.71:8000/uploadfile") else {
+            return nil
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(multipart.httpContentTypeHeadeValue, forHTTPHeaderField: "Content-Type")
+        request.httpBody = multipart.httpBody
+        
+        do {
+          let (responseData, response) = try await  URLSession.shared.data(for: request)
+          print((response as! HTTPURLResponse).statusCode)
+          return String(data: responseData, encoding: .utf8)!
+        } catch {
+          print ("Error")
+            return nil
+        }
+    }
+}
+
+// from https://raagpc.hashnode.dev/how-to-upload-files-with-a-multipart-request-in-swift
+public struct MultipartRequest {
+
+    public let boundary: String
+
+    private let separator: String = "\r\n"
+    private var data: NSMutableData
+
+    public init(boundary: String = UUID().uuidString) {
+        self.boundary = boundary
+        self.data = .init()
+    }
+
+    private mutating func appendBoundarySeparator() {
+        data.appendString("--\(boundary)\(separator)")
+    }
+
+    private mutating func appendSeparator() {
+        data.appendString(separator)
+    }
+
+    private func disposition(_ key: String) -> String {
+        "Content-Disposition: form-data; name=\"\(key)\""
+    }
+
+    public mutating func add(
+        key: String,
+        value: String
+    ) {
+        appendBoundarySeparator()
+        data.appendString(disposition(key) + separator)
+        appendSeparator()
+        data.appendString(value + separator)
+    }
+
+    public mutating func add(
+        key: String,
+        fileName: String,
+        fileMimeType: String,
+        fileData: Data
+    ) {
+        appendBoundarySeparator()
+        data.appendString(disposition(key) + "; filename=\"\(fileName)\"" + separator)
+        data.appendString("Content-Type: \(fileMimeType)" + separator + separator)
+        data.append(fileData)
+        appendSeparator()
+    }
+
+    public var httpContentTypeHeadeValue: String {
+        "multipart/form-data; boundary=\(boundary)"
+    }
+
+    public var httpBody: Data {
+        data.appendString("--\(boundary)--")
+        return data as Data
+    }
+}
+
+extension NSMutableData {
+    func appendString(_ string: String) {
+        if let data = string.data(using: .utf8) {
+            self.append(data)
+        }
+    }
 }
