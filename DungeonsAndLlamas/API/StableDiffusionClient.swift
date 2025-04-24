@@ -494,6 +494,54 @@ actor StableDiffusionClient {
             return nil
         }
     }
+    
+    func download(filename: String) async throws -> UIImage? {
+        guard let url = URL(string: "http://192.168.1.71:8000/image/\(filename)") else {
+            return nil
+        }
+        let request = URLRequest(url: url)
+
+        let (responseData, response) = try await  URLSession.shared.data(for: request)
+        guard (response as! HTTPURLResponse).statusCode == 200 else {
+            print(String(data: responseData, encoding: .utf8)!)
+
+            return nil
+        }
+        
+        return UIImage(data: responseData)
+    }
+    
+    func depth(inputFileName: String, depthFileName: String, prompt: String, loraWeight: Float, seed: Int) async throws -> String? {
+        
+        struct DepthParameters: Codable {
+            let prompt: String
+            let inputFileName: String
+            let depthFileName: String
+            let loraWeight: Float
+            let seed: Int
+        }
+        
+        guard let url = URL(string: "http://192.168.1.71:8000/depth") else {
+            return nil
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let data = try encoder.encode(DepthParameters(prompt: prompt, inputFileName: inputFileName, depthFileName: depthFileName, loraWeight: loraWeight, seed: seed))
+        print(String(data: data, encoding: .utf8)!)
+        request.httpBody = data
+        
+        let (responseData, response) = try await  URLSession.shared.data(for: request)
+        guard (response as! HTTPURLResponse).statusCode == 200 else {
+            print(String(data: responseData, encoding: .utf8)!)
+
+            return nil
+        }
+        let decodedResponse = try JSONDecoder().decode([String: String].self, from: responseData)
+        return decodedResponse["filename"]
+    }
 }
 
 // from https://raagpc.hashnode.dev/how-to-upload-files-with-a-multipart-request-in-swift

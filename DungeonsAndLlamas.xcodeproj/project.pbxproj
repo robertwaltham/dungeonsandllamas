@@ -11,7 +11,7 @@
 		D10D1DD72DA6F0F500746F53 /* fancycat.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD62DA6F0F500746F53 /* fancycat.drawing */; };
 		D1320E082BD5C12D00EEEDCC /* Photo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1320E072BD5C12D00EEEDCC /* Photo.swift */; };
 		D15EFDD42DAD808000AFE773 /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD32DAD807A00AFE773 /* PhotoLibraryService.swift */; };
-		D15EFDD62DAD896E00AFE773 /* PhotoLibraryTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD52DAD896A00AFE773 /* PhotoLibraryTestView.swift */; };
+		D15EFDD62DAD896E00AFE773 /* DepthGenerationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD52DAD896A00AFE773 /* DepthGenerationView.swift */; };
 		D15EFDD82DADBCCB00AFE773 /* WebsocketTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD72DADBCC800AFE773 /* WebsocketTestView.swift */; };
 		D166A8952BDBFD380028100A /* ModelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D166A8942BDBFD380028100A /* ModelSettingsView.swift */; };
 		D166A8972BE00CA60028100A /* DelegateToSupressWarning.swift in Sources */ = {isa = PBXBuildFile; fileRef = D166A8962BE00CA60028100A /* DelegateToSupressWarning.swift */; };
@@ -57,7 +57,7 @@
 		D10D1DD62DA6F0F500746F53 /* fancycat.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = fancycat.drawing; sourceTree = "<group>"; };
 		D1320E072BD5C12D00EEEDCC /* Photo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Photo.swift; sourceTree = "<group>"; };
 		D15EFDD32DAD807A00AFE773 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
-		D15EFDD52DAD896A00AFE773 /* PhotoLibraryTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryTestView.swift; sourceTree = "<group>"; };
+		D15EFDD52DAD896A00AFE773 /* DepthGenerationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthGenerationView.swift; sourceTree = "<group>"; };
 		D15EFDD72DADBCC800AFE773 /* WebsocketTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsocketTestView.swift; sourceTree = "<group>"; };
 		D166A8942BDBFD380028100A /* ModelSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSettingsView.swift; sourceTree = "<group>"; };
 		D166A8962BE00CA60028100A /* DelegateToSupressWarning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelegateToSupressWarning.swift; sourceTree = "<group>"; };
@@ -213,7 +213,7 @@
 			isa = PBXGroup;
 			children = (
 				D15EFDD72DADBCC800AFE773 /* WebsocketTestView.swift */,
-				D15EFDD52DAD896A00AFE773 /* PhotoLibraryTestView.swift */,
+				D15EFDD52DAD896A00AFE773 /* DepthGenerationView.swift */,
 				D1F839D32DA08EF60028E034 /* DatabaseTestView.swift */,
 				D180B7CD2D9E13A40055CB3D /* CameraTestView.swift */,
 				D16CAE582BB3AD0600ECA710 /* AccelerometerTestView.swift */,
@@ -351,7 +351,7 @@
 				D17058A72BBB1919003E6668 /* ContentFlowCoordinator.swift in Sources */,
 				D16CAE5F2BB3C59E00ECA710 /* APITestView.swift in Sources */,
 				D1DC04412BD037AB007BC5D2 /* LandingiPhoneView.swift in Sources */,
-				D15EFDD62DAD896E00AFE773 /* PhotoLibraryTestView.swift in Sources */,
+				D15EFDD62DAD896E00AFE773 /* DepthGenerationView.swift in Sources */,
 				D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */,
 				D180B7CE2D9E13A70055CB3D /* CameraTestView.swift in Sources */,
 				D166A8972BE00CA60028100A /* DelegateToSupressWarning.swift in Sources */,

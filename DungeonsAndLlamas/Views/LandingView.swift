@@ -67,13 +67,14 @@ struct LandingView: View {
                 
                 Spacer().frame(maxHeight: 200)
                 
+                let size: CGFloat = 150
                 HStack {
                     Button(action: {
                         flowState.nextLink(.modelInfo)
                     }, label: {
                         Text("Model Info")
                     })
-                    .frame(width: 200, height: 200)
+                    .frame(width: size, height: size)
                     .background(Color(white: 0.7))
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                     
@@ -82,7 +83,7 @@ struct LandingView: View {
                     }, label: {
                         Text("Drawing")
                     })
-                    .frame(width: 200, height: 200)
+                    .frame(width: size, height: size)
                     .background(Color(white: 0.7))
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                     
@@ -91,7 +92,27 @@ struct LandingView: View {
                     }, label: {
                         Text("History")
                     })
-                    .frame(width: 200, height: 200)
+                    .frame(width: size, height: size)
+                    .background(Color(white: 0.7))
+                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+                }
+                
+                HStack {
+                    Button(action: {
+                        flowState.nextLink(.depth)
+                    }, label: {
+                        Text("Depth")
+                    })
+                    .frame(width: size, height: size)
+                    .background(Color(white: 0.7))
+                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+                    
+                    Button(action: {
+                        flowState.nextLink(.apiTest)
+                    }, label: {
+                        Text("API Test")
+                    })
+                    .frame(width: size, height: size)
                     .background(Color(white: 0.7))
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                 }
