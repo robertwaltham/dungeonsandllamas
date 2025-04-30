@@ -32,7 +32,7 @@ class GenerationService {
         var error: String?
     }
     
-    struct LoraInvocation: Identifiable, Hashable {
+    struct LoraInvocation: Identifiable, Hashable, Sendable {
         var id: String {
             name
         }
@@ -76,6 +76,8 @@ class GenerationService {
     var sdLoras: [StableDiffusionClient.Lora] = []
     var sdSamplers: [StableDiffusionClient.Sampler] = []
     var selectedSampler = StableDiffusionClient.defaultSampler // default
+    var controlNetModels: [String] = []
+    var controlNetModules: [String] = []
     
     var LLMHistory = [LLMHistoryEntry]()
     fileprivate var SDHistory = [SDHistoryEntry]() // TODO: Remove
@@ -231,14 +233,16 @@ class GenerationService {
                     model.sha256 == options.sdCheckpointHash
                 }
                                 
-                llmModels = try await llmClient.getLocalModels()
-                selectedLLMModel = llmModels.first
+//                llmModels = try await llmClient.getLocalModels()
+//                selectedLLMModel = llmModels.first
                 
                 sdSamplers = try await stableDiffusionClient.samplers()
                 
                 sdLoras = try await stableDiffusionClient.loras()
                 
 //                try await stableDiffusionClient.scriptInfo()
+                controlNetModels = try await stableDiffusionClient.controlNetModels()
+                controlNetModules = try await stableDiffusionClient.controlNetModules()
                 
             } catch {
                 print(error)
@@ -411,6 +415,84 @@ class GenerationService {
                 print(error)
             }
         }
+    }
+    
+    func depth(prompt: String,
+               loras: [LoraInvocation] = [],
+               seed: Int,
+               input: UIImage,
+               depth: UIImage,
+               output: Binding<UIImage?>,
+               progress: Binding<StableDiffusionClient.Progress?>,
+               loading: Binding<Bool>
+    ) {
+        loading.wrappedValue = true
+
+        guard let base64Depth = depth.pngData()?.base64EncodedString() else {
+            return
+        }
+        
+        guard let base64Image = input.pngData()?.base64EncodedString() else {
+            return
+        }
+        
+        let controlNetOptions = StableDiffusionClient.ControlNetOptions(image: base64Depth)
+        var sdOptions = StableDiffusionClient.GenerationOptions(prompt: prompt,
+                                                                size: imageSize,
+                                                                steps: steps,
+                                                                sampler: selectedSampler,
+                                                                initImages: [base64Image],
+                                                                controlNetOptions: controlNetOptions)
+        sdOptions.seed = seed
+        
+        Task.init {
+            
+            if selectedSDModel == nil {
+                if modelTask == nil {
+                    getModels()
+                }
+                _ = await modelTask?.result // TODO: handle error case
+            }
+            
+            var fullPrompt = prompt
+            
+            if loras.count > 0 {
+                fullPrompt += " "
+                fullPrompt += loras.map { lora in
+                    promptAdd(lora: lora)
+                }.joined(separator: " ")
+            }
+
+            sdOptions.prompt = fullPrompt
+            
+            do {
+                let strings = try await stableDiffusionClient.generateBase64EncodedImages(sdOptions)
+                
+                if let string = strings.first,
+                   let data = Data(base64Encoded: string),
+                   let image = UIImage(data: data) {
+                    output.wrappedValue = image
+                }
+            } catch {
+                print(error)
+            }
+            loading.wrappedValue = false
+
+        }
+        
+        Task.init {
+            // TODO: inherit known values from options
+            progress.wrappedValue = StableDiffusionClient.Progress(progress: 0, etaRelative: 0, state: StableDiffusionClient.Progress.State.initial())
+            do {
+                while loading.wrappedValue == true {
+                    progress.wrappedValue = try await self.stableDiffusionClient.imageGenerationProgress()
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                }
+            } catch {
+                print(error)
+            }
+        }
+        
     }
     
     func inpaint(prompt: String,

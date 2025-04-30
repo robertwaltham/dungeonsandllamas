@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		D10D1DD52DA6EDD900746F53 /* inpaint.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD42DA6EDD900746F53 /* inpaint.drawing */; };
 		D10D1DD72DA6F0F500746F53 /* fancycat.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD62DA6F0F500746F53 /* fancycat.drawing */; };
+		D121A54B2DC19517000CE87D /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = D121A54A2DC19517000CE87D /* AnyCodable */; };
 		D1320E082BD5C12D00EEEDCC /* Photo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1320E072BD5C12D00EEEDCC /* Photo.swift */; };
 		D15EFDD42DAD808000AFE773 /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD32DAD807A00AFE773 /* PhotoLibraryService.swift */; };
 		D15EFDD62DAD896E00AFE773 /* DepthGenerationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD52DAD896A00AFE773 /* DepthGenerationView.swift */; };
@@ -101,6 +102,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D121A54B2DC19517000CE87D /* AnyCodable in Frameworks */,
 				D1F839D22DA07C580028E034 /* SQLite in Frameworks */,
 				D180B7D12D9E16550055CB3D /* MijickCamera in Frameworks */,
 				D180B7CC2D9E137F0055CB3D /* MijickCamera in Frameworks */,
@@ -292,6 +294,7 @@
 			packageReferences = (
 				D180B7CF2D9E16550055CB3D /* XCRemoteSwiftPackageReference "Camera" */,
 				D1F839D02DA07C580028E034 /* XCRemoteSwiftPackageReference "SQLite" */,
+				D121A5492DC19517000CE87D /* XCRemoteSwiftPackageReference "AnyCodable" */,
 			);
 			productRefGroup = D16CAE462BB3724000ECA710 /* Products */;
 			projectDirPath = "";
@@ -578,6 +581,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		D121A5492DC19517000CE87D /* XCRemoteSwiftPackageReference "AnyCodable" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Flight-School/AnyCodable";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.6.7;
+			};
+		};
 		D180B7CA2D9E137F0055CB3D /* XCRemoteSwiftPackageReference "swift6_1" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/FutureSeth/Camera/tree/bugfix/swift6_1";
@@ -605,6 +616,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		D121A54A2DC19517000CE87D /* AnyCodable */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D121A5492DC19517000CE87D /* XCRemoteSwiftPackageReference "AnyCodable" */;
+			productName = AnyCodable;
+		};
 		D180B7CB2D9E137F0055CB3D /* MijickCamera */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D180B7CA2D9E137F0055CB3D /* XCRemoteSwiftPackageReference "swift6_1" */;

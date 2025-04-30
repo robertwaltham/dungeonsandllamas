@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import AnyCodable
 
 actor StableDiffusionClient {
     
@@ -21,6 +22,8 @@ actor StableDiffusionClient {
         case samplers = "/sd/sdapi/v1/samplers"
         case interrogate = "/sd/sdapi/v1/interrogate"
         case scriptInfo = "/sd/sdapi/v1/script-info"
+        case controlNetModels = "/sd/controlnet/model_list"
+        case controlNetModules = "/sd/controlnet/module_list"
     }
     
     private enum Method: String {
@@ -28,7 +31,7 @@ actor StableDiffusionClient {
         case post = "POST"
     }
     
-    struct GenerationOptions: Codable {
+    struct GenerationOptions: Encodable, @unchecked Sendable { // TODO: fix AnyCodable making this unsendable
         var prompt: String
         var negativePrompt: String
         var width: Int
@@ -39,7 +42,7 @@ actor StableDiffusionClient {
         var samplerName: String
         var initImages: [String]?
         var mask: String?
-        var alwaysonScripts: [String: [String: [SoftInpaintingOptions]]]? = nil
+        let alwaysonScripts: [String: [String: [AnyCodable]]]?
         
         init(prompt: String,
              negativePrompt: String = "",
@@ -49,7 +52,8 @@ actor StableDiffusionClient {
              sampler: Sampler = StableDiffusionClient.defaultSampler,
              initImages: [String]? = nil,
              mask: String? = nil,
-             inPaintingOptions: SoftInpaintingOptions? = nil) {
+             inPaintingOptions: SoftInpaintingOptions? = nil,
+             controlNetOptions: ControlNetOptions? = nil) {
             
             self.prompt = prompt
             self.negativePrompt = negativePrompt
@@ -61,14 +65,24 @@ actor StableDiffusionClient {
             self.initImages = initImages
             self.mask = mask
             
-            if let inPaintingOptions {
+            if let inPaintingOptions { // TODO: make these not mutually exclusive
                 self.alwaysonScripts = [
                     "soft inpainting": [
                         "args": [
-                            inPaintingOptions
+                            AnyCodable(inPaintingOptions)
                         ]
                     ]
                 ]
+            } else if let controlNetOptions {
+                self.alwaysonScripts = [
+                    "ControlNet": [
+                        "args": [
+                            AnyCodable(controlNetOptions)
+                        ]
+                    ]
+                ]
+            } else {
+                self.alwaysonScripts = nil
             }
         }
     }
@@ -101,6 +115,30 @@ actor StableDiffusionClient {
             case maskInfluence = "Mask influence"
             case differenceThreshold = "Difference threshold"
             case differenceContrast = "Difference contrast"
+        }
+    }
+    
+    // https://github.com/Mikubill/sd-webui-controlnet/wiki/API#controlnetunitrequest-json-object
+    struct ControlNetOptions: Codable {
+        var enabled = true
+        var module = "none"
+        var model = "control_v11f1p_sd15_depth [cfd03158]"
+        var weight = 1.0
+        var image: String
+        var resizeMode = "Crop and Resize"
+        var lowvram = false
+        var processorRes = 64
+        var thresholdA = 64
+        var thresholdB = 64
+        var guidanceStart = 0.0
+        var guidanceEnd = 1.0
+        var controlMode: ControlMode = .controlNet
+        var pixelPerfect = false
+        
+        enum ControlMode: String, Codable {
+            case balanced = "Balanced"
+            case prompt = "My prompt is more important"
+            case controlNet = "ControlNet is more important"
         }
     }
 
@@ -442,6 +480,36 @@ actor StableDiffusionClient {
         return try decoder.decode([Sampler].self, from: data)
     }
     
+    func controlNetModels() async throws -> [String] {
+        var request = try StableDiffusionClient.request(endpoint: .controlNetModels, method: .get)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
+        }
+        let payload = try decoder.decode([String: [String]].self, from: data)
+        return payload["model_list"] ?? []
+    }
+    
+    func controlNetModules() async throws -> [String] {
+        var request = try StableDiffusionClient.request(endpoint: .controlNetModules, method: .get)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
+        }
+        let payload = try decoder.decode([String: AnyCodable].self, from: data)
+        return payload["module_list"]?.value as? [String] ?? []
+    }
+    
     func interrogate(base64EncodedImage: String) async throws -> String {
         
         var request = try StableDiffusionClient.request(endpoint: .interrogate, method: .post, timeout: 300)
@@ -461,6 +529,8 @@ actor StableDiffusionClient {
         
         return try decoder.decode([String: String].self, from: data)["caption"] ?? "n/a"
     }
+    
+    // MARK: - Local Testing
     
     func upload(image: UIImage, filename: String) async throws -> String? {
         var multipart = MultipartRequest()

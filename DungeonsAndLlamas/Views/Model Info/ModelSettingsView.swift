@@ -104,6 +104,25 @@ struct ModelSettingsView: View {
                 }
             }
             
+            Text("Control Net").font(.title)
+            
+            HStack {
+                VStack {
+                    Text("Models")
+                    ForEach(generationService.controlNetModels, id:\.self) { model in
+                        Text(model)
+                    }
+                }
+                
+                VStack {
+                    Text("Modules")
+                    
+                    ForEach(generationService.controlNetModules, id:\.self) { module in
+                        Text(module)
+                    }
+                }
+            }
+            
             Spacer()
 
             Text("Large Language Model")

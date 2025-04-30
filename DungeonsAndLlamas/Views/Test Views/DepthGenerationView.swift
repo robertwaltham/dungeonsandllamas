@@ -12,8 +12,15 @@ import Observation
 struct DepthGenerationView: View {
     var flowState: ContentFlowState
     var generationService: GenerationService
-    @State var viewModel = DepthGenerationViewModel()
+    @State var viewModel: DepthGenerationViewModel
     @State var presentedResult: DepthGenerationViewModel.ImageResult?
+    @State var showLoras: Bool = false
+
+    init(flowState: ContentFlowState, generationService: GenerationService) {
+        self.flowState = flowState
+        self.generationService = generationService
+        self.viewModel = DepthGenerationViewModel(generationService: generationService)
+    }
     
     var body: some View {
         VStack {
@@ -35,8 +42,41 @@ struct DepthGenerationView: View {
                 }
 
                 HStack {
+                    Button {
+                        showLoras = true
+                    } label: {
+                        
+                        HStack {
+                            Label("Loras", systemImage: "photo.on.rectangle.angled")
+                        }
+                        .foregroundColor(.purple)
+
+                        HStack {
+                            Text("\(viewModel.enabledLoras.count)")
+                        }
+                        .foregroundColor(.black)
+                    }
+                    .padding()
+                    .popover(isPresented: $showLoras) {
+                        Grid(horizontalSpacing: 10, verticalSpacing: 20) {
+                            
+                            ForEach($viewModel.loras) { $lora in
+                                
+                                GridRow {
+                                    Text(lora.name).frame(minWidth: 200)
+                                    Slider(value: $lora.weight, in: 0.0...2.0)
+                                    Text(lora.weight.formatted(.number.precision(.fractionLength(0...2))))
+                                        .frame(minWidth: 50)
+                                }
+                            }
+                        }
+                        .frame(minWidth: 500)
+                        .padding()
+                    }
+                    
                     Button("Generate") {
-                        viewModel.upload(image: presentedResult, service: generationService)
+//                        viewModel.upload(image: presentedResult, service: generationService)
+                        viewModel.depth(image: presentedResult, serice: generationService, output: $viewModel.result, progress: $viewModel.progress, loading: $viewModel.loading)
                     }.disabled(viewModel.loading)
                     
                     
@@ -63,11 +103,11 @@ struct DepthGenerationView: View {
                     }
                     
                     
-                    Button {
-                        viewModel.describe(image: presentedResult.image, generationService: generationService)
-                    } label: {
+//                    Button {
+//                        viewModel.describe(image: presentedResult.image, generationService: generationService)
+//                    } label: {
                         Text(viewModel.prompt)
-                    }.disabled(viewModel.loading)
+//                    }.disabled(viewModel.loading)
 
                 }
             }
@@ -119,10 +159,32 @@ struct DepthGenerationView: View {
 }
 
 @Observable
-@MainActor
-class DepthGenerationViewModel {
+class DepthGenerationViewModel: @unchecked Sendable {
+    
+    @MainActor
+    init(generationService: GenerationService) {
+        self.loras = generationService.sdLoras.map { lora in
+            GenerationService.LoraInvocation.init(name: lora.name, weight: 0, activation: lora.activation)
+        }
+        
+        withObservationTracking {
+            _ = generationService.sdLoras
+        } onChange: {
+            Task {
+                // TODO: preserve weights
+                self.loras = await generationService.sdLoras.map { lora in
+                    GenerationService.LoraInvocation.init(name: lora.name, weight: 0)
+                }
+            }
+        }
+    }
     
     var loading = false
+    
+    var loras: [GenerationService.LoraInvocation]
+    var enabledLoras: [GenerationService.LoraInvocation] {
+        loras.filter { $0.weight > 0}
+    }
     
     struct ImageResult: Identifiable {
         var image: UIImage
@@ -135,7 +197,7 @@ class DepthGenerationViewModel {
         }
     }
     static let imageCount = 100
-    var prompt = "A picture of flowers"
+    var prompt = "watercolor"
     let descriptionPrompt = """
     <start_of_turn>user
     Describe the contents of this image in 50 words or less
@@ -146,6 +208,7 @@ class DepthGenerationViewModel {
     <start_of_turn>model
     """
     var result: UIImage?
+    var progress: StableDiffusionClient.Progress?
     
     var images = (0..<imageCount).map { i in ImageResult(image: UIImage(named: "lighthouse")!, index: i) }
     func getImages(service: GenerationService) {
@@ -153,7 +216,7 @@ class DepthGenerationViewModel {
         loading = true
         Task.init {
             var i = 0
-            for await image in service.photos.getImages(limit: DepthGenerationViewModel.imageCount) {
+            for await image in await service.photos.getImages(limit: DepthGenerationViewModel.imageCount) {
 
                 images[i].image = image.image
                 images[i].depth = image.depth
@@ -162,6 +225,27 @@ class DepthGenerationViewModel {
             }
             loading = false
         }
+    }
+    
+    @MainActor
+    func depth(image: ImageResult,
+               serice: GenerationService,
+               output: Binding<UIImage?>,
+               progress: Binding<StableDiffusionClient.Progress?>,
+               loading: Binding<Bool>) {
+        
+        guard let depth = image.depth else {
+            return
+        }
+        result = nil
+        serice.depth(prompt: prompt,
+                     loras: enabledLoras,
+                     seed: Int.random(in: 0...1000),
+                     input: image.image,
+                     depth: depth,
+                     output: output,
+                     progress: progress,
+                     loading: loading)
     }
     
     func upload(image: ImageResult, service: GenerationService) {
@@ -188,6 +272,7 @@ class DepthGenerationViewModel {
         }
     }
     
+    @MainActor
     func describe(image: UIImage, generationService: GenerationService) {
         guard !loading else {
             return
