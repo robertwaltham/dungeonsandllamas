@@ -422,6 +422,7 @@ class GenerationService {
                seed: Int,
                input: UIImage,
                depth: UIImage,
+               mode: StableDiffusionClient.ControlNetOptions.ControlMode = .balanced,
                output: Binding<UIImage?>,
                progress: Binding<StableDiffusionClient.Progress?>,
                loading: Binding<Bool>
@@ -436,7 +437,8 @@ class GenerationService {
             return
         }
         
-        let controlNetOptions = StableDiffusionClient.ControlNetOptions(image: base64Depth)
+        var controlNetOptions = StableDiffusionClient.ControlNetOptions(image: base64Depth)
+        controlNetOptions.controlMode = mode
         var sdOptions = StableDiffusionClient.GenerationOptions(prompt: prompt,
                                                                 size: imageSize,
                                                                 steps: steps,

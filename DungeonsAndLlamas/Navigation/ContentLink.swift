@@ -36,5 +36,6 @@ enum ContentLink: Identifiable, Hashable {
     case lora(lora: StableDiffusionClient.Lora)
     case inpaint(history: ImageHistoryModel)
     case depth
+    case depthGeneration(img: PhotoLibraryService.PhotoLibraryImage)
 
 }

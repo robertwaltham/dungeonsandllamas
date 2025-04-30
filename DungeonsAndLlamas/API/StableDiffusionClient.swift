@@ -135,7 +135,11 @@ actor StableDiffusionClient {
         var controlMode: ControlMode = .controlNet
         var pixelPerfect = false
         
-        enum ControlMode: String, Codable {
+        enum ControlMode: String, Codable, CaseIterable, Identifiable {
+            var id: String {
+                rawValue
+            }
+            
             case balanced = "Balanced"
             case prompt = "My prompt is more important"
             case controlNet = "ControlNet is more important"
@@ -239,7 +243,7 @@ actor StableDiffusionClient {
 //                xl_more_art-full_v1
                 
             case "lora": // for testing
-                return "actiation"
+                return "activation"
                 
             default:
                     return nil

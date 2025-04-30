@@ -45,13 +45,17 @@ class PhotoLibraryService {
         }
     }
     
-    struct ImageResult {
-        let image: UIImage
-        let depth: UIImage?
-        let canny: UIImage?
+    struct PhotoLibraryImage: Identifiable, Equatable, Hashable {
+        var image: UIImage
+        var depth: UIImage? = nil
+        var canny: UIImage? = nil
+        
+        var id: Int {
+            image.hash
+        }
     }
     
-    func getImages(limit: Int = 10) -> AsyncStream<ImageResult> {
+    func getImages(limit: Int = 10) -> AsyncStream<PhotoLibraryImage> {
         
         guard canAccess else {
             print("no access")
@@ -91,15 +95,15 @@ class PhotoLibraryService {
                                     let canny = depthImage != nil ? self.canny(image: depthImage!) : self.canny(image: image)
                                     
                                     continuation.yield(
-                                        ImageResult(image: image, depth: depthImage, canny: canny)
+                                        PhotoLibraryImage(image: image, depth: depthImage, canny: canny)
                                     )
                                 } else {
                                     print("no image \(count)")
-                                    continuation.yield(ImageResult(image: UIImage(data: data)!, depth: nil, canny: nil))
+                                    continuation.yield(PhotoLibraryImage(image: UIImage(data: data)!, depth: nil, canny: nil))
                                 }
                                 
                                 count += 1
-                                if count == fetch.fetchLimit {
+                                if count >= fetch.fetchLimit {
                                     print("finished")
                                     continuation.finish()
                                 }
@@ -107,16 +111,16 @@ class PhotoLibraryService {
                         } else {
                             print("no depth \(count)")
                             count += 1
-                            continuation.yield(ImageResult(image: UIImage(data: data)!, depth: nil, canny: nil))
+                            continuation.yield(PhotoLibraryImage(image: UIImage(data: data)!, depth: nil, canny: nil))
                         }
                         
                     } else {
                         print("no data \(count)")
                         count += 1
-                        continuation.yield(ImageResult(image: self.defaultImage, depth: nil, canny: nil))
+                        continuation.yield(PhotoLibraryImage(image: self.defaultImage, depth: nil, canny: nil))
                     }
                     
-                    if count == fetch.fetchLimit {
+                    if count >= fetch.fetchLimit {
                         print("finished")
                         continuation.finish()
                     }

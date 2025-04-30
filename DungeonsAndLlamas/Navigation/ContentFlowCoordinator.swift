@@ -109,7 +109,9 @@ extension ContentFlowCoordinator {
             case .inpaint(history: let history):
                 PencilOverlayDrawingView(flowState: flowState, generationService: generationService, history: history)
             case .depth:
-                DepthGenerationView(flowState: flowState, generationService: generationService)
+                DepthListView(flowState: flowState, generationService: generationService)
+            case .depthGeneration(img: let img):
+                DepthGenerationView(flowState: flowState, generationService: generationService, img: img)
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
