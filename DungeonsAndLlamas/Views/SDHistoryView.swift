@@ -67,6 +67,7 @@ struct SDHistoryView: View {
                 if let history = presentedHistory {
                     let image = generationService.loadOutputImage(history: history)
                     let output = Image(uiImage: image)
+                    let imageSize: CGFloat = 400
                     
                     VStack {
                         Text(history.prompt)
@@ -78,10 +79,36 @@ struct SDHistoryView: View {
                             output
                                 .resizable()
                                 .scaledToFit()
+                                .frame(width: imageSize, height: imageSize)
                             
-                            Image(uiImage: generationService.loadInputImage(history: history))
-                                .resizable()
-                                .scaledToFit()
+                            
+                            if history.depthFilePath != nil {
+                                ZStack {
+                                    Image(uiImage: generationService.loadInputImage(history: history))
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: imageSize, height: imageSize)
+
+                                    HStack {
+                                        VStack {
+                                            Spacer()
+                                            
+                                            Image(uiImage: generationService.loadDepthImage(history: history))
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: imageSize / 4, height: imageSize / 4)
+                                                .padding()
+                                        }
+                                        Spacer()
+                                    }
+                                }
+                                
+                            } else {
+                                Image(uiImage: generationService.loadInputImage(history: history))
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: imageSize, height: imageSize)
+                            }
                         }
                         
                         VStack {

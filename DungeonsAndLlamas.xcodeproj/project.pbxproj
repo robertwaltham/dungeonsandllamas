@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		D10589B92DC2A10000E0F3BE /* DepthGenerationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10589B82DC2A0F700E0F3BE /* DepthGenerationView.swift */; };
+		D10589C32DC2D8A400E0F3BE /* .gitkeep in Resources */ = {isa = PBXBuildFile; fileRef = D10589BF2DC2D8A400E0F3BE /* .gitkeep */; };
+		D10589C52DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D10589C02DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage */; };
 		D10D1DD52DA6EDD900746F53 /* inpaint.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD42DA6EDD900746F53 /* inpaint.drawing */; };
 		D10D1DD72DA6F0F500746F53 /* fancycat.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD62DA6F0F500746F53 /* fancycat.drawing */; };
 		D121A54B2DC19517000CE87D /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = D121A54A2DC19517000CE87D /* AnyCodable */; };
@@ -56,6 +58,8 @@
 
 /* Begin PBXFileReference section */
 		D10589B82DC2A0F700E0F3BE /* DepthGenerationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthGenerationView.swift; sourceTree = "<group>"; };
+		D10589BF2DC2D8A400E0F3BE /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
+		D10589C02DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = DepthAnythingV2SmallF16.mlpackage; sourceTree = "<group>"; };
 		D10D1DD42DA6EDD900746F53 /* inpaint.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = inpaint.drawing; sourceTree = "<group>"; };
 		D10D1DD62DA6F0F500746F53 /* fancycat.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = fancycat.drawing; sourceTree = "<group>"; };
 		D1320E072BD5C12D00EEEDCC /* Photo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Photo.swift; sourceTree = "<group>"; };
@@ -114,6 +118,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D10589C12DC2D8A400E0F3BE /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				D10589BF2DC2D8A400E0F3BE /* .gitkeep */,
+				D10589C02DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
 		D10D1DD32DA6EDBE00746F53 /* Test Data */ = {
 			isa = PBXGroup;
 			children = (
@@ -158,6 +171,7 @@
 				D17058A52BBB18D1003E6668 /* Views */,
 				D17058A42BBB18C6003E6668 /* API */,
 				D166A8982BE00CBF0028100A /* Service */,
+				D10589C12DC2D8A400E0F3BE /* Models */,
 				D10D1DD32DA6EDBE00746F53 /* Test Data */,
 				D16CAE4E2BB3724100ECA710 /* Assets.xcassets */,
 				D16CAE502BB3724100ECA710 /* Preview Content */,
@@ -315,6 +329,7 @@
 			files = (
 				D16CAE522BB3724100ECA710 /* Preview Assets.xcassets in Resources */,
 				D16CAE4F2BB3724100ECA710 /* Assets.xcassets in Resources */,
+				D10589C32DC2D8A400E0F3BE /* .gitkeep in Resources */,
 				D10D1DD52DA6EDD900746F53 /* inpaint.drawing in Resources */,
 				D10D1DD72DA6F0F500746F53 /* fancycat.drawing in Resources */,
 			);
@@ -337,6 +352,7 @@
 				D1DC04382BCF2C74007BC5D2 /* SDHistoryView.swift in Sources */,
 				D15EFDD42DAD808000AFE773 /* PhotoLibraryService.swift in Sources */,
 				D166A8952BDBFD380028100A /* ModelSettingsView.swift in Sources */,
+				D10589C52DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage in Sources */,
 				D16CAE5D2BB3C09B00ECA710 /* Secrets.swift in Sources */,
 				D180B7D32D9E2ABE0055CB3D /* BracketView.swift in Sources */,
 				D16CAE4B2BB3724000ECA710 /* ContentView.swift in Sources */,

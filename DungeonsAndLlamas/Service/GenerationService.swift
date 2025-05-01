@@ -146,6 +146,10 @@ class GenerationService {
         return fileService.loadImage(path: history.inputFilePath ?? "") // TODO: error handling
     }
     
+    func loadDepthImage(history: ImageHistoryModel) -> UIImage {
+        return fileService.loadImage(path: history.depthFilePath ?? "") // TODO: error handling
+    }
+    
     func loadDrawing(history: ImageHistoryModel) -> PKDrawing {
         return fileService.load(path: history.drawingFilePath ?? "") // TODO: error handling
     }
@@ -423,6 +427,8 @@ class GenerationService {
                input: UIImage,
                depth: UIImage,
                mode: StableDiffusionClient.ControlNetOptions.ControlMode = .balanced,
+               session: String,
+               sequence: Int,
                output: Binding<UIImage?>,
                progress: Binding<StableDiffusionClient.Progress?>,
                loading: Binding<Bool>
@@ -467,6 +473,27 @@ class GenerationService {
 
             sdOptions.prompt = fullPrompt
             
+            
+            let id = NSUUID().uuidString
+            var history = ImageHistoryModel(id: id,
+                                            start: Date.now,
+                                            prompt: fullPrompt,
+                                            model: selectedSDModel?.modelName ?? "none",
+                                            sampler: selectedSampler.name,
+                                            steps: steps,
+                                            size: imageSize,
+                                            seed: seed,
+                                            inputFilePath: fileService.save(image: input),
+                                            depthFilePath: fileService.save(image: depth),
+                                            session: session,
+                                            sequence: sequence,
+                                            loras: loras.map({ lora in
+                LoraHistoryModel(id: NSUUID().uuidString,
+                                 name: lora.name,
+                                 weight: lora.weight,
+                                 historyModelId: id)
+            }))
+            
             do {
                 let strings = try await stableDiffusionClient.generateBase64EncodedImages(sdOptions)
                 
@@ -474,12 +501,18 @@ class GenerationService {
                    let data = Data(base64Encoded: string),
                    let image = UIImage(data: data) {
                     output.wrappedValue = image
+                    
+                    history.end = Date.now
+                    history.outputFilePath = fileService.save(image: image)
                 }
             } catch {
                 print(error)
+                history.errorDescription = error.localizedDescription
             }
             loading.wrappedValue = false
-
+            db.save(history: history)
+            imageHistory.append(history)
+            lastHistory = history
         }
         
         Task.init {

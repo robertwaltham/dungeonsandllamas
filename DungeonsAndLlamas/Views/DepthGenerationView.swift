@@ -30,26 +30,26 @@ struct DepthGenerationView: View {
                     HStack {
                         Spacer()
                         VStack {
-                            Spacer()
                             Image(uiImage: depth)
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: 512 / 4, height: 512 / 4)
                                 .background(.gray)
                                 .padding()
+                            Spacer()
                         }
                     }
                 }
                 
                 VStack {
                     Spacer()
-                        .frame(height: 21)
                     TextEditor(text: $viewModel.prompt)
                         .scrollContentBackground(.hidden)
                         .background(Color(white: 0.8, opacity: 0.4))
                         .frame(width: 470, height: 100)
                         .clipped()
                     Spacer()
+                        .frame(height: 21)
                 }
             }
             .frame(width: 512, height: 512)
@@ -142,6 +142,9 @@ struct DepthGenerationView: View {
 @Observable
 class DepthGenerationViewModel: @unchecked Sendable {
     
+    var session = NSUUID().uuidString
+    var sequence = 0
+    
     @MainActor
     init(generationService: GenerationService, img: PhotoLibraryService.PhotoLibraryImage) {
         self.loras = generationService.sdLoras.map { lora in
@@ -184,12 +187,15 @@ class DepthGenerationViewModel: @unchecked Sendable {
             return
         }
         result = nil
+        sequence += 1
         serice.depth(prompt: prompt,
                      loras: enabledLoras,
                      seed: Int.random(in: 0...1000),
                      input: image.image,
                      depth: depth,
                      mode: mode,
+                     session: session,
+                     sequence: sequence,
                      output: output,
                      progress: progress,
                      loading: loading)

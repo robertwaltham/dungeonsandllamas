@@ -193,6 +193,11 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         Expression<String?>("drawing_file_path")
     }
     
+    var depthFilePath: String?
+    fileprivate static var depthFilePathExp: SQLite.Expression<String?> {
+        Expression<String?>("depth_file_path")
+    }
+    
     var errorDescription: String?
     fileprivate static var errorDescriptionExp: SQLite.Expression<String?> {
         Expression<String?>("error_description")
@@ -225,6 +230,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             ImageHistoryModel.inputFilePathExp <- inputFilePath,
             ImageHistoryModel.outputFilePathExp <- outputFilePath,
             ImageHistoryModel.drawingFilePathExp <- drawingFilePath,
+            ImageHistoryModel.depthFilePathExp <- depthFilePath,
             ImageHistoryModel.errorDescriptionExp <- errorDescription,
             ImageHistoryModel.sessionExp <- session,
             ImageHistoryModel.sequenceExp <- sequence,
@@ -253,6 +259,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                             inputFilePath: entry[inputFilePathExp],
                                             outputFilePath: entry[outputFilePathExp],
                                             drawingFilePath: entry[drawingFilePathExp],
+                                            depthFilePath: entry[depthFilePathExp],
                                             errorDescription: entry[errorDescriptionExp],
                                             session: entry[sessionExp],
                                             sequence: entry[sequenceExp],
@@ -277,6 +284,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                 t.column(inputFilePathExp)
                 t.column(outputFilePathExp)
                 t.column(drawingFilePathExp)
+                t.column(depthFilePathExp)
                 t.column(errorDescriptionExp)
                 t.column(sessionExp)
                 t.column(sequenceExp)
@@ -300,8 +308,9 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                       session: NSUUID().uuidString,
                                       sequence: 0,
                                       loras: [])
-        entry.inputFilePath = fileService.save(image: UIImage(named: "lighthouse")!)
+        entry.inputFilePath = fileService.save(image: UIImage(named: "catglasses")!)
         entry.outputFilePath = fileService.save(image: UIImage(named: "trees")!)
+        entry.depthFilePath = fileService.save(image: UIImage(named: "depth_preview")!)
         let drawingUrl = Bundle.main.url(forResource: "fancycat", withExtension: "drawing")!
         let drawingData = try! Data(contentsOf: drawingUrl)
         let drawing = try! PKDrawing(data: drawingData)
@@ -309,11 +318,19 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         
         
         for i in 0..<30 {
+            var entry = entry
+
             entry.start = Date.now.addingTimeInterval(TimeInterval(i))
             entry.end = Date.now.addingTimeInterval(TimeInterval(i + 5))
             entry.sequence = i % 5
             if i % 5 == 0 {
                 entry.session = NSUUID().uuidString
+            }
+            
+            if i % 4 == 0 {
+                entry.drawingFilePath = nil
+            } else {
+                entry.depthFilePath = nil
             }
             if i % 2 == 0 {
                 entry.loras = [
