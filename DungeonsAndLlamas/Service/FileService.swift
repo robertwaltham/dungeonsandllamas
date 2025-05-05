@@ -10,7 +10,7 @@ import UIKit
 import PencilKit
 
 
-final class FileService {
+class FileService {
     
     var decoder: JSONDecoder {
         let d = JSONDecoder()
@@ -26,11 +26,11 @@ final class FileService {
         return e
     }
     
-    let manager = FileManager.default
     
     init() {
-        let urls = [imageDirectory(), sdHistoryDirectory(), llmHistoryDirectory(), pencilDrawingDirectory()]
-        
+        let urls = [imageDirectory(), sdHistoryDirectory(), llmHistoryDirectory(), pencilDrawingDirectory(), imageCacheDirectory()]
+        let manager = FileManager.default
+
         for url in urls {
             if !manager.fileExists(atPath: url.absoluteString) {
                 do {
@@ -58,6 +58,10 @@ final class FileService {
         return URL.documentsDirectory.appendingPathComponent("llmHistory")
     }
     
+    private func imageCacheDirectory() -> URL {
+        return URL.documentsDirectory.appendingPathComponent("imageCache")
+    }
+    
     //MARK: - SD History
     
     func save(history: GenerationService.SDHistoryEntry) {
@@ -73,7 +77,8 @@ final class FileService {
     
     func loadSDHistory() -> [GenerationService.SDHistoryEntry] {
         var result = [GenerationService.SDHistoryEntry]()
-        
+        let manager = FileManager.default
+
         do {
             let directory = sdHistoryDirectory()
             let paths = try manager.contentsOfDirectory(atPath: directory.path())
@@ -142,5 +147,38 @@ final class FileService {
             print(error.localizedDescription)
         }
         return PKDrawing()
+    }
+    
+    // expected identifier is a localIdentifier from a PHAsset which contains / characters
+    func cache(image: UIImage, identifier: String) {
+        let filename = identifier.replacingOccurrences(of: "/", with: "_") + ".png"
+        let fileURL = imageCacheDirectory().appending(component: filename)
+        if let data = image.pngData() {
+            do {
+                try data.write(to: fileURL)
+            } catch {
+                print(error.localizedDescription)
+            }
+        } else {
+            print("error getting png data")
+        }
+    }
+    
+    func loadCachedImage(identifier: String) -> UIImage? {
+        let filename = identifier.replacingOccurrences(of: "/", with: "_") + ".png"
+        let filepath = imageCacheDirectory().appending(path: filename)
+        let manager = FileManager.default
+
+        guard manager.fileExists(atPath: filepath.absoluteString) else {
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: filepath)
+            return UIImage(data: data)
+        } catch {
+            print(error.localizedDescription)
+        }
+        return nil
     }
 }

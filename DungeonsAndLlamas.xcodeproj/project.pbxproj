@@ -13,6 +13,9 @@
 		D10D1DD52DA6EDD900746F53 /* inpaint.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD42DA6EDD900746F53 /* inpaint.drawing */; };
 		D10D1DD72DA6F0F500746F53 /* fancycat.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD62DA6F0F500746F53 /* fancycat.drawing */; };
 		D121A54B2DC19517000CE87D /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = D121A54A2DC19517000CE87D /* AnyCodable */; };
+		D13024772DC969F5006EA67C /* FastViTMA36F16.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D13024762DC969F5006EA67C /* FastViTMA36F16.mlpackage */; };
+		D13024792DC96ABD006EA67C /* MLService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13024782DC96AB8006EA67C /* MLService.swift */; };
+		D130247B2DC97011006EA67C /* FastViTT8F16.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D130247A2DC97011006EA67C /* FastViTT8F16.mlpackage */; };
 		D1320E082BD5C12D00EEEDCC /* Photo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1320E072BD5C12D00EEEDCC /* Photo.swift */; };
 		D15EFDD42DAD808000AFE773 /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD32DAD807A00AFE773 /* PhotoLibraryService.swift */; };
 		D15EFDD62DAD896E00AFE773 /* DepthListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15EFDD52DAD896A00AFE773 /* DepthListView.swift */; };
@@ -62,6 +65,9 @@
 		D10589C02DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = DepthAnythingV2SmallF16.mlpackage; sourceTree = "<group>"; };
 		D10D1DD42DA6EDD900746F53 /* inpaint.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = inpaint.drawing; sourceTree = "<group>"; };
 		D10D1DD62DA6F0F500746F53 /* fancycat.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = fancycat.drawing; sourceTree = "<group>"; };
+		D13024762DC969F5006EA67C /* FastViTMA36F16.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = FastViTMA36F16.mlpackage; sourceTree = "<group>"; };
+		D13024782DC96AB8006EA67C /* MLService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLService.swift; sourceTree = "<group>"; };
+		D130247A2DC97011006EA67C /* FastViTT8F16.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = FastViTT8F16.mlpackage; sourceTree = "<group>"; };
 		D1320E072BD5C12D00EEEDCC /* Photo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Photo.swift; sourceTree = "<group>"; };
 		D15EFDD32DAD807A00AFE773 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
 		D15EFDD52DAD896A00AFE773 /* DepthListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthListView.swift; sourceTree = "<group>"; };
@@ -121,6 +127,8 @@
 		D10589C12DC2D8A400E0F3BE /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				D130247A2DC97011006EA67C /* FastViTT8F16.mlpackage */,
+				D13024762DC969F5006EA67C /* FastViTMA36F16.mlpackage */,
 				D10589BF2DC2D8A400E0F3BE /* .gitkeep */,
 				D10589C02DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage */,
 			);
@@ -139,6 +147,7 @@
 		D166A8982BE00CBF0028100A /* Service */ = {
 			isa = PBXGroup;
 			children = (
+				D13024782DC96AB8006EA67C /* MLService.swift */,
 				D15EFDD32DAD807A00AFE773 /* PhotoLibraryService.swift */,
 				D1F839CE2DA07C320028E034 /* DatabaseService.swift */,
 				D1DC04352BCF2813007BC5D2 /* FileService.swift */,
@@ -357,6 +366,7 @@
 				D180B7D32D9E2ABE0055CB3D /* BracketView.swift in Sources */,
 				D16CAE4B2BB3724000ECA710 /* ContentView.swift in Sources */,
 				D16CAE5B2BB3C06700ECA710 /* LargeLangageModelClient.swift in Sources */,
+				D130247B2DC97011006EA67C /* FastViTT8F16.mlpackage in Sources */,
 				D1DC043F2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift in Sources */,
 				D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */,
 				D178EAEB2D9C9C36001828E2 /* GradientView.swift in Sources */,
@@ -378,8 +388,10 @@
 				D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */,
 				D180B7CE2D9E13A70055CB3D /* CameraTestView.swift in Sources */,
 				D166A8972BE00CA60028100A /* DelegateToSupressWarning.swift in Sources */,
+				D13024792DC96ABD006EA67C /* MLService.swift in Sources */,
 				D166A89C2BE00D590028100A /* APIError.swift in Sources */,
 				D17058A92BBB1956003E6668 /* ContentLink.swift in Sources */,
+				D13024772DC969F5006EA67C /* FastViTMA36F16.mlpackage in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

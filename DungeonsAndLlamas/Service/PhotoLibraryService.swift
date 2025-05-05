@@ -13,6 +13,9 @@ import CoreImage.CIFilterBuiltins
 @MainActor
 class PhotoLibraryService {
     var status: PHAuthorizationStatus?
+    
+    var ml = MLService() // TODO: inject this
+
     var canAccess: Bool {
         return status == .authorized || status == .limited
     }
@@ -46,16 +49,132 @@ class PhotoLibraryService {
     }
     
     struct PhotoLibraryImage: Identifiable, Equatable, Hashable {
+        var id: String
         var image: UIImage
         var depth: UIImage? = nil
+        var estimatedDepth: UIImage? = nil
         var canny: UIImage? = nil
+    }
+    
+    func getImages(limit: Int = 10, size: CGSize = CGSize(width: 512, height: 512)) -> AsyncStream<PhotoLibraryImage> {
         
-        var id: Int {
-            image.hash
+        guard canAccess else {
+            print("no access")
+            fatalError()
+        }
+        
+        let manager = PHImageManager.default()
+        let fetch = PHFetchOptions()
+        fetch.fetchLimit = limit
+        fetch.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        let result = PHAsset.fetchAssets(with: .image, options: fetch)
+
+        let request = PHImageRequestOptions()
+        request.isSynchronous = false
+        request.isNetworkAccessAllowed = true
+        request.resizeMode = .exact
+        request.deliveryMode = .highQualityFormat
+        
+        return AsyncStream { continuation in
+            var count = 0
+            result.enumerateObjects { asset, i, pointer in
+                manager.requestImage(for: asset,
+                                     targetSize: size,
+                                     contentMode: .aspectFill,
+                                     options: request) { image, info in
+                    
+                    if let image {
+                        continuation.yield(
+                            PhotoLibraryImage(id: asset.localIdentifier, image: image, depth: nil, canny: nil)
+                        )
+                    }
+                    
+                    count += 1
+                    if count >= fetch.fetchLimit {
+                        print("finished")
+                        continuation.finish()
+                    }
+                }
+            }
         }
     }
     
-    func getImages(limit: Int = 10) -> AsyncStream<PhotoLibraryImage> {
+    func getDepth(identifier: String) async -> PhotoLibraryImage? {
+        return await withCheckedContinuation { continuation in
+            let manager = PHImageManager.default()
+            
+            let fetch = PHFetchOptions()
+            fetch.fetchLimit = 1
+            let result = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: fetch)
+            
+            guard let asset = result.firstObject else {
+                continuation.resume(returning: .none)
+                return
+            }
+            
+            let request = PHImageRequestOptions()
+            request.isSynchronous = false
+            request.isNetworkAccessAllowed = true
+            request.resizeMode = .exact
+            request.deliveryMode = .highQualityFormat
+            
+            manager.requestImageDataAndOrientation(for: asset, options: request) { data, dataUTI, orientation, info in
+                
+                manager.requestImage(for: asset,
+                                     targetSize: CGSize(width: 512, height: 512),
+                                     contentMode: .aspectFill,
+                                     options: request) { image, info in
+                    
+                    guard let image else {
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    let canny = self.canny(image: image)
+                    var result = PhotoLibraryImage(id: identifier, image: image, canny: canny)
+                    
+                    
+                    if let data,
+                        let depthData = self.depth(imageData: data),
+                        let depthImage = self.image(depth: depthData)?.resizeAndCrop() {
+                        
+                        result.depth = depthImage
+                    }
+                    
+                    manager.requestImage(for: asset,
+                                         targetSize: MLService.targetSize,
+                                         contentMode: .aspectFill,
+                                         options: request) { image, info in
+                        Task {
+                            
+                            guard let image else {
+                                continuation.resume(returning: result)
+                                return
+                            }
+                            
+                            var estimatedDepth: UIImage?
+                            do {
+                                estimatedDepth = try await self.ml.performInference(image)
+                            } catch {
+                                print(error)
+                            }
+                            result.estimatedDepth = estimatedDepth
+                            result.depth = image
+                            continuation.resume(returning: result)
+
+                        }
+                    }
+                    
+
+                    
+                }
+            }
+        }
+    }
+    
+    
+    // TODO: fix code crimes and make this follow PHPhotoLibrary best practices
+    @available(*, deprecated, renamed: "getImages", message: "this method sucks don't use it")
+    func getImagesWithDepth(limit: Int = 10) -> AsyncStream<PhotoLibraryImage> {
         
         guard canAccess else {
             print("no access")
@@ -95,11 +214,11 @@ class PhotoLibraryService {
                                     let canny = depthImage != nil ? self.canny(image: depthImage!) : self.canny(image: image)
                                     
                                     continuation.yield(
-                                        PhotoLibraryImage(image: image, depth: depthImage, canny: canny)
+                                        PhotoLibraryImage(id: asset.localIdentifier, image: image, depth: depthImage, canny: canny)
                                     )
                                 } else {
                                     print("no image \(count)")
-                                    continuation.yield(PhotoLibraryImage(image: UIImage(data: data)!, depth: nil, canny: nil))
+                                    continuation.yield(PhotoLibraryImage(id: asset.localIdentifier, image: UIImage(data: data)!, depth: nil, canny: nil))
                                 }
                                 
                                 count += 1
@@ -111,13 +230,13 @@ class PhotoLibraryService {
                         } else {
                             print("no depth \(count)")
                             count += 1
-                            continuation.yield(PhotoLibraryImage(image: UIImage(data: data)!, depth: nil, canny: nil))
+                            continuation.yield(PhotoLibraryImage(id: asset.localIdentifier, image: UIImage(data: data)!, depth: nil, canny: nil))
                         }
                         
                     } else {
                         print("no data \(count)")
                         count += 1
-                        continuation.yield(PhotoLibraryImage(image: self.defaultImage, depth: nil, canny: nil))
+                        continuation.yield(PhotoLibraryImage(id: NSUUID().uuidString, image: self.defaultImage, depth: nil, canny: nil))
                     }
                     
                     if count >= fetch.fetchLimit {

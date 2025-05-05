@@ -54,7 +54,7 @@ struct DepthListView: View {
         switch result {
         case .image(let img):
             Button {
-                flowState.nextLink(.depthGeneration(img: img))
+                flowState.nextLink(.depthGeneration(localIdentifier: img.id))
             } label: {
                 ZStack {
                     Image(uiImage: img.image)
@@ -108,10 +108,10 @@ class DepthListViewModel: @unchecked Sendable {
 //    var progress: StableDiffusionClient.Progress?
     
     enum ImageContainer: Identifiable, Hashable {
-        case none(Int)
+        case none(String)
         case image(PhotoLibraryService.PhotoLibraryImage)
         
-        var id: Int {
+        var id: String {
             switch self {
             case .none(let index):
                 return index
@@ -121,13 +121,13 @@ class DepthListViewModel: @unchecked Sendable {
         }
     }
     
-    var images = (0..<imageCount).map { i in ImageContainer.none(i) }
+    var images = (0..<imageCount).map { i in ImageContainer.none(i.description) }
     func getImages(service: GenerationService) {
         print("start")
         loading = true
         Task.init {
             var i = 0
-            for await image in await service.photos.getImages(limit: DepthListViewModel.imageCount) {
+            for await image in await service.photos.getImages(limit: DepthListViewModel.imageCount, size: CGSize(width: 256, height: 256)) {
 
                 images[i] = ImageContainer.image(image)
                 i += 1
