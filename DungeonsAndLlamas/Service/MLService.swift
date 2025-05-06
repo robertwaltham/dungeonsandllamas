@@ -66,10 +66,14 @@ actor MLService {
             return nil
         }
         let originalSize = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
-        let inputImage = CIImage(cvPixelBuffer: pixelBuffer) //.resized(to: MLService.targetSize)
-        context.render(inputImage, to: inputPixelBuffer)
+        
+        
+        var cIImage = CIImage(cvPixelBuffer: pixelBuffer)
+        cIImage = cIImage.resized(to: MLService.targetSize)
+        context.render(cIImage, to: inputPixelBuffer)
         let result = try model.prediction(image: inputPixelBuffer)
         let outputImage = CIImage(cvPixelBuffer: result.depth).resized(to: originalSize)
+       
         let temporaryContext = CIContext()
         guard let videoImage = temporaryContext.createCGImage(outputImage, from: CGRectMake(0, 0, CGFloat(CVPixelBufferGetWidth(pixelBuffer)), CGFloat(CVPixelBufferGetHeight(pixelBuffer)))) else {
             return nil
@@ -155,6 +159,28 @@ extension UIImage {
         CVPixelBufferUnlockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
         
         return pixelBuffer
+    }
+    
+    // https://programmer.group/ios-picture-rotation-method.html
+    func rotateImage(withAngle angle: Double) -> UIImage? {
+        if angle.truncatingRemainder(dividingBy: 360) == 0 { return self }
+        
+        let imageRect = CGRect(origin: .zero, size: self.size)
+        let radian = CGFloat(angle / 180 * Double.pi)
+        let rotatedTransform = CGAffineTransform.identity.rotated(by: radian)
+        var rotatedRect = imageRect.applying(rotatedTransform)
+        rotatedRect.origin.x = 0
+        rotatedRect.origin.y = 0
+        
+        UIGraphicsBeginImageContext(rotatedRect.size)
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+        context.translateBy(x: rotatedRect.width / 2, y: rotatedRect.height / 2)
+        context.rotate(by: radian)
+        context.translateBy(x: -self.size.width / 2, y: -self.size.height / 2)
+        self.draw(at: .zero)
+        let rotatedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return rotatedImage
     }
 }
 

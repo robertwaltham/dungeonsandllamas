@@ -30,18 +30,18 @@ struct DepthGenerationView: View {
                     
                     VStack {
                         HStack {
-                            if let depth = image.depth {
-                                Image(uiImage: depth)
+                            
+                            Spacer()
+                            
+                            if viewModel.useEstimate, let estimated = image.estimatedDepth {
+                                Image(uiImage: estimated)
                                     .resizable()
                                     .scaledToFill()
                                     .frame(width: 512 / 4, height: 512 / 4)
                                     .background(.gray)
                                     .padding()
-                            }
-                            Spacer()
-                            
-                            if let estimated = image.estimatedDepth {
-                                Image(uiImage: estimated)
+                            } else if let depth = image.depth {
+                                Image(uiImage: depth)
                                     .resizable()
                                     .scaledToFill()
                                     .frame(width: 512 / 4, height: 512 / 4)
@@ -69,6 +69,12 @@ struct DepthGenerationView: View {
                 Spacer()
                 
                 HStack {
+                    Toggle(isOn: $viewModel.useEstimate) {
+                        viewModel.useEstimate ? Text("Estimated Depth") : Text("Captured Depth")
+                    }
+                    .frame(width: 150)
+                    .disabled(viewModel.image?.depth == nil)
+                    
                     Button {
                         showLoras = true
                     } label: {
@@ -190,6 +196,7 @@ class DepthGenerationViewModel: @unchecked Sendable {
     var result: UIImage?
     var prompt = "A cat in a fancy hat"
     var mode: StableDiffusionClient.ControlNetOptions.ControlMode = .balanced
+    var useEstimate = true
     
     func loadImage(service: GenerationService) {
         guard image == nil else {
@@ -212,7 +219,7 @@ class DepthGenerationViewModel: @unchecked Sendable {
         }
 
         let depth: UIImage
-        if let trueDepth = image.depth {
+        if let trueDepth = image.depth, !useEstimate {
             depth = trueDepth
         } else if let estimatedDepth = image.estimatedDepth {
             depth = estimatedDepth

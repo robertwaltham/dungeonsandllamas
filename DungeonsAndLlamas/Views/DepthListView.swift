@@ -93,7 +93,7 @@ class DepthListViewModel: @unchecked Sendable {
 
     var loading = false
 
-    static let imageCount = 200
+    static let imageCount = 400
 //    var prompt = "watercolor"
 //    let descriptionPrompt = """
 //    <start_of_turn>user
