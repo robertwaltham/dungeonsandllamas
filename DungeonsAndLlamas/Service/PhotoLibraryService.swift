@@ -140,16 +140,16 @@ class PhotoLibraryService {
                         result.depth = depthImage
                     }
                     
-                    manager.requestImage(for: asset,
-                                         targetSize: MLService.targetSize,
-                                         contentMode: .aspectFill,
-                                         options: request) { image, info in
+//                    manager.requestImage(for: asset,
+//                                         targetSize: MLService.targetSize,
+//                                         contentMode: .aspectFill,
+//                                         options: request) { image, info in
                         Task {
                             
-                            guard let image else {
-                                continuation.resume(returning: result)
-                                return
-                            }
+//                            guard let image else {
+//                                continuation.resume(returning: result)
+//                                return
+//                            }
                             
                             var estimatedDepth: UIImage?
                             do {
@@ -158,13 +158,10 @@ class PhotoLibraryService {
                                 print(error)
                             }
                             result.estimatedDepth = estimatedDepth
-                            result.depth = image
                             continuation.resume(returning: result)
 
                         }
-                    }
-                    
-
+//                    }
                     
                 }
             }

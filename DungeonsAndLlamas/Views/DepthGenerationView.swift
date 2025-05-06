@@ -211,7 +211,12 @@ class DepthGenerationViewModel: @unchecked Sendable {
             return
         }
 
-        guard let depth = image.depth else {
+        let depth: UIImage
+        if let trueDepth = image.depth {
+            depth = trueDepth
+        } else if let estimatedDepth = image.estimatedDepth {
+            depth = estimatedDepth
+        } else {
             return
         }
         result = nil

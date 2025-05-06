@@ -9,10 +9,6 @@ import CoreML
 import CoreImage
 import UIKit
 
-
-//fileprivate let targetSize = CGSize(width: 518, height: 518)
-
-
 // adapted from https://github.com/huggingface/coreml-examples/tree/main/depth-anything-example
 actor MLService {
     let context = CIContext()
@@ -66,17 +62,21 @@ actor MLService {
             return nil
         }
         
-        guard let pixelBuffer = buffer(from: image) else {
+        guard let pixelBuffer = image.convertToBuffer() else {
             return nil
         }
-        //        let originalSize = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
+        let originalSize = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
         let inputImage = CIImage(cvPixelBuffer: pixelBuffer) //.resized(to: MLService.targetSize)
         context.render(inputImage, to: inputPixelBuffer)
         let result = try model.prediction(image: inputPixelBuffer)
-        let outputImage = CIImage(cvPixelBuffer: result.depth)
-        //.resized(to: originalSize)
-        
-        return UIImage(ciImage: outputImage)
+        let outputImage = CIImage(cvPixelBuffer: result.depth).resized(to: originalSize)
+        let temporaryContext = CIContext()
+        guard let videoImage = temporaryContext.createCGImage(outputImage, from: CGRectMake(0, 0, CGFloat(CVPixelBufferGetWidth(pixelBuffer)), CGFloat(CVPixelBufferGetHeight(pixelBuffer)))) else {
+            return nil
+        }
+
+        return UIImage(cgImage: videoImage)
+
     }
     
     // https://stackoverflow.com/a/44475334
@@ -107,6 +107,56 @@ actor MLService {
     
 }
 
+
+
+extension UIImage {
+        
+    func convertToBuffer() -> CVPixelBuffer? {
+        
+        let attributes = [
+            kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: kCFBooleanTrue
+        ] as CFDictionary
+        
+        var pixelBuffer: CVPixelBuffer?
+        
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault, Int(self.size.width),
+            Int(self.size.height),
+            kCVPixelFormatType_32ARGB,
+            attributes,
+            &pixelBuffer)
+        
+        guard (status == kCVReturnSuccess) else {
+            return nil
+        }
+        
+        CVPixelBufferLockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
+        
+        let pixelData = CVPixelBufferGetBaseAddress(pixelBuffer!)
+        let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
+        
+        let context = CGContext(
+            data: pixelData,
+            width: Int(self.size.width),
+            height: Int(self.size.height),
+            bitsPerComponent: 8,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer!),
+            space: rgbColorSpace,
+            bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue)
+        
+        context?.translateBy(x: 0, y: self.size.height)
+        context?.scaleBy(x: 1.0, y: -1.0)
+        
+        UIGraphicsPushContext(context!)
+        self.draw(in: CGRect(x: 0, y: 0, width: self.size.width, height: self.size.height))
+        UIGraphicsPopContext()
+        
+        CVPixelBufferUnlockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
+        
+        return pixelBuffer
+    }
+}
 
 
 extension CIImage {
