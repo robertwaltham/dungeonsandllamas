@@ -477,7 +477,7 @@ class GenerationService {
             let id = NSUUID().uuidString
             var history = ImageHistoryModel(id: id,
                                             start: Date.now,
-                                            prompt: fullPrompt,
+                                            prompt: prompt,
                                             model: selectedSDModel?.modelName ?? "none",
                                             sampler: selectedSampler.name,
                                             steps: steps,
