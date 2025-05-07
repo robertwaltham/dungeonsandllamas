@@ -11,23 +11,36 @@ import UIKit
 
 // adapted from https://github.com/huggingface/coreml-examples/tree/main/depth-anything-example
 actor MLService {
-    let context = CIContext()
-    static let targetSize = CGSize(width: 518, height: 392)
     
+    struct PredictionResult: Hashable, Identifiable {
+        var id: String {
+            label
+        }
+        let label: String
+        let probability: Double
+    }
+    
+    let context = CIContext()
+    static let targetDepthSize = CGSize(width: 518, height: 392)
+    static let targetClassifierSize = CGSize(width: 256, height: 256)
+
     /// The depth model.
-    var model: DepthAnythingV2SmallF16?
+    var depthModel: DepthAnythingV2SmallF16?
+//    var classifierModel: FastViTT8F16?
+    var classifierModel: FastViTMA36F16?
     
     /// A pixel buffer used as input to the model.
-    let inputPixelBuffer: CVPixelBuffer
-    
+    let inputDepthPixelBuffer: CVPixelBuffer
+    let inputClassifierPixelBuffer: CVPixelBuffer
+
     
     init() {
         // Create a reusable buffer to avoid allocating memory for every model invocation
         var buffer: CVPixelBuffer!
-        let status = CVPixelBufferCreate(
+        var status = CVPixelBufferCreate(
             kCFAllocatorDefault,
-            Int(MLService.targetSize.width),
-            Int(MLService.targetSize.height),
+            Int(MLService.targetDepthSize.width),
+            Int(MLService.targetDepthSize.height),
             kCVPixelFormatType_32ARGB,
             nil,
             &buffer
@@ -35,7 +48,20 @@ actor MLService {
         guard status == kCVReturnSuccess else {
             fatalError("Failed to create pixel buffer")
         }
-        inputPixelBuffer = buffer
+        inputDepthPixelBuffer = buffer
+        
+        status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            Int(MLService.targetClassifierSize.width),
+            Int(MLService.targetClassifierSize.height),
+            kCVPixelFormatType_32ARGB,
+            nil,
+            &buffer
+        )
+        guard status == kCVReturnSuccess else {
+            fatalError("Failed to create pixel buffer")
+        }
+        inputClassifierPixelBuffer = buffer
         
         Task.detached(priority: .userInitiated) {
             try await self.loadModel()
@@ -45,22 +71,29 @@ actor MLService {
     // TODO: this takes about 13s on an iPad Air M1
     // skip this somehow for swiftUI previews
     func loadModel() async throws {
-        print("Loading model...")
+        print("Loading Depth model...")
         
         let clock = ContinuousClock()
         let start = clock.now
         
-        model = try DepthAnythingV2SmallF16()
+        depthModel = try DepthAnythingV2SmallF16()
+        print("Loading Classifier model...")
+//        classifierModel = try FastViTT8F16()
+        classifierModel = try FastViTMA36F16()
+
         
         let duration = clock.now - start
         print("Model loaded (took \(duration.formatted(.units(allowed: [.seconds, .milliseconds]))))")
     }
     
-    func performInference(_ image: UIImage) async throws -> UIImage? {
+    func performDepthInference(_ image: UIImage) async throws -> UIImage? {
         
-        guard let model else {
+        guard let depthModel else {
             return nil
         }
+        
+        let clock = ContinuousClock()
+        let start = clock.now
         
         guard let pixelBuffer = image.convertToBuffer() else {
             return nil
@@ -69,9 +102,9 @@ actor MLService {
         
         
         var cIImage = CIImage(cvPixelBuffer: pixelBuffer)
-        cIImage = cIImage.resized(to: MLService.targetSize)
-        context.render(cIImage, to: inputPixelBuffer)
-        let result = try model.prediction(image: inputPixelBuffer)
+        cIImage = cIImage.resized(to: MLService.targetDepthSize)
+        context.render(cIImage, to: inputDepthPixelBuffer)
+        let result = try depthModel.prediction(image: inputDepthPixelBuffer)
         let outputImage = CIImage(cvPixelBuffer: result.depth).resized(to: originalSize)
        
         let temporaryContext = CIContext()
@@ -79,8 +112,36 @@ actor MLService {
             return nil
         }
 
+        let duration = clock.now - start
+        print("Inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])))")
+        
         return UIImage(cgImage: videoImage)
+    }
+    
+    func performClassifierInference(_ image: UIImage) async throws -> [PredictionResult]? {
+        
+        guard let classifierModel else {
+            return nil
+        }
+        
+        let clock = ContinuousClock()
+        let start = clock.now
+        
+        guard let pixelBuffer = image.convertToBuffer() else {
+            return nil
+        }
 
+        let inputImage = CIImage(cvPixelBuffer: pixelBuffer).resized(to: MLService.targetClassifierSize)
+        context.render(inputImage, to: inputClassifierPixelBuffer)
+        let result = try classifierModel.prediction(image: inputClassifierPixelBuffer)
+        let top3 = result.classLabel_probs.sorted { $0.value > $1.value }.prefix(3).map { (label, prob) in
+            PredictionResult(label: label, probability: prob)
+        }
+        
+        let duration = clock.now - start
+        print("Inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])))")
+        
+        return top3
     }
     
     // https://stackoverflow.com/a/44475334

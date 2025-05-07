@@ -31,6 +31,18 @@ struct DepthGenerationView: View {
                     VStack {
                         HStack {
                             
+                            VStack(alignment: .leading) {
+                                ForEach(viewModel.classifications) { prediction in
+                                    Text("\(prediction.label) \(prediction.probability.formatted(.number.precision(.fractionLength(0...2))))")
+                                        .padding()
+                                        .background(Color(white: 0.9, opacity: 0.5))
+                                        .clipShape(RoundedRectangle(cornerRadius: 10.0, style: .circular))
+                                        .onTapGesture {
+                                            viewModel.addPrompt(prediction.label)
+                                        }
+                                }
+                            }.padding()
+                            
                             Spacer()
                             
                             if viewModel.useEstimate, let estimated = image.estimatedDepth {
@@ -150,6 +162,11 @@ struct DepthGenerationView: View {
                 }
                 .frame(width: 512, height: 512)
 
+            }.onAppear {
+                guard viewModel.classifications.isEmpty else {
+                    return
+                }
+                viewModel.classify(service: generationService)
             }
         } else {
             ProgressView()
@@ -194,9 +211,10 @@ class DepthGenerationViewModel: @unchecked Sendable {
     var loading = false
     var progress: StableDiffusionClient.Progress?
     var result: UIImage?
-    var prompt = "A cat in a fancy hat"
+    var prompt = ""
     var mode: StableDiffusionClient.ControlNetOptions.ControlMode = .balanced
     var useEstimate = true
+    var classifications = [MLService.PredictionResult]()
     
     func loadImage(service: GenerationService) {
         guard image == nil else {
@@ -206,6 +224,26 @@ class DepthGenerationViewModel: @unchecked Sendable {
         Task {
             self.image = await service.photos.getDepth(identifier: self.localIdentifier)
         }
+    }
+    
+    func classify(service: GenerationService) {
+        guard let image else {
+            return
+        }
+        Task {
+            self.classifications = await service.photos.classify(image: image.image).filter({ result in
+                result.probability > 0.1
+            })
+        }
+    }
+    
+    func addPrompt(_ text: String) {
+        guard !prompt.hasSuffix(text) else {
+            return
+        }
+        
+        prompt.append(" ")
+        prompt.append(text)
     }
     
     @MainActor
@@ -252,6 +290,11 @@ class DepthGenerationViewModel: @unchecked Sendable {
     let view = DepthGenerationView(flowState: flowState, generationService: service, localIdentifier: id)
     let image = PhotoLibraryService.PhotoLibraryImage(id: id, image: UIImage(named: "lighthouse")!, depth: UIImage(named: "depth_preview")!, estimatedDepth: UIImage(named: "depth_preview")!, canny: UIImage(named: "depth_preview")!)
     view.viewModel.image = image
+    view.viewModel.classifications = [
+        MLService.PredictionResult(label: "Cat", probability: 0.6),
+        MLService.PredictionResult(label: "Ham", probability: 0.4),
+        MLService.PredictionResult(label: "Green Eggs", probability: 0.2),
+    ]
     return ContentFlowCoordinator(flowState: flowState, generationService: service) {
         view
     }

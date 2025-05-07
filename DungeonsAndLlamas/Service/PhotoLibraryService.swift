@@ -99,6 +99,15 @@ class PhotoLibraryService {
         }
     }
     
+    func classify(image: UIImage) async -> [MLService.PredictionResult] {
+        do {
+            return try await ml.performClassifierInference(image) ?? []
+        } catch {
+            print(error)
+            return []
+        }
+    }
+    
     func getDepth(identifier: String) async -> PhotoLibraryImage? {
         return await withCheckedContinuation { continuation in
             let manager = PHImageManager.default()
@@ -153,7 +162,7 @@ class PhotoLibraryService {
                             
                             var estimatedDepth: UIImage?
                             do {
-                                estimatedDepth = try await self.ml.performInference(image)
+                                estimatedDepth = try await self.ml.performDepthInference(image)
                             } catch {
                                 print(error)
                             }
