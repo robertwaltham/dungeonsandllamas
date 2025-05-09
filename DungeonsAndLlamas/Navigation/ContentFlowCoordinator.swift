@@ -112,6 +112,10 @@ extension ContentFlowCoordinator {
                 DepthListView(flowState: flowState, generationService: generationService)
             case .depthGeneration(localIdentifier: let identifier):
                 DepthGenerationView(flowState: flowState, generationService: generationService, localIdentifier: identifier)
+            case .depthEditor(input: let input, output: let output, drawing: let drawing):
+                let viewModel = DepthEditorViewModel(output: output, input: input, drawing: drawing)
+                DepthEditorView(flowState: flowState, generationService: generationService, viewModel: viewModel)
+            
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)

@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import Observation
+import PencilKit
 
 struct DepthGenerationView: View {
     var flowState: ContentFlowState
@@ -22,158 +23,193 @@ struct DepthGenerationView: View {
     }
     
     var body: some View {
-        
-        if let image = viewModel.image {
-            VStack {
-                ZStack {
-                    Image(uiImage: image.image)
-                    
-                    VStack {
-                        HStack {
-                            
-                            VStack(alignment: .leading) {
-                                ForEach(viewModel.classifications) { prediction in
-                                    Text("\(prediction.label) \(prediction.probability.formatted(.number.precision(.fractionLength(0...2))))")
-                                        .padding()
-                                        .background(Color(white: 0.9, opacity: 0.5))
-                                        .clipShape(RoundedRectangle(cornerRadius: 10.0, style: .circular))
-                                        .onTapGesture {
-                                            viewModel.addPrompt(prediction.label)
-                                        }
-                                }
-                            }.padding()
-                            
-                            Spacer()
-                            
-                            if viewModel.useEstimate, let estimated = image.estimatedDepth {
-                                Image(uiImage: estimated)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 512 / 4, height: 512 / 4)
-                                    .background(.gray)
-                                    .padding()
-                            } else if let depth = image.depth {
-                                Image(uiImage: depth)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 512 / 4, height: 512 / 4)
-                                    .background(.gray)
-                                    .padding()
-                            }
-                        }
-                        Spacer()
-                    }
-
-                    
-                    VStack {
-                        Spacer()
-                        TextEditor(text: $viewModel.prompt)
-                            .scrollContentBackground(.hidden)
-                            .background(Color(white: 0.8, opacity: 0.4))
-                            .frame(width: 470, height: 100)
-                            .clipped()
-                        Spacer()
-                            .frame(height: 21)
-                    }
-                }
-                .frame(width: 512, height: 512)
-                
-                Spacer()
-                
-                HStack {
-                    Toggle(isOn: $viewModel.useEstimate) {
-                        viewModel.useEstimate ? Text("Estimated Depth") : Text("Captured Depth")
-                    }
-                    .frame(width: 150)
-                    .disabled(viewModel.image?.depth == nil)
-                    
-                    Button {
-                        showLoras = true
-                    } label: {
+        ZStack {
+            GradientView(type: .greyscale)
+            if let image = viewModel.image {
+                VStack {
+                    ZStack {
+                        Image(uiImage: image.image)
                         
-                        HStack {
-                            Label("Loras", systemImage: "photo.on.rectangle.angled")
-                        }
-                        .foregroundColor(.purple)
-
-                        HStack {
-                            Text("\(viewModel.enabledLoras.count)")
-                        }
-                        .foregroundColor(.black)
-                    }
-                    .padding()
-                    .popover(isPresented: $showLoras) {
-                        Grid(horizontalSpacing: 10, verticalSpacing: 20) {
-                            
-                            ForEach($viewModel.loras) { $lora in
+                        VStack {
+                            HStack {
                                 
-                                GridRow {
-                                    Text(lora.name).frame(minWidth: 200)
-                                    Slider(value: $lora.weight, in: 0.0...2.0)
-                                    Text(lora.weight.formatted(.number.precision(.fractionLength(0...2))))
-                                        .frame(minWidth: 50)
-                                }
+                                VStack(alignment: .leading) {
+                                    ForEach(viewModel.classifications) { prediction in
+                                        Text("\(prediction.label) \(prediction.probability.formatted(.number.precision(.fractionLength(0...2))))")
+                                            .padding()
+                                            .background(Color(white: 0.9, opacity: 0.5))
+                                            .clipShape(RoundedRectangle(cornerRadius: 10.0, style: .circular))
+                                            .onTapGesture {
+                                                viewModel.addPrompt(prediction.label)
+                                            }
+                                    }
+                                }.padding()
+                                
+                                Spacer()
+                                
+                                depthImageView()
+                            }
+                            Spacer()
+                        }
+
+                        
+                        VStack {
+                            Spacer()
+                            TextEditor(text: $viewModel.prompt)
+                                .scrollContentBackground(.hidden)
+                                .background(Color(white: 0.8, opacity: 0.4))
+                                .frame(width: 470, height: 100)
+                                .clipped()
+                            Spacer()
+                                .frame(height: 21)
+                        }
+                    }
+                    .frame(width: 512, height: 512)
+                    
+                    Spacer()
+                    
+                    HStack {
+                        
+                        if viewModel.editedImage != nil {
+                            Button {
+                                viewModel.editedImage = nil
+                                viewModel.depthDrawing = nil
+                            } label: {
+                                Label("Reset Edits", systemImage: "arrow.uturn.backward")
+                            }
+                        } else {
+                            Toggle(isOn: $viewModel.useEstimate) {
+                                viewModel.useEstimate ? Text("Estimated Depth") : Text("Captured Depth")
+                            }
+                            .frame(width: 150)
+                            .disabled(viewModel.image?.depth == nil)
+                        }
+
+                        
+                        Button {
+                            showLoras = true
+                        } label: {
+                            
+                            HStack {
+                                Label("Loras", systemImage: "photo.on.rectangle.angled")
+                            }
+                            .foregroundColor(.purple)
+
+                            HStack {
+                                Text("\(viewModel.enabledLoras.count)")
+                            }
+                            .foregroundColor(.black)
+                        }
+                        .padding()
+                        .popover(isPresented: $showLoras) {
+                            loraOverlay()
+                        }
+                        
+                        Picker("mode", selection: $viewModel.mode) {
+                            ForEach(StableDiffusionClient.ControlNetOptions.ControlMode.allCases) { mode in
+                                Text(mode.rawValue).tag(mode)
                             }
                         }
-                        .frame(minWidth: 500)
+                        .frame(width: 270)
+                        
+                        Button {
+                            viewModel.editDepth(flowState: flowState)
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .foregroundStyle(.yellow)
+                        
+                        Button {
+                            guard !viewModel.loading else {
+                                return
+                            }
+                            viewModel.depth(serice: generationService, output: $viewModel.result, progress: $viewModel.progress, loading: $viewModel.loading)
+                        } label: {
+                            
+                            HStack {
+                                Label("Generate", systemImage: "play.rectangle")
+                            }
+                            .foregroundColor(.blue)
+
+                        }
                         .padding()
                     }
-                    
-                    Picker("mode", selection: $viewModel.mode) {
-                        ForEach(StableDiffusionClient.ControlNetOptions.ControlMode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .frame(width: 270)
-                    
-                    Button {
-                        guard !viewModel.loading else {
-                            return
-                        }
-                        viewModel.depth(serice: generationService, output: $viewModel.result, progress: $viewModel.progress, loading: $viewModel.loading)
-                    } label: {
-                        
-                        HStack {
-                            Label("Generate", systemImage: "play.rectangle")
-                        }
-                        .foregroundColor(.blue)
-
-                    }
                     .padding()
-                }
-                
-                Spacer()
-                
-                ZStack {
-                    if let result = viewModel.result {
-                        Image(uiImage: result)
-                    } else {
-                        Rectangle()
-                            .foregroundStyle(.gray)
-                    }
+                    .background(Color(white: 1.0, opacity: 0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 5.0))
                     
-                    if viewModel.loading {
-                        VStack {
-                            ProgressView(value: viewModel.progress?.progress ?? 0)
-                                .frame(width: 500, height: 10)
-                            Spacer()
+                    Spacer()
+                    
+                    ZStack {
+                        if let result = viewModel.result {
+                            Image(uiImage: result)
+                        } else {
+                            Rectangle()
+                                .foregroundStyle(.gray)
+                        }
+                        
+                        if viewModel.loading {
+                            VStack {
+                                ProgressView(value: viewModel.progress?.progress ?? 0)
+                                    .frame(width: 500, height: 10)
+                                Spacer()
+                            }
                         }
                     }
-                }
-                .frame(width: 512, height: 512)
+                    .frame(width: 512, height: 512)
 
-            }.onAppear {
-                guard viewModel.classifications.isEmpty else {
-                    return
+                }.onAppear {
+                    guard viewModel.classifications.isEmpty else {
+                        return
+                    }
+                    viewModel.classify(service: generationService)
                 }
-                viewModel.classify(service: generationService)
+            } else {
+                ProgressView()
+                    .onAppear {
+                        viewModel.loadImage(service: generationService)
+                    }
             }
-        } else {
-            ProgressView()
-                .onAppear {
-                    viewModel.loadImage(service: generationService)
-                }
         }
+    }
+    
+    @ViewBuilder
+    func loraOverlay() -> some View {
+        Grid(horizontalSpacing: 10, verticalSpacing: 20) {
+            
+            ForEach($viewModel.loras) { $lora in
+                
+                GridRow {
+                    Text(lora.name).frame(minWidth: 200)
+                    Slider(value: $lora.weight, in: 0.0...2.0)
+                    Text(lora.weight.formatted(.number.precision(.fractionLength(0...2))))
+                        .frame(minWidth: 50)
+                }
+            }
+        }
+        .frame(minWidth: 500)
+        .padding()
+    }
+    
+//    @ViewBuilder
+    func depthImageView() -> some View {
+        let image: UIImage
+        if let editedImage = viewModel.editedImage {
+            image = editedImage
+        } else if viewModel.useEstimate, let estimated = viewModel.image?.estimatedDepth {
+            image = estimated
+        } else if let depth = viewModel.image?.depth {
+            image = depth
+        } else {
+            image = UIImage(named: "lighthouse")! // should never happen
+        }
+        
+        return Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 512 / 4, height: 512 / 4)
+            .background(.gray)
+            .padding()
     }
 }
 
@@ -215,6 +251,8 @@ class DepthGenerationViewModel: @unchecked Sendable {
     var mode: StableDiffusionClient.ControlNetOptions.ControlMode = .balanced
     var useEstimate = true
     var classifications = [MLService.PredictionResult]()
+    var depthDrawing: PKDrawing?
+    var editedImage: UIImage?
     
     func loadImage(service: GenerationService) {
         guard image == nil else {
@@ -246,6 +284,38 @@ class DepthGenerationViewModel: @unchecked Sendable {
         prompt.append(text)
     }
     
+    func editDepth(flowState: ContentFlowState) {
+        
+        guard !loading else {
+            return
+        }
+        
+        let input: UIImage
+        if useEstimate, let image = image?.estimatedDepth {
+            input = image
+            self.editedImage = image
+        } else if let image = image?.depth {
+            input = image
+            self.editedImage = image
+        } else {
+            return
+        }
+        
+        let output = Binding(get: {
+            self.editedImage!
+        }, set: { newValue in
+            self.editedImage = newValue
+        })
+        
+        let drawing = Binding {
+            self.depthDrawing
+        } set: { newValue in
+            self.depthDrawing = newValue
+        }
+        
+        flowState.nextLink(.depthEditor(input: input, output: output, drawing: drawing))
+    }
+    
     @MainActor
     func depth(serice: GenerationService,
                output: Binding<UIImage?>,
@@ -257,7 +327,9 @@ class DepthGenerationViewModel: @unchecked Sendable {
         }
 
         let depth: UIImage
-        if let trueDepth = image.depth, !useEstimate {
+        if let editedImage {
+            depth = editedImage
+        } else if let trueDepth = image.depth, !useEstimate {
             depth = trueDepth
         } else if let estimatedDepth = image.estimatedDepth {
             depth = estimatedDepth
