@@ -9,7 +9,7 @@ import SwiftUI
 import Observation
 
 struct APITestView: View {
-    @State var viewModel: ViewModel = ViewModel()
+    @State var viewModel: APITestViewModel = APITestViewModel()
     @State var flowState: ContentFlowState
     
     var body: some View {
@@ -165,7 +165,7 @@ struct APITestView: View {
 
 @Observable
 @MainActor
-class ViewModel {
+class APITestViewModel {
     let llmClient = LargeLangageModelClient()
     let sdClient = StableDiffusionClient()
     var result = ""

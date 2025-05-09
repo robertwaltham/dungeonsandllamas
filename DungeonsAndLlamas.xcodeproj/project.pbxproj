@@ -53,6 +53,7 @@
 		D1DC043F2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC043E2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift */; };
 		D1DC04412BD037AB007BC5D2 /* LandingiPhoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */; };
 		D1E58C6B2DA5BE0D00980ED4 /* PencilOverlayDrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E58C6A2DA5BE0500980ED4 /* PencilOverlayDrawingView.swift */; };
+		D1E831692DCD5070008AB60B /* DepthEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E831682DCD506B008AB60B /* DepthEditorView.swift */; };
 		D1F839CF2DA07C350028E034 /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F839CE2DA07C320028E034 /* DatabaseService.swift */; };
 		D1F839D22DA07C580028E034 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = D1F839D12DA07C580028E034 /* SQLite */; };
 		D1F839D42DA08EF90028E034 /* DatabaseTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F839D32DA08EF60028E034 /* DatabaseTestView.swift */; };
@@ -104,6 +105,7 @@
 		D1DC043E2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilDrawingiPhoneView.swift; sourceTree = "<group>"; };
 		D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingiPhoneView.swift; sourceTree = "<group>"; };
 		D1E58C6A2DA5BE0500980ED4 /* PencilOverlayDrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilOverlayDrawingView.swift; sourceTree = "<group>"; };
+		D1E831682DCD506B008AB60B /* DepthEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthEditorView.swift; sourceTree = "<group>"; };
 		D1F839CE2DA07C320028E034 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		D1F839D32DA08EF60028E034 /* DatabaseTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseTestView.swift; sourceTree = "<group>"; };
 		D1F839D52DA0E7F40028E034 /* LoraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraView.swift; sourceTree = "<group>"; };
@@ -221,6 +223,7 @@
 				D1D81AA52DA43D4300BA1431 /* StepView.swift */,
 				D15EFDD52DAD896A00AFE773 /* DepthListView.swift */,
 				D10589B82DC2A0F700E0F3BE /* DepthGenerationView.swift */,
+				D1E831682DCD506B008AB60B /* DepthEditorView.swift */,
 				D1320E072BD5C12D00EEEDCC /* Photo.swift */,
 				D1DC04372BCF2C74007BC5D2 /* SDHistoryView.swift */,
 				D178EAEA2D9C9C32001828E2 /* GradientView.swift */,
@@ -356,6 +359,7 @@
 				D1320E082BD5C12D00EEEDCC /* Photo.swift in Sources */,
 				D16CAE592BB3AD0600ECA710 /* AccelerometerTestView.swift in Sources */,
 				D1DC043D2BD03011007BC5D2 /* PencilViewModel.swift in Sources */,
+				D1E831692DCD5070008AB60B /* DepthEditorView.swift in Sources */,
 				D1F839CF2DA07C350028E034 /* DatabaseService.swift in Sources */,
 				D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */,
 				D1DC04382BCF2C74007BC5D2 /* SDHistoryView.swift in Sources */,

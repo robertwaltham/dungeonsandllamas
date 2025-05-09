@@ -66,6 +66,10 @@ struct PencilCanvasView: UIViewRepresentable {
         } else {
             uiView.resignFirstResponder()
         }
+        
+        if let tool {
+            uiView.tool = tool
+        }
     }
     
     func makeCoordinator() -> PencilCanvasViewCoordinator {
