@@ -64,7 +64,11 @@ actor MLService {
         inputClassifierPixelBuffer = buffer
         
         Task.detached(priority: .userInitiated) {
-            try await self.loadModel()
+            do {
+                try await self.loadModel()
+            } catch {
+                print(error)
+            }
         }
     }
     

@@ -41,6 +41,11 @@ class Secrets {
 }
 ```
 
+Download models from huggingface to the Models folder
+https://huggingface.co/apple/coreml-depth-anything-small#download
+
+
+
 ### Running
 
 This requires two services running on the target machine (or however your service is set up) on the following paths

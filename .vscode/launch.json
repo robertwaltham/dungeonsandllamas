@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:DungeonsAndLlamas}/SQLPropertyMacros",
+            "name": "Debug SQLPropertyMacrosClient (SQLPropertyMacros)",
+            "program": "${workspaceFolder:DungeonsAndLlamas}/SQLPropertyMacros/.build/debug/SQLPropertyMacrosClient",
+            "preLaunchTask": "swift: Build Debug SQLPropertyMacrosClient (SQLPropertyMacros)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:DungeonsAndLlamas}/SQLPropertyMacros",
+            "name": "Release SQLPropertyMacrosClient (SQLPropertyMacros)",
+            "program": "${workspaceFolder:DungeonsAndLlamas}/SQLPropertyMacros/.build/release/SQLPropertyMacrosClient",
+            "preLaunchTask": "swift: Build Release SQLPropertyMacrosClient (SQLPropertyMacros)"
+        }
+    ]
+}

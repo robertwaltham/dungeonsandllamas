@@ -265,16 +265,20 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
         
         Task.init {
-            for try await obj in generationService.stepImage(input: input,
-                                                             stepStart: stepStart,
-                                                             stepEnd: stepEnd,
-                                                             history: loadedHistory,
-                                                             iterateSampers: iterateSamplers,
-                                                             loading: loading,
-                                                             progress: progress,
-                                                             cancel: cancel) {
-                
-                stepResult.append(obj)
+            do {
+                for try await obj in generationService.stepImage(input: input,
+                                                                 stepStart: stepStart,
+                                                                 stepEnd: stepEnd,
+                                                                 history: loadedHistory,
+                                                                 iterateSampers: iterateSamplers,
+                                                                 loading: loading,
+                                                                 progress: progress,
+                                                                 cancel: cancel) {
+                    
+                    stepResult.append(obj)
+                }
+            } catch {
+                print(error)
             }
             loading.wrappedValue = false
             cancel.wrappedValue = true
@@ -315,17 +319,21 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
 
         Task.init {
-            for try await obj in generationService.bracketImage(input: input,
-                                                                prompt: prompt,
-                                                                negativePrompt: negative,
-                                                                seed: seed,
-                                                                firstLora: firstBracketLora,
-                                                                secondLora: secondBracketLora,
-                                                                thirdLora: thirdBracketLora,
-                                                                loading: loading,
-                                                                progress: progress,
-                                                                cancel: cancel) {
-                bracketResult.append(obj)
+            do {
+                for try await obj in generationService.bracketImage(input: input,
+                                                                    prompt: prompt,
+                                                                    negativePrompt: negative,
+                                                                    seed: seed,
+                                                                    firstLora: firstBracketLora,
+                                                                    secondLora: secondBracketLora,
+                                                                    thirdLora: thirdBracketLora,
+                                                                    loading: loading,
+                                                                    progress: progress,
+                                                                    cancel: cancel) {
+                    bracketResult.append(obj)
+                }
+            } catch {
+                print(error)
             }
             loading.wrappedValue = false
             cancel.wrappedValue = true

@@ -39,10 +39,9 @@
 		D17058AE2BBB1A14003E6668 /* LandingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058AD2BBB1A14003E6668 /* LandingView.swift */; };
 		D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17058B02BBB1EC7003E6668 /* GenerationService.swift */; };
 		D178EAEB2D9C9C36001828E2 /* GradientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D178EAEA2D9C9C32001828E2 /* GradientView.swift */; };
-		D180B7CC2D9E137F0055CB3D /* MijickCamera in Frameworks */ = {isa = PBXBuildFile; productRef = D180B7CB2D9E137F0055CB3D /* MijickCamera */; };
 		D180B7CE2D9E13A70055CB3D /* CameraTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D180B7CD2D9E13A40055CB3D /* CameraTestView.swift */; };
-		D180B7D12D9E16550055CB3D /* MijickCamera in Frameworks */ = {isa = PBXBuildFile; productRef = D180B7D02D9E16550055CB3D /* MijickCamera */; };
 		D180B7D32D9E2ABE0055CB3D /* BracketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D180B7D22D9E2ABB0055CB3D /* BracketView.swift */; };
+		D1B17F9B2E21962F00706FA3 /* SystemModelTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B17F9A2E21962400706FA3 /* SystemModelTestView.swift */; };
 		D1D81AA62DA43D4900BA1431 /* StepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D81AA52DA43D4300BA1431 /* StepView.swift */; };
 		D1DC04322BCDB8DD007BC5D2 /* BindingStreamTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */; };
 		D1DC04342BCDCC02007BC5D2 /* PencilDrawingiPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04332BCDCC02007BC5D2 /* PencilDrawingiPadView.swift */; };
@@ -95,6 +94,7 @@
 		D178EAEA2D9C9C32001828E2 /* GradientView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradientView.swift; sourceTree = "<group>"; };
 		D180B7CD2D9E13A40055CB3D /* CameraTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraTestView.swift; sourceTree = "<group>"; };
 		D180B7D22D9E2ABB0055CB3D /* BracketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BracketView.swift; sourceTree = "<group>"; };
+		D1B17F9A2E21962400706FA3 /* SystemModelTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemModelTestView.swift; sourceTree = "<group>"; };
 		D1D81AA52DA43D4300BA1431 /* StepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepView.swift; sourceTree = "<group>"; };
 		D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingStreamTestView.swift; sourceTree = "<group>"; };
 		D1DC04332BCDCC02007BC5D2 /* PencilDrawingiPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilDrawingiPadView.swift; sourceTree = "<group>"; };
@@ -118,8 +118,6 @@
 			files = (
 				D121A54B2DC19517000CE87D /* AnyCodable in Frameworks */,
 				D1F839D22DA07C580028E034 /* SQLite in Frameworks */,
-				D180B7D12D9E16550055CB3D /* MijickCamera in Frameworks */,
-				D180B7CC2D9E137F0055CB3D /* MijickCamera in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -244,6 +242,7 @@
 		D17058AF2BBB1DDD003E6668 /* Test Views */ = {
 			isa = PBXGroup;
 			children = (
+				D1B17F9A2E21962400706FA3 /* SystemModelTestView.swift */,
 				D15EFDD72DADBCC800AFE773 /* WebsocketTestView.swift */,
 				D1F839D32DA08EF60028E034 /* DatabaseTestView.swift */,
 				D180B7CD2D9E13A40055CB3D /* CameraTestView.swift */,
@@ -321,7 +320,6 @@
 			);
 			mainGroup = D16CAE3C2BB3724000ECA710;
 			packageReferences = (
-				D180B7CF2D9E16550055CB3D /* XCRemoteSwiftPackageReference "Camera" */,
 				D1F839D02DA07C580028E034 /* XCRemoteSwiftPackageReference "SQLite" */,
 				D121A5492DC19517000CE87D /* XCRemoteSwiftPackageReference "AnyCodable" */,
 			);
@@ -380,6 +378,7 @@
 				D15EFDD82DADBCCB00AFE773 /* WebsocketTestView.swift in Sources */,
 				D10589B92DC2A10000E0F3BE /* DepthGenerationView.swift in Sources */,
 				D1DC04362BCF2813007BC5D2 /* FileService.swift in Sources */,
+				D1B17F9B2E21962F00706FA3 /* SystemModelTestView.swift in Sources */,
 				D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */,
 				D1F839D62DA0E7F70028E034 /* LoraView.swift in Sources */,
 				D166A89A2BE00D370028100A /* StableDiffusionClient.swift in Sources */,
@@ -543,7 +542,7 @@
 				INFOPLIST_KEY_UIStatusBarStyle = "";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -578,7 +577,7 @@
 				INFOPLIST_KEY_UIStatusBarStyle = "";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -625,22 +624,6 @@
 				minimumVersion = 0.6.7;
 			};
 		};
-		D180B7CA2D9E137F0055CB3D /* XCRemoteSwiftPackageReference "swift6_1" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/FutureSeth/Camera/tree/bugfix/swift6_1";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.0.1;
-			};
-		};
-		D180B7CF2D9E16550055CB3D /* XCRemoteSwiftPackageReference "Camera" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/FutureSeth/Camera";
-			requirement = {
-				branch = bugfix/swift6_1;
-				kind = branch;
-			};
-		};
 		D1F839D02DA07C580028E034 /* XCRemoteSwiftPackageReference "SQLite" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/stephencelis/SQLite.swift";
@@ -656,16 +639,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D121A5492DC19517000CE87D /* XCRemoteSwiftPackageReference "AnyCodable" */;
 			productName = AnyCodable;
-		};
-		D180B7CB2D9E137F0055CB3D /* MijickCamera */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D180B7CA2D9E137F0055CB3D /* XCRemoteSwiftPackageReference "swift6_1" */;
-			productName = MijickCamera;
-		};
-		D180B7D02D9E16550055CB3D /* MijickCamera */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D180B7CF2D9E16550055CB3D /* XCRemoteSwiftPackageReference "Camera" */;
-			productName = MijickCamera;
 		};
 		D1F839D12DA07C580028E034 /* SQLite */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -103,7 +103,12 @@ class WebsocketTestViewModel {
         print("sent")
         
         Task.init {
-            try await socket.send(.string("a cat in a fancy hat \(Float.random(in: 0..<1))"))
+            do {
+                try await socket.send(.string("a cat in a fancy hat \(Float.random(in: 0..<1))"))
+            } catch {
+                self.error = error.localizedDescription
+                print(error)
+            }
         }
         
     }

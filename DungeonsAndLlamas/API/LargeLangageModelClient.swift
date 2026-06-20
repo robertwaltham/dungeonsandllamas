@@ -154,11 +154,11 @@ actor LargeLangageModelClient {
         
         return AsyncThrowingStream<Result, Error> { continuation in
             Task.detached {
-                var request = try LargeLangageModelClient.request(endpoint: .generate, method: .post)
-                
-                request.httpBody = try await self.encoder.encode(Payload(model: model.name, prompt: prompt, stream: true))
-                
                 do {
+                    var request = try LargeLangageModelClient.request(endpoint: .generate, method: .post)
+                    
+                    request.httpBody = try await self.encoder.encode(Payload(model: model.name, prompt: prompt, stream: true))
+                    
                     let (bytes, response) = try await self.session.bytes(for: request, delegate: DelegateToSupressWarning())
                     guard let httpResponse = response as? HTTPURLResponse else {
                         throw APIError.requestError("no request")
@@ -196,11 +196,11 @@ actor LargeLangageModelClient {
         }
         return AsyncThrowingStream<Result, Error> { continuation in
             Task.init {
-                var request = try LargeLangageModelClient.request(endpoint: .generate, method: .post)
-                
-                request.httpBody = try encoder.encode(Payload(model: model.name, prompt: prompt, stream: true, images: [base64Image]))
-                
                 do {
+                    var request = try LargeLangageModelClient.request(endpoint: .generate, method: .post)
+                    
+                    request.httpBody = try encoder.encode(Payload(model: model.name, prompt: prompt, stream: true, images: [base64Image]))
+                    
                     let (bytes, response) = try await session.bytes(for: request, delegate: DelegateToSupressWarning())
                     guard let httpResponse = response as? HTTPURLResponse else {
                         throw APIError.requestError("no request")

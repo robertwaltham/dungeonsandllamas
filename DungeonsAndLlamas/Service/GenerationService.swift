@@ -709,8 +709,8 @@ class GenerationService {
         return AsyncThrowingStream<Step, Error> { continuation in
             
             Task.init {
-                
-                if iterateSampers {
+                do {
+                    if iterateSampers {
                     
                     for sampler in sdSamplers {
                         for j in stepStart...stepEnd {
@@ -758,8 +758,10 @@ class GenerationService {
                 }
 
                 
-                continuation.finish()
-                
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
             }
         }
     }
