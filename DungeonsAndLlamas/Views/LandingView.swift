@@ -12,6 +12,7 @@ struct LandingView: View {
     @State var flowState: ContentFlowState
     @State var generationService: GenerationService
     @State var history = [UIImage]()
+    @State private var showingComfyUIStatus = false
     let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
     
     var body: some View {
@@ -144,6 +145,28 @@ struct LandingView: View {
                         }
                         
                         Text("SD")
+                    }
+                    
+                    ZStack {
+                        if generationService.comfyUIStatus.connected {
+                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
+                                .foregroundColor(.green)
+                        } else {
+                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
+                                .foregroundColor(.red)
+                        }
+                        
+                        Text("CU")
+                    }
+                    .onTapGesture {
+                        showingComfyUIStatus = true
+                    }
+                    .popover(isPresented: $showingComfyUIStatus) {
+                        ComfyUISystemStatusView(
+                            connection: generationService.comfyUIConnectionInfo,
+                            status: generationService.comfyUISystemStatus,
+                            error: generationService.comfyUIStatus.error
+                        )
                     }
                 }.padding()
                     .onTapGesture {

@@ -13,6 +13,7 @@ struct LandingiPhoneView: View {
     @State var generationService: GenerationService
     let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
     @State var history = [UIImage]()
+    @State private var showingComfyUIStatus = false
 
     var body: some View {
         ZStack {
@@ -123,6 +124,28 @@ struct LandingiPhoneView: View {
                         }
                         
                         Text("SD")
+                    }
+                    
+                    ZStack {
+                        if generationService.comfyUIStatus.connected {
+                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
+                                .foregroundColor(.green)
+                        } else {
+                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
+                                .foregroundColor(.red)
+                        }
+                        
+                        Text("CU")
+                    }
+                    .onTapGesture {
+                        showingComfyUIStatus = true
+                    }
+                    .popover(isPresented: $showingComfyUIStatus) {
+                        ComfyUISystemStatusView(
+                            connection: generationService.comfyUIConnectionInfo,
+                            status: generationService.comfyUISystemStatus,
+                            error: generationService.comfyUIStatus.error
+                        )
                     }
                     
                     Button("Recheck") {

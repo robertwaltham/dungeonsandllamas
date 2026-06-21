@@ -16,6 +16,7 @@ class GenerationService {
     
     var llmClient = LargeLangageModelClient()
     var stableDiffusionClient = StableDiffusionClient()
+    var comfyUIClient = ComfyUIClient()
     
     var fileService = FileService()
     var db = DatabaseService()
@@ -64,10 +65,14 @@ class GenerationService {
     enum Service {
         case stableDiffusion
         case largeLanguageModel
+        case comfyUI
     }
     
     var llmStatus = ConnectionStatus(connected: false, lastChecked: .distantPast, service: .largeLanguageModel)
     var sdStatus = ConnectionStatus(connected: false, lastChecked: .distantPast, service: .stableDiffusion)
+    var comfyUIStatus = ConnectionStatus(connected: false, lastChecked: .distantPast, service: .comfyUI)
+    var comfyUIConnectionInfo: ComfyUIClient.ConnectionInfo?
+    var comfyUISystemStatus: ComfyUIClient.SystemStatus?
     
     var sdModels: [StableDiffusionClient.Model] = []
     var llmModels: [LargeLangageModelClient.Model] = []
@@ -195,16 +200,27 @@ class GenerationService {
         
         statusTask = Task.init {
             
-            do {
-                llmStatus = ConnectionStatus(connected: try await llmClient.testConnection(), lastChecked: Date.now, service: .largeLanguageModel)
-            } catch {
-                llmStatus = ConnectionStatus(connected: false, lastChecked: Date.now, service: .largeLanguageModel, error: error.localizedDescription)
-            }
+//            do {
+//                llmStatus = ConnectionStatus(connected: try await llmClient.testConnection(), lastChecked: Date.now, service: .largeLanguageModel)
+//            } catch {
+//                llmStatus = ConnectionStatus(connected: false, lastChecked: Date.now, service: .largeLanguageModel, error: error.localizedDescription)
+//            }
+//            
+//            do {
+//                sdStatus = ConnectionStatus(connected: try await stableDiffusionClient.testConnection(), lastChecked: Date.now, service: .stableDiffusion)
+//            } catch {
+//                sdStatus = ConnectionStatus(connected: false, lastChecked: Date.now, service: .stableDiffusion, error: error.localizedDescription)
+//            }
             
             do {
-                sdStatus = ConnectionStatus(connected: try await stableDiffusionClient.testConnection(), lastChecked: Date.now, service: .stableDiffusion)
-            }catch {
-                sdStatus = ConnectionStatus(connected: false, lastChecked: Date.now, service: .stableDiffusion, error: error.localizedDescription)
+                let systemStats = try await comfyUIClient.systemStats()
+                comfyUIConnectionInfo = systemStats.connection
+                comfyUISystemStatus = systemStats.status
+                comfyUIStatus = ConnectionStatus(connected: systemStats.connection.connected, lastChecked: Date.now, service: .comfyUI)
+            } catch {
+                comfyUIConnectionInfo = nil
+                comfyUISystemStatus = nil
+                comfyUIStatus = ConnectionStatus(connected: false, lastChecked: Date.now, service: .comfyUI, error: error.localizedDescription)
             }
 
             statusTask = nil
@@ -214,7 +230,8 @@ class GenerationService {
     func checkStatusIfNeeded() {
         
         guard abs(llmStatus.lastChecked.timeIntervalSinceNow) > GenerationService.statusCheckInterval &&
-                abs(sdStatus.lastChecked.timeIntervalSinceNow) > GenerationService.statusCheckInterval else {
+                abs(sdStatus.lastChecked.timeIntervalSinceNow) > GenerationService.statusCheckInterval &&
+                abs(comfyUIStatus.lastChecked.timeIntervalSinceNow) > GenerationService.statusCheckInterval else {
             return
         }
         
@@ -227,33 +244,33 @@ class GenerationService {
             return
         }
         
-        modelTask = Task {
-            
-            do {
-                sdModels = try await stableDiffusionClient.imageGenerationModels()
-                let options = try await stableDiffusionClient.imageGenerationOptions()
-                
-                selectedSDModel = sdModels.first { model in
-                    model.sha256 == options.sdCheckpointHash
-                }
-                                
-//                llmModels = try await llmClient.getLocalModels()
-//                selectedLLMModel = llmModels.first
-                
-                sdSamplers = try await stableDiffusionClient.samplers()
-                
-                sdLoras = try await stableDiffusionClient.loras()
-                
-//                try await stableDiffusionClient.scriptInfo()
-                controlNetModels = try await stableDiffusionClient.controlNetModels()
-                controlNetModules = try await stableDiffusionClient.controlNetModules()
-                
-            } catch {
-                print(error)
-            }
-            
-            modelTask = nil
-        }
+//        modelTask = Task {
+//            
+//            do {
+//                sdModels = try await stableDiffusionClient.imageGenerationModels()
+//                let options = try await stableDiffusionClient.imageGenerationOptions()
+//                
+//                selectedSDModel = sdModels.first { model in
+//                    model.sha256 == options.sdCheckpointHash
+//                }
+//                                
+////                llmModels = try await llmClient.getLocalModels()
+////                selectedLLMModel = llmModels.first
+//                
+//                sdSamplers = try await stableDiffusionClient.samplers()
+//                
+//                sdLoras = try await stableDiffusionClient.loras()
+//                
+////                try await stableDiffusionClient.scriptInfo()
+//                controlNetModels = try await stableDiffusionClient.controlNetModels()
+//                controlNetModules = try await stableDiffusionClient.controlNetModules()
+//                
+//            } catch {
+//                print(error)
+//            }
+//            
+//            modelTask = nil
+//        }
     }
     
     func setSelectedModel() {
