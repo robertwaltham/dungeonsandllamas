@@ -117,6 +117,15 @@ struct LandingView: View {
                     .frame(width: size, height: size)
                     .background(Color(white: 0.7))
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+                    
+                    Button(action: {
+                        flowState.nextLink(.comfyUITest)
+                    }, label: {
+                        Text("ComfyUI")
+                    })
+                    .frame(width: size, height: size)
+                    .background(Color(white: 0.7))
+                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                 }
                 
                 Spacer()
@@ -165,6 +174,7 @@ struct LandingView: View {
                         ComfyUISystemStatusView(
                             connection: generationService.comfyUIConnectionInfo,
                             status: generationService.comfyUISystemStatus,
+                            models: generationService.comfyUIModels,
                             error: generationService.comfyUIStatus.error
                         )
                     }

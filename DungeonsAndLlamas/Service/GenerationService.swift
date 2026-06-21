@@ -23,8 +23,27 @@ class GenerationService {
     var photos = PhotoLibraryService()
     
     static let statusCheckInterval = 2.0
+    private static let comfyUIClientIdKey = "comfyUIClientId"
     
     public init() {}
+    
+    var comfyUIClientId: String {
+        get {
+            if let savedClientId = UserDefaults.standard.string(forKey: GenerationService.comfyUIClientIdKey) {
+                let normalizedClientId = savedClientId.lowercased()
+                if normalizedClientId != savedClientId {
+                    UserDefaults.standard.set(normalizedClientId, forKey: GenerationService.comfyUIClientIdKey)
+                }
+                return normalizedClientId
+            }
+            let clientId = UUID().uuidString.lowercased()
+            UserDefaults.standard.set(clientId, forKey: GenerationService.comfyUIClientIdKey)
+            return clientId
+        }
+        set {
+            UserDefaults.standard.set(newValue.lowercased(), forKey: GenerationService.comfyUIClientIdKey)
+        }
+    }
     
     struct ConnectionStatus {
         var connected: Bool
@@ -73,6 +92,7 @@ class GenerationService {
     var comfyUIStatus = ConnectionStatus(connected: false, lastChecked: .distantPast, service: .comfyUI)
     var comfyUIConnectionInfo: ComfyUIClient.ConnectionInfo?
     var comfyUISystemStatus: ComfyUIClient.SystemStatus?
+    var comfyUIModels: [String: [String]] = [:]
     
     var sdModels: [StableDiffusionClient.Model] = []
     var llmModels: [LargeLangageModelClient.Model] = []
@@ -94,6 +114,7 @@ class GenerationService {
     
     private(set) var statusTask: Task<Void, Never>?
     private(set) var modelTask: Task<Void, Never>?
+    private(set) var comfyUIModelsTask: Task<Void, Never>?
     
     private var storedPrompt: String?
     
@@ -236,6 +257,32 @@ class GenerationService {
         }
         
         checkStatus()
+    }
+    
+    func getComfyUIModels() {
+        guard comfyUIModelsTask == nil else {
+            return
+        }
+        
+        comfyUIModelsTask = Task {
+            do {
+                let modelTypes = try await comfyUIClient.modelFolders()
+                var modelsByType = [String: [String]]()
+                
+                for modelType in modelTypes {
+                    let models = try await comfyUIClient.models(in: modelType)
+                    if !models.isEmpty {
+                        modelsByType[modelType] = models
+                    }
+                }
+                
+                comfyUIModels = modelsByType
+            } catch {
+                print(error)
+            }
+            
+            comfyUIModelsTask = nil
+        }
     }
     
     func getModels() {

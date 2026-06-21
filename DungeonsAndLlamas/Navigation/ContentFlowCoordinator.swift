@@ -56,6 +56,8 @@ extension ContentFlowCoordinator {
                 AccelerometerTestView(flowState: flowState)
             case .apiTest:
                 APITestView(flowState: flowState)
+            case .comfyUITest:
+                ComfyUITestView(generationService: generationService)
             case .itemGenerator:
                 ItemGeneratorView(flowState: flowState)
             case .sdHistory:
@@ -92,6 +94,8 @@ extension ContentFlowCoordinator {
                 AccelerometerTestView(flowState: flowState)
             case .apiTest:
                 APITestView(flowState: flowState)
+            case .comfyUITest:
+                ComfyUITestView(generationService: generationService)
             case .itemGenerator:
                 ItemGeneratorView(flowState: flowState)
             case .sdHistory:

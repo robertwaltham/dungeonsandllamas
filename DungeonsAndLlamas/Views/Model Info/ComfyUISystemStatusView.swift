@@ -10,6 +10,7 @@ import SwiftUI
 struct ComfyUISystemStatusView: View {
     let connection: ComfyUIClient.ConnectionInfo?
     let status: ComfyUIClient.SystemStatus?
+    let models: [String: [String]]
     let error: String?
 
     var body: some View {
@@ -42,6 +43,8 @@ struct ComfyUISystemStatusView: View {
                     Text("No system status loaded.")
                         .foregroundStyle(.secondary)
                 }
+
+                modelsSection(models)
             }
             .padding()
             .frame(minWidth: 360, maxWidth: 520, alignment: .leading)
@@ -75,6 +78,26 @@ struct ComfyUISystemStatusView: View {
                             .font(.headline)
                         Text("\(package.installed) installed / \(package.required) required")
                             .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    private func modelsSection(_ models: [String: [String]]) -> some View {
+        section("Models") {
+            if models.isEmpty {
+                Text("No models loaded.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(models.keys.sorted(), id: \.self) { modelType in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(modelType)
+                            .font(.headline)
+                        ForEach(models[modelType] ?? [], id: \.self) { model in
+                            Text(model)
+                                .textSelection(.enabled)
+                        }
                     }
                 }
             }
@@ -125,5 +148,5 @@ struct ComfyUISystemStatusView: View {
 }
 
 #Preview {
-    ComfyUISystemStatusView(connection: nil, status: nil, error: nil)
+    ComfyUISystemStatusView(connection: nil, status: nil, models: [:], error: nil)
 }

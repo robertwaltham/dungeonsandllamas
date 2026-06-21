@@ -27,6 +27,8 @@ enum ContentLink: Hashable, Equatable, Identifiable {
             hasher.combine("accelerometer")
         case .apiTest:
             hasher.combine("apiTest")
+        case .comfyUITest:
+            hasher.combine("comfyUITest")
         case .drawing:
             hasher.combine("drawing")
         case .drawingFrom(history: let history):
@@ -62,6 +64,7 @@ enum ContentLink: Hashable, Equatable, Identifiable {
     case secondLink(text: String)
     case accelerometer
     case apiTest
+    case comfyUITest
     case drawing
     case drawingFrom(history: ImageHistoryModel)
     case itemGenerator

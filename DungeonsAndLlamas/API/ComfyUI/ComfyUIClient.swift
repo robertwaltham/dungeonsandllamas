@@ -104,11 +104,13 @@ actor ComfyUIClient {
     struct PromptSubmission: Encodable, @unchecked Sendable {
         let prompt: [String: AnyCodable]
         let clientId: String?
+        let promptId: String?
         let extraData: [String: AnyCodable]?
 
-        init(prompt: [String: AnyCodable], clientId: String? = nil, extraData: [String: AnyCodable]? = nil) {
+        init(prompt: [String: AnyCodable], clientId: String? = nil, promptId: String? = nil, extraData: [String: AnyCodable]? = nil) {
             self.prompt = prompt
             self.clientId = clientId
+            self.promptId = promptId
             self.extraData = extraData
         }
     }
@@ -130,6 +132,26 @@ actor ComfyUIClient {
         let image: String
         let subfolder: String?
         let type: String?
+    }
+
+    enum ViewImageType: String, Codable, Sendable {
+        case input
+        case output
+        case temp
+    }
+
+    struct HistoryEntry: Decodable, Sendable {
+        let outputs: [String: NodeOutput]
+    }
+
+    struct NodeOutput: Decodable, Sendable {
+        let images: [ImageReference]?
+    }
+
+    struct ImageReference: Decodable, Sendable {
+        let filename: String
+        let subfolder: String
+        let type: ViewImageType
     }
 
     struct ConnectionInfo: Sendable {
@@ -280,6 +302,41 @@ actor ComfyUIClient {
         try await get(.workflowTemplates)
     }
 
+    func generateImageFlux2KleinImageEdit(prompt: String, seed: Int64, clientId: String, promptId: String) async throws -> [String: [String]] {
+        let clientId = clientId.lowercased()
+        let promptId = promptId.lowercased()
+        let workflowPrompt = try ComfyUIClient.imageFlux2KleinImageEditWorkflow(prompt: prompt, seed: seed)
+        let messageStream = try messages(clientId: clientId)
+        _ = try await submitPrompt(PromptSubmission(prompt: workflowPrompt, clientId: clientId, promptId: promptId))
+
+        for try await message in messageStream {
+            guard case .event(let event) = message,
+                  event.knownType == .executing,
+                  let data = event.data?.value as? [String: Any],
+                  data["prompt_id"] as? String == promptId,
+                  data["node"] is NSNull else {
+                continue
+            }
+            break
+        }
+
+        let history = try await promptHistory(promptId: promptId)
+        guard let entry = history[promptId] else {
+            throw APIError.requestError("no history for prompt id \(promptId)")
+        }
+
+        var outputImages = [String: [String]]()
+        for (nodeId, output) in entry.outputs {
+            var imagePaths = [String]()
+            for imageReference in output.images ?? [] {
+                let imagePath = try await image(named: imageReference.filename, type: imageReference.type)
+                imagePaths.append(imagePath)
+            }
+            outputImages[nodeId] = imagePaths
+        }
+        return outputImages
+    }
+
     func systemStats() async throws -> (connection: ConnectionInfo, status: SystemStatus) {
         let request = try ComfyUIClient.request(endpoint: .systemStats, method: .get)
         let (data, response) = try await self.data(for: request)
@@ -393,20 +450,24 @@ actor ComfyUIClient {
         return try await performMultipartUpload(multipart, endpoint: .uploadMask)
     }
 
-    func image(named filename: String, subfolder: String? = nil, type: String? = nil) async throws -> Data {
-        var queryItems = [URLQueryItem(name: "filename", value: filename)]
-        if let subfolder {
-            queryItems.append(URLQueryItem(name: "subfolder", value: subfolder))
-        }
-        if let type {
-            queryItems.append(URLQueryItem(name: "type", value: type))
-        }
+    func image(named filename: String, type: ViewImageType = .output) async throws -> String {
+        let queryItems = [
+            URLQueryItem(name: "filename", value: filename),
+            URLQueryItem(name: "type", value: type.rawValue)
+        ]
 
         var request = try ComfyUIClient.request(endpoint: .view, method: .get, queryItems: queryItems)
         request.addValue("image/*", forHTTPHeaderField: "Accept")
         let (data, response) = try await self.data(for: request)
         try ComfyUIClient.validate(response: response, data: data)
-        return data
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.requestError("no request")
+        }
+        guard let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type"), contentType.lowercased().hasPrefix("image/") else {
+            throw APIError.requestError("expected image response, got \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "no content type")")
+        }
+
+        return try ComfyUIClient.saveTemporaryImage(data: data, filename: filename, contentType: contentType)
     }
 
     func metadata(folderName: String, filename: String) async throws -> [String: AnyCodable] {
@@ -448,6 +509,10 @@ actor ComfyUIClient {
                 socket.cancel(with: .goingAway, reason: nil)
             }
         }
+    }
+
+    private func promptHistory(promptId: String) async throws -> [String: HistoryEntry] {
+        try await get(.historyItem(promptId))
     }
 
     private func data(for request: URLRequest) async throws -> (Data, URLResponse) {
@@ -515,6 +580,64 @@ actor ComfyUIClient {
         request.addValue(basicAuthorization, forHTTPHeaderField: "Authorization")
         debugPrintCurl(for: request)
         return request
+    }
+
+    private static func imageFlux2KleinImageEditWorkflow(prompt: String, seed: Int64) throws -> [String: AnyCodable] {
+        let data = try workflowData(named: "image_flux2_klein_image_edit_4b_distilled", extension: "json")
+        guard var workflow = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              var textNode = workflow["75:74"] as? [String: Any],
+              var textInputs = textNode["inputs"] as? [String: Any],
+              var seedNode = workflow["75:73"] as? [String: Any],
+              var seedInputs = seedNode["inputs"] as? [String: Any] else {
+            throw APIError.requestError("invalid image edit workflow")
+        }
+
+        textInputs["text"] = prompt
+        textNode["inputs"] = textInputs
+        workflow["75:74"] = textNode
+
+        seedInputs["noise_seed"] = seed
+        seedNode["inputs"] = seedInputs
+        workflow["75:73"] = seedNode
+
+        return workflow.mapValues { AnyCodable($0) }
+    }
+
+    private static func workflowData(named name: String, extension fileExtension: String) throws -> Data {
+        let candidates = [
+            Bundle.main.url(forResource: name, withExtension: fileExtension)
+        ]
+
+        guard let url = candidates.compactMap({ $0 }).first else {
+            throw APIError.badURL("missing workflow \(name).\(fileExtension)")
+        }
+        return try Data(contentsOf: url)
+    }
+
+    private static func saveTemporaryImage(data: Data, filename: String, contentType: String) throws -> String {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ComfyUIImages", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let sanitizedFilename = URL(fileURLWithPath: filename).lastPathComponent
+        let baseName = URL(fileURLWithPath: sanitizedFilename).deletingPathExtension().lastPathComponent
+        let fileExtension = imageFileExtension(for: contentType)
+        let outputFilename = "\(baseName)-\(UUID().uuidString).\(fileExtension)"
+        let fileURL = directory.appendingPathComponent(outputFilename)
+        try data.write(to: fileURL)
+        return fileURL.path()
+    }
+
+    private static func imageFileExtension(for contentType: String) -> String {
+        switch contentType.split(separator: ";").first?.trimmingCharacters(in: .whitespaces).lowercased() {
+        case "image/jpeg", "image/jpg":
+            return "jpg"
+        case "image/webp":
+            return "webp"
+        case "image/gif":
+            return "gif"
+        default:
+            return "png"
+        }
     }
 
     private static func debugPrintResponse(request: URLRequest, response: URLResponse, data: Data) {

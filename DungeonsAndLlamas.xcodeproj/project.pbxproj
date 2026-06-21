@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -53,8 +53,8 @@
 		D1DC04412BD037AB007BC5D2 /* LandingiPhoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */; };
 		D1E58C6B2DA5BE0D00980ED4 /* PencilOverlayDrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E58C6A2DA5BE0500980ED4 /* PencilOverlayDrawingView.swift */; };
 		D1E831692DCD5070008AB60B /* DepthEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E831682DCD506B008AB60B /* DepthEditorView.swift */; };
-		D1F77F392FE8925A00FF042F /* ComfyUIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F77F382FE8925A00FF042F /* ComfyUIClient.swift */; };
 		D1F77F3D2FE89BCB00FF042F /* ComfyUISystemStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F77F3C2FE89BCB00FF042F /* ComfyUISystemStatusView.swift */; };
+		D1F77F432FE8A76D00FF042F /* ComfyUITestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F77F422FE8A76D00FF042F /* ComfyUITestView.swift */; };
 		D1F839CF2DA07C350028E034 /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F839CE2DA07C320028E034 /* DatabaseService.swift */; };
 		D1F839D22DA07C580028E034 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = D1F839D12DA07C580028E034 /* SQLite */; };
 		D1F839D42DA08EF90028E034 /* DatabaseTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F839D32DA08EF60028E034 /* DatabaseTestView.swift */; };
@@ -108,12 +108,16 @@
 		D1DC04402BD037AB007BC5D2 /* LandingiPhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingiPhoneView.swift; sourceTree = "<group>"; };
 		D1E58C6A2DA5BE0500980ED4 /* PencilOverlayDrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilOverlayDrawingView.swift; sourceTree = "<group>"; };
 		D1E831682DCD506B008AB60B /* DepthEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthEditorView.swift; sourceTree = "<group>"; };
-		D1F77F382FE8925A00FF042F /* ComfyUIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyUIClient.swift; sourceTree = "<group>"; };
 		D1F77F3C2FE89BCB00FF042F /* ComfyUISystemStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyUISystemStatusView.swift; sourceTree = "<group>"; };
+		D1F77F422FE8A76D00FF042F /* ComfyUITestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyUITestView.swift; sourceTree = "<group>"; };
 		D1F839CE2DA07C320028E034 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		D1F839D32DA08EF60028E034 /* DatabaseTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseTestView.swift; sourceTree = "<group>"; };
 		D1F839D52DA0E7F40028E034 /* LoraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D1F77F3E2FE89EF200FF042F /* ComfyUI */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ComfyUI; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		D16CAE422BB3724000ECA710 /* Frameworks */ = {
@@ -203,12 +207,12 @@
 		D17058A42BBB18C6003E6668 /* API */ = {
 			isa = PBXGroup;
 			children = (
+				D1F77F3E2FE89EF200FF042F /* ComfyUI */,
 				D16CAE5A2BB3C06700ECA710 /* LargeLangageModelClient.swift */,
 				D166A8992BE00D370028100A /* StableDiffusionClient.swift */,
 				D16CAE5C2BB3C09B00ECA710 /* Secrets.swift */,
 				D166A8962BE00CA60028100A /* DelegateToSupressWarning.swift */,
 				D166A89B2BE00D590028100A /* APIError.swift */,
-				D1F77F382FE8925A00FF042F /* ComfyUIClient.swift */,
 			);
 			path = API;
 			sourceTree = "<group>";
@@ -255,6 +259,7 @@
 				D16CAE5E2BB3C59E00ECA710 /* APITestView.swift */,
 				D17058AB2BBB198C003E6668 /* NavigationTestView.swift */,
 				D1DC04312BCDB8DD007BC5D2 /* BindingStreamTestView.swift */,
+				D1F77F422FE8A76D00FF042F /* ComfyUITestView.swift */,
 			);
 			path = "Test Views";
 			sourceTree = "<group>";
@@ -295,6 +300,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D1F77F3E2FE89EF200FF042F /* ComfyUI */,
 			);
 			name = DungeonsAndLlamas;
 			productName = DungeonsAndLlamas;
@@ -375,7 +383,6 @@
 				D16CAE4B2BB3724000ECA710 /* ContentView.swift in Sources */,
 				D16CAE5B2BB3C06700ECA710 /* LargeLangageModelClient.swift in Sources */,
 				D130247B2DC97011006EA67C /* FastViTT8F16.mlpackage in Sources */,
-				D1F77F392FE8925A00FF042F /* ComfyUIClient.swift in Sources */,
 				D1DC043F2BD030C8007BC5D2 /* PencilDrawingiPhoneView.swift in Sources */,
 				D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */,
 				D178EAEB2D9C9C36001828E2 /* GradientView.swift in Sources */,
@@ -389,6 +396,7 @@
 				D17058AC2BBB198C003E6668 /* NavigationTestView.swift in Sources */,
 				D1F839D62DA0E7F70028E034 /* LoraView.swift in Sources */,
 				D166A89A2BE00D370028100A /* StableDiffusionClient.swift in Sources */,
+				D1F77F432FE8A76D00FF042F /* ComfyUITestView.swift in Sources */,
 				D1DC043A2BCF4685007BC5D2 /* PencilCanvasView.swift in Sources */,
 				D17058B12BBB1EC7003E6668 /* GenerationService.swift in Sources */,
 				D17058A72BBB1919003E6668 /* ContentFlowCoordinator.swift in Sources */,
