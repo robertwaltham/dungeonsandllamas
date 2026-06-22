@@ -302,10 +302,10 @@ actor ComfyUIClient {
         try await get(.workflowTemplates)
     }
 
-    func generateImageFlux2KleinImageEdit(prompt: String, seed: Int64, clientId: String, promptId: String) async throws -> [String: [String]] {
+    func generateImageFlux2KleinImageEdit(prompt: String, seed: Int64, imageFilename: String, clientId: String, promptId: String) async throws -> [String: [String]] {
         let clientId = clientId.lowercased()
         let promptId = promptId.lowercased()
-        let workflowPrompt = try ComfyUIClient.imageFlux2KleinImageEditWorkflow(prompt: prompt, seed: seed)
+        let workflowPrompt = try ComfyUIClient.imageFlux2KleinImageEditWorkflow(prompt: prompt, seed: seed, imageFilename: imageFilename)
         let messageStream = try messages(clientId: clientId)
         _ = try await submitPrompt(PromptSubmission(prompt: workflowPrompt, clientId: clientId, promptId: promptId))
 
@@ -434,8 +434,8 @@ actor ComfyUIClient {
         try await get(.users)
     }
 
-    func uploadImage(_ data: Data, filename: String, subfolder: String? = nil, overwrite: Bool? = nil) async throws -> ImageUploadResponse {
-        try await upload(data, filename: filename, mimeType: "image/png", endpoint: .uploadImage, subfolder: subfolder, overwrite: overwrite)
+    func uploadImage(_ data: Data, filename: String, subfolder: String? = nil, type: ViewImageType? = nil, overwrite: Bool? = nil) async throws -> ImageUploadResponse {
+        try await upload(data, filename: filename, mimeType: "image/png", endpoint: .uploadImage, subfolder: subfolder, type: type, overwrite: overwrite)
     }
 
     func uploadMask(_ data: Data, filename: String, originalReference: UploadedImage? = nil, subfolder: String? = nil, overwrite: Bool? = nil) async throws -> ImageUploadResponse {
@@ -538,16 +538,19 @@ actor ComfyUIClient {
         return try decoder.decode(Response.self, from: responseData)
     }
 
-    private func upload(_ data: Data, filename: String, mimeType: String, endpoint: Endpoint, subfolder: String?, overwrite: Bool?) async throws -> ImageUploadResponse {
-        let multipart = multipartUpload(data, filename: filename, mimeType: mimeType, subfolder: subfolder, overwrite: overwrite)
+    private func upload(_ data: Data, filename: String, mimeType: String, endpoint: Endpoint, subfolder: String?, type: ViewImageType? = nil, overwrite: Bool?) async throws -> ImageUploadResponse {
+        let multipart = multipartUpload(data, filename: filename, mimeType: mimeType, subfolder: subfolder, type: type, overwrite: overwrite)
         return try await performMultipartUpload(multipart, endpoint: endpoint)
     }
 
-    private func multipartUpload(_ data: Data, filename: String, mimeType: String, subfolder: String?, overwrite: Bool?) -> MultipartRequest {
+    private func multipartUpload(_ data: Data, filename: String, mimeType: String, subfolder: String?, type: ViewImageType? = nil, overwrite: Bool?) -> MultipartRequest {
         var multipart = MultipartRequest()
         multipart.add(key: "image", fileName: filename, fileMimeType: mimeType, fileData: data)
         if let subfolder {
             multipart.add(key: "subfolder", value: subfolder)
+        }
+        if let type {
+            multipart.add(key: "type", value: type.rawValue)
         }
         if let overwrite {
             multipart.add(key: "overwrite", value: String(overwrite))
@@ -582,15 +585,21 @@ actor ComfyUIClient {
         return request
     }
 
-    private static func imageFlux2KleinImageEditWorkflow(prompt: String, seed: Int64) throws -> [String: AnyCodable] {
+    private static func imageFlux2KleinImageEditWorkflow(prompt: String, seed: Int64, imageFilename: String) throws -> [String: AnyCodable] {
         let data = try workflowData(named: "image_flux2_klein_image_edit_4b_distilled", extension: "json")
         guard var workflow = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              var loadImageNode = workflow["76"] as? [String: Any],
+              var loadImageInputs = loadImageNode["inputs"] as? [String: Any],
               var textNode = workflow["75:74"] as? [String: Any],
               var textInputs = textNode["inputs"] as? [String: Any],
               var seedNode = workflow["75:73"] as? [String: Any],
               var seedInputs = seedNode["inputs"] as? [String: Any] else {
             throw APIError.requestError("invalid image edit workflow")
         }
+
+        loadImageInputs["image"] = imageFilename
+        loadImageNode["inputs"] = loadImageInputs
+        workflow["76"] = loadImageNode
 
         textInputs["text"] = prompt
         textNode["inputs"] = textInputs
