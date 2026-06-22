@@ -11,125 +11,162 @@ import PencilKit
 import UIKit
 
 struct ComfyUITestView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = ComfyUITestViewModel()
     @State var generationService: GenerationService
 
+    private var isCompact: Bool {
+        horizontalSizeClass == .compact
+    }
+
     var body: some View {
+        Group {
+            if isCompact {
+                GeometryReader { geometry in
+                    compactLayout(canvasDimension: min(320, max(240, geometry.size.width - 32)))
+                }
+            } else {
+                regularLayout
+            }
+        }
+        .navigationTitle("ComfyUI Test")
+    }
+
+    private var regularLayout: some View {
         ScrollView {
-            VStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 16) {
+                controls
 
-                HStack {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Prompt")
-                            .font(.headline)
-                        TextField("Prompt", text: $viewModel.prompt, axis: .vertical)
-                            .textFieldStyle(.roundedBorder)
-                            .lineLimit(1...6)
-                    }
-                    
-                    HStack {
-                        Button("Generate") {
-                            viewModel.generate(using: generationService)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(viewModel.loading)
-                    }
-                }
-                
-                HStack {
-                    Button("Clear Drawing") {
-                        viewModel.clearDrawing()
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(viewModel.loading)
-                    
-                    Button("Random Seed") {
-                        viewModel.randomizeSeed()
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(viewModel.loading)
-                    
-                    TextField("Seed", value: $viewModel.seed, format: .number.grouping(.never))
-                        .textFieldStyle(.roundedBorder)
-                        .disabled(true)
+                HStack(alignment: .top, spacing: 24) {
+                    canvasSection(canvasDimension: 512)
+                    outputSection(maxImageHeight: 512)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
-                PencilCanvasView(
-                    drawing: $viewModel.drawing,
-                    showTooltip: $viewModel.showTooltip,
-                    contentSize: $viewModel.canvasSize
-                )
-                .frame(width: 512, height: 512)
-                .border(.secondary)
-
-//                HStack(alignment: .center, spacing: 4) {
-//
-//                    VStack {
-//                        Text("Client UUID")
-//                            .font(.headline)
-//                        Text(generationService.comfyUIClientId)
-//                            .font(.caption)
-//                            .textSelection(.enabled)
-//                    }
-//                    VStack {
-//                        Text("Prompt UUID")
-//                            .font(.headline)
-//                        Text(viewModel.promptId)
-//                            .font(.caption)
-//                            .textSelection(.enabled)
-//                    }
-//                }
-
-                if viewModel.loading {
-                    LoadingView()
-                        .frame(maxWidth: .infinity, minHeight: 120)
-                }
-
-                if let error = viewModel.error {
-                    Text(error)
-                        .foregroundStyle(.red)
-                        .textSelection(.enabled)
-                }
-
-                if let image = viewModel.image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxHeight: 600)
-                }
-
-                if viewModel.inputImagePath != nil || viewModel.uploadedInputFilename != nil {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Input Upload")
-                            .font(.headline)
-                        if let inputImagePath = viewModel.inputImagePath {
-                            Text(inputImagePath)
-                                .font(.caption)
-                                .textSelection(.enabled)
-                        }
-                        if let uploadedInputFilename = viewModel.uploadedInputFilename {
-                            Text(uploadedInputFilename)
-                                .font(.caption)
-                                .textSelection(.enabled)
-                        }
-                    }
-                }
-
-                if !viewModel.imagePaths.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Output Files")
-                            .font(.headline)
-                        ForEach(viewModel.imagePaths, id: \.self) { path in
-                            Text(path)
-                                .font(.caption)
-                                .textSelection(.enabled)
-                        }
-                    }
-                }
+                detailsSection
             }
             .padding()
         }
-        .navigationTitle("ComfyUI Test")
+    }
+
+    private func compactLayout(canvasDimension: CGFloat) -> some View {
+        ScrollView {
+            VStack(alignment: .center, spacing: 16) {
+                controls
+                canvasSection(canvasDimension: canvasDimension)
+                outputSection(maxImageHeight: canvasDimension)
+                detailsSection
+            }
+            .padding()
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var controls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .bottom, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Prompt")
+                        .font(.headline)
+                    TextField("Prompt", text: $viewModel.prompt, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(1...6)
+                }
+
+                Button("Generate") {
+                    viewModel.generate(using: generationService)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.loading)
+            }
+
+            HStack(spacing: 12) {
+                Button("Clear Drawing") {
+                    viewModel.clearDrawing()
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.loading)
+
+                Button("Random Seed") {
+                    viewModel.randomizeSeed()
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.loading)
+
+                TextField("Seed", value: $viewModel.seed, format: .number.grouping(.never))
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(true)
+            }
+        }
+    }
+
+    private func canvasSection(canvasDimension: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Input Image")
+                .font(.headline)
+            PencilCanvasView(
+                drawing: $viewModel.drawing,
+                showTooltip: $viewModel.showTooltip,
+                contentSize: $viewModel.canvasSize
+            )
+            .frame(width: canvasDimension, height: canvasDimension)
+            .border(.secondary)
+        }
+    }
+
+    private func outputSection(maxImageHeight: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if viewModel.loading {
+                LoadingView()
+                    .frame(maxWidth: .infinity, minHeight: 120)
+            }
+
+            if let error = viewModel.error {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .textSelection(.enabled)
+            }
+
+            if let image = viewModel.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: maxImageHeight)
+            }
+        }
+    }
+
+    private var detailsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if viewModel.inputImagePath != nil || viewModel.uploadedInputFilename != nil {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Input Upload")
+                        .font(.headline)
+                    if let inputImagePath = viewModel.inputImagePath {
+                        Text(inputImagePath)
+                            .font(.caption)
+                            .textSelection(.enabled)
+                    }
+                    if let uploadedInputFilename = viewModel.uploadedInputFilename {
+                        Text(uploadedInputFilename)
+                            .font(.caption)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+
+            if !viewModel.imagePaths.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Output Files")
+                        .font(.headline)
+                    ForEach(viewModel.imagePaths, id: \.self) { path in
+                        Text(path)
+                            .font(.caption)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+        }
     }
 }
 
