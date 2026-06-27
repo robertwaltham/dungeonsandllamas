@@ -115,7 +115,7 @@ actor ComfyUIClient {
         }
     }
 
-    struct PromptResponse: Decodable {
+    struct PromptResponse: Decodable, @unchecked Sendable {
         let promptId: String?
         let number: Int?
         let error: AnyCodable?
@@ -227,12 +227,22 @@ actor ComfyUIClient {
         }
     }
 
-    struct WebSocketEvent: Decodable {
+    struct WebSocketEvent: Decodable, @unchecked Sendable {
         let type: String
         let data: AnyCodable?
 
         var knownType: KnownWebSocketEventType? {
             KnownWebSocketEventType(rawValue: type)
+        }
+
+        func isExecutionComplete(for promptId: String) -> Bool {
+            guard knownType == .executing,
+                  let data = data?.value as? [String: Any],
+                  data["prompt_id"] as? String == promptId.lowercased(),
+                  data["node"] is NSNull else {
+                return false
+            }
+            return true
         }
     }
 
@@ -247,7 +257,7 @@ actor ComfyUIClient {
         case executionInterrupted = "execution_interrupted"
     }
 
-    enum WebSocketMessage {
+    enum WebSocketMessage: Sendable {
         case event(WebSocketEvent)
         case text(String)
         case data(Data)
@@ -305,21 +315,32 @@ actor ComfyUIClient {
     func generateImageFlux2KleinImageEdit(prompt: String, seed: Int64, imageFilename: String, clientId: String, promptId: String) async throws -> [String: [String]] {
         let clientId = clientId.lowercased()
         let promptId = promptId.lowercased()
-        let workflowPrompt = try ComfyUIClient.imageFlux2KleinImageEditWorkflow(prompt: prompt, seed: seed, imageFilename: imageFilename)
         let messageStream = try messages(clientId: clientId)
-        _ = try await submitPrompt(PromptSubmission(prompt: workflowPrompt, clientId: clientId, promptId: promptId))
+        _ = try await submitImageFlux2KleinImageEdit(
+            prompt: prompt,
+            seed: seed,
+            imageFilename: imageFilename,
+            clientId: clientId,
+            promptId: promptId
+        )
 
         for try await message in messageStream {
-            guard case .event(let event) = message,
-                  event.knownType == .executing,
-                  let data = event.data?.value as? [String: Any],
-                  data["prompt_id"] as? String == promptId,
-                  data["node"] is NSNull else {
+            guard case .event(let event) = message, event.isExecutionComplete(for: promptId) else {
                 continue
             }
             break
         }
 
+        return try await imageOutputPaths(promptId: promptId)
+    }
+
+    func submitImageFlux2KleinImageEdit(prompt: String, seed: Int64, imageFilename: String, clientId: String, promptId: String) async throws -> PromptResponse {
+        let workflowPrompt = try ComfyUIClient.imageFlux2KleinImageEditWorkflow(prompt: prompt, seed: seed, imageFilename: imageFilename)
+        return try await submitPrompt(PromptSubmission(prompt: workflowPrompt, clientId: clientId.lowercased(), promptId: promptId.lowercased()))
+    }
+
+    func imageOutputPaths(promptId: String) async throws -> [String: [String]] {
+        let promptId = promptId.lowercased()
         let history = try await promptHistory(promptId: promptId)
         guard let entry = history[promptId] else {
             throw APIError.requestError("no history for prompt id \(promptId)")
@@ -568,7 +589,7 @@ actor ComfyUIClient {
     }
 
     private static func request(endpoint: Endpoint, method: Method, timeout: TimeInterval = 120.0, queryItems: [URLQueryItem] = []) throws -> URLRequest {
-        guard var components = URLComponents(string: "\(Secrets.host)/cu\(endpoint.path)") else {
+        guard var components = URLComponents(string: "\(Secrets.host)\(endpoint.path)") else {
             throw APIError.badURL(endpoint.path)
         }
         if !queryItems.isEmpty {
@@ -684,7 +705,7 @@ actor ComfyUIClient {
     }
 
     private static func webSocketRequest(endpoint: Endpoint) throws -> URLRequest {
-        guard var components = URLComponents(string: "\(Secrets.host)/cu\(endpoint.path)") else {
+        guard var components = URLComponents(string: "\(Secrets.host)\(endpoint.path)") else {
             throw APIError.badURL(endpoint.path)
         }
         switch components.scheme {

@@ -34,16 +34,16 @@ struct ComfyUITestView: View {
 
     private var regularLayout: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .center, spacing: 16) {
                 controls
 
-                HStack(alignment: .top, spacing: 24) {
+//                HStack(alignment: .top, spacing: 24) {
                     canvasSection(canvasDimension: 512)
                     outputSection(maxImageHeight: 512)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
+//                }
 
-                detailsSection
+//                detailsSection
             }
             .padding()
         }
@@ -55,7 +55,7 @@ struct ComfyUITestView: View {
                 controls
                 canvasSection(canvasDimension: canvasDimension)
                 outputSection(maxImageHeight: canvasDimension)
-                detailsSection
+//                detailsSection
             }
             .padding()
             .frame(maxWidth: .infinity)
@@ -66,8 +66,8 @@ struct ComfyUITestView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .bottom, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Prompt")
-                        .font(.headline)
+//                    Text("Prompt")
+//                        .font(.headline)
                     TextField("Prompt", text: $viewModel.prompt, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(1...6)
@@ -78,9 +78,9 @@ struct ComfyUITestView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(viewModel.loading)
-            }
+//            }
 
-            HStack(spacing: 12) {
+//            HStack(spacing: 12) {
                 Button("Clear Drawing") {
                     viewModel.clearDrawing()
                 }
@@ -93,17 +93,17 @@ struct ComfyUITestView: View {
                 .buttonStyle(.bordered)
                 .disabled(viewModel.loading)
 
-                TextField("Seed", value: $viewModel.seed, format: .number.grouping(.never))
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(true)
+//                TextField("Seed", value: $viewModel.seed, format: .number.grouping(.never))
+//                    .textFieldStyle(.roundedBorder)
+//                    .disabled(true)
             }
         }
     }
 
     private func canvasSection(canvasDimension: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Input Image")
-                .font(.headline)
+//            Text("Input Image")
+//                .font(.headline)
             PencilCanvasView(
                 drawing: $viewModel.drawing,
                 showTooltip: $viewModel.showTooltip,
@@ -249,13 +249,17 @@ private class ComfyUITestViewModel {
                 )
                 uploadedInputFilename = upload.name
 
-                let outputs = try await generationService.comfyUIClient.generateImageFlux2KleinImageEdit(
+                let messageStream = try await generationService.comfyUIClient.messages(clientId: clientId)
+                _ = try await generationService.comfyUIClient.submitImageFlux2KleinImageEdit(
                     prompt: prompt,
                     seed: seed,
                     imageFilename: upload.name,
                     clientId: clientId,
                     promptId: promptId
                 )
+                try await waitForImageEditCompletion(promptId: promptId, messages: messageStream)
+
+                let outputs = try await generationService.comfyUIClient.imageOutputPaths(promptId: promptId)
                 let paths = outputs.keys.sorted().flatMap { outputs[$0] ?? [] }
                 imagePaths = paths
 
@@ -270,6 +274,15 @@ private class ComfyUITestViewModel {
 
             randomizeSeed()
             loading = false
+        }
+    }
+
+    private func waitForImageEditCompletion(promptId: String, messages: AsyncThrowingStream<ComfyUIClient.WebSocketMessage, Error>) async throws {
+        for try await message in messages {
+            guard case .event(let event) = message, event.isExecutionComplete(for: promptId) else {
+                continue
+            }
+            return
         }
     }
 
