@@ -7,6 +7,7 @@
 
 import CoreML
 import CoreImage
+import CoreAI
 import UIKit
 
 // adapted from https://github.com/huggingface/coreml-examples/tree/main/depth-anything-example
@@ -20,14 +21,30 @@ actor MLService {
         let probability: Double
     }
     
+    enum EmbeddingError: Error {
+        case modelNotLoaded
+        case functionNotFound(String)
+        case outputNotFound(String)
+        case outputTypeMismatch(String)
+        case invalidImage
+        case invalidEmbeddingDimensions(Int, Int)
+    }
+    
     let context = CIContext()
+    let tokenizer = CLIPTokenizer()
     static let targetDepthSize = CGSize(width: 518, height: 392)
     static let targetClassifierSize = CGSize(width: 256, height: 256)
+    static let targetClipImageSize = CGSize(width: 256, height: 256)
+    static let clipImageMean: [Float] = [0.48145466, 0.4578275, 0.40821073]
+    static let clipImageStandardDeviation: [Float] = [0.26862954, 0.26130258, 0.27577711]
 
     /// The depth model.
     var depthModel: DepthAnythingV2SmallF16?
 //    var classifierModel: FastViTT8F16?
     var classifierModel: FastViTMA36F16?
+    var clipModel: AIModel?
+    var clipTextFunction: InferenceFunction?
+    var clipImageFunction: InferenceFunction?
     
     /// A pixel buffer used as input to the model.
     let inputDepthPixelBuffer: CVPixelBuffer
@@ -75,15 +92,30 @@ actor MLService {
     // TODO: this takes about 13s on an iPad Air M1
     // skip this somehow for swiftUI previews
     func loadModel() async throws {
-        print("Loading Depth model...")
+//        print("Loading Depth model...")
         
         let clock = ContinuousClock()
         let start = clock.now
         
-        depthModel = try DepthAnythingV2SmallF16()
-        print("Loading Classifier model...")
+//        depthModel = try DepthAnythingV2SmallF16()
+//        print("Loading Classifier model...")
 //        classifierModel = try FastViTT8F16()
-        classifierModel = try FastViTMA36F16()
+//        classifierModel = try FastViTMA36F16()
+        
+        guard let url = Bundle.main.url(forResource: "mobileclip2_s2", withExtension: "aimodel") else {
+            fatalError("can't find mobileclip2_s2")
+        }
+        let clipModel = try await AIModel(contentsOf: url)
+        self.clipModel = clipModel
+        
+        guard let textFunction = try clipModel.loadFunction(named: "encode_text") else {
+            throw EmbeddingError.functionNotFound("encode_text")
+        }
+        guard let imageFunction = try clipModel.loadFunction(named: "encode_image") else {
+            throw EmbeddingError.functionNotFound("encode_image")
+        }
+        clipTextFunction = textFunction
+        clipImageFunction = imageFunction
 
         
         let duration = clock.now - start
@@ -146,6 +178,125 @@ actor MLService {
         print("Inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])))")
         
         return top3
+    }
+    
+    func textEmbedding(for text: String) async throws -> [Float] {
+        guard let clipTextFunction else {
+            throw EmbeddingError.modelNotLoaded
+        }
+        
+        let tokens = tokenizer.encode_full(text: text).map(Int32.init)
+        let input = NDArray(scalars: tokens, shape: [1, tokenizer.contextLength])
+        return try await embedding(function: clipTextFunction, inputName: "input", outputName: "output", input: input)
+    }
+    
+    func imageEmbedding(for image: UIImage) async throws -> [Float] {
+        guard let clipImageFunction else {
+            throw EmbeddingError.modelNotLoaded
+        }
+        
+        let input = try clipImageArray(from: image)
+        return try await embedding(function: clipImageFunction, inputName: "input", outputName: "output", input: input)
+    }
+    
+    func similarity(text: String, image: UIImage) async throws -> Float {
+        let textEmbedding = try await textEmbedding(for: text)
+        let imageEmbedding = try await imageEmbedding(for: image)
+        return try Self.cosineSimilarity(textEmbedding, imageEmbedding)
+    }
+    
+    static func cosineSimilarity(_ embedding1: [Float], _ embedding2: [Float]) throws -> Float {
+        guard embedding1.count == embedding2.count else {
+            throw EmbeddingError.invalidEmbeddingDimensions(embedding1.count, embedding2.count)
+        }
+        
+        let dotProduct = zip(embedding1, embedding2).reduce(Float.zero) { $0 + $1.0 * $1.1 }
+        let magnitude1 = sqrt(embedding1.reduce(Float.zero) { $0 + $1 * $1 })
+        let magnitude2 = sqrt(embedding2.reduce(Float.zero) { $0 + $1 * $1 })
+        return dotProduct / (magnitude1 * magnitude2)
+    }
+    
+    private func embedding(function: InferenceFunction, inputName: String, outputName: String, input: NDArray) async throws -> [Float] {
+        var outputs = try await function.run(inputs: [inputName: input])
+        guard let outputValue = outputs.remove(outputName) else {
+            throw EmbeddingError.outputNotFound(outputName)
+        }
+        guard let outputArray = outputValue.ndArray else {
+            throw EmbeddingError.outputTypeMismatch(outputName)
+        }
+        guard outputArray.scalarType == .float32 else {
+            throw EmbeddingError.outputTypeMismatch(outputName)
+        }
+        
+        return floats(from: outputArray)
+    }
+    
+    private func clipImageArray(from image: UIImage) throws -> NDArray {
+        guard let pixelBuffer = image.convertToBuffer() else {
+            throw EmbeddingError.invalidImage
+        }
+        
+        let resizedImage = CIImage(cvPixelBuffer: pixelBuffer).resized(to: Self.targetClipImageSize)
+        guard let rgbaPixelBuffer = context.render(resizedImage, pixelFormat: kCVPixelFormatType_32BGRA) else {
+            throw EmbeddingError.invalidImage
+        }
+        
+        CVPixelBufferLockBaseAddress(rgbaPixelBuffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(rgbaPixelBuffer, .readOnly) }
+        
+        guard let baseAddress = CVPixelBufferGetBaseAddress(rgbaPixelBuffer) else {
+            throw EmbeddingError.invalidImage
+        }
+        
+        let width = Int(Self.targetClipImageSize.width)
+        let height = Int(Self.targetClipImageSize.height)
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(rgbaPixelBuffer)
+        let bytes = baseAddress.assumingMemoryBound(to: UInt8.self)
+        var values = Array(repeating: Float.zero, count: 3 * width * height)
+        
+        for y in 0..<height {
+            for x in 0..<width {
+                let sourceOffset = y * bytesPerRow + x * 4
+                let pixelIndex = y * width + x
+                let red = Float(bytes[sourceOffset + 2]) / 255.0
+                let green = Float(bytes[sourceOffset + 1]) / 255.0
+                let blue = Float(bytes[sourceOffset]) / 255.0
+                values[pixelIndex] = (red - Self.clipImageMean[0]) / Self.clipImageStandardDeviation[0]
+                values[width * height + pixelIndex] = (green - Self.clipImageMean[1]) / Self.clipImageStandardDeviation[1]
+                values[2 * width * height + pixelIndex] = (blue - Self.clipImageMean[2]) / Self.clipImageStandardDeviation[2]
+            }
+        }
+        
+        return NDArray(scalars: values, shape: [1, 3, height, width])
+    }
+    
+    private func floats(from array: NDArray) -> [Float] {
+        let view = array.view(as: Float.self)
+        let count = array.shape.reduce(1, *)
+        var values = [Float]()
+        values.reserveCapacity(count)
+        
+        if let elements = view.contiguousElements {
+            for index in 0..<count {
+                values.append(elements[index])
+            }
+            return values
+        }
+        
+        view.withUnsafePointer { pointer, shape, strides in
+            for linearIndex in 0..<count {
+                var remainder = linearIndex
+                var offset = 0
+                for dimension in stride(from: shape.count - 1, through: 0, by: -1) {
+                    let index = remainder % shape[dimension]
+                    remainder /= shape[dimension]
+                    offset += index * strides[dimension]
+                }
+                values.append(pointer[offset])
+            }
+        }
+        
+        return values
     }
     
     // https://stackoverflow.com/a/44475334
