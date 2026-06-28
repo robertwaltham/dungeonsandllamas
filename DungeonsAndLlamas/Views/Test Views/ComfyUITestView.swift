@@ -27,12 +27,15 @@ struct ComfyUITestView: View {
 
     var body: some View {
         Group {
-            if isCompact {
-                GeometryReader { geometry in
-                    compactLayout(canvasDimension: min(320, max(240, geometry.size.width - 32)))
+            ZStack {
+                GradientView(type: .greyscale)
+                if isCompact {
+                    GeometryReader { geometry in
+                        compactLayout(canvasDimension: min(320, max(240, geometry.size.width - 32)))
+                    }
+                } else {
+                    regularLayout
                 }
-            } else {
-                regularLayout
             }
         }
         .navigationTitle("ComfyUI Test")
@@ -168,6 +171,14 @@ struct ComfyUITestView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(viewModel.loading || viewModel.photoLibraryDisplayImage(for: photo) == nil)
+                    .onAppear {
+                        viewModel.loadNextPhotoLibraryBatchIfNeeded(currentPhoto: photo, using: generationService.photos)
+                    }
+                }
+
+                if viewModel.isLoadingPhotoLibraryImages {
+                    ProgressView()
+                        .frame(width: 72, height: 72)
                 }
             }
             .padding()
@@ -253,6 +264,10 @@ private struct LoadingView: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(.white)
+        )
     }
 }
 
@@ -261,6 +276,7 @@ private struct LoadingView: View {
 private class ComfyUITestViewModel {
     private static let oneImageDefaultPrompt = "make realistic"
     private static let twoImageDefaultPrompt = "stylize image 2 with the colors and theme of image 1"
+    private static let photoLibraryBatchSize = 20
 
     var prompt = oneImageDefaultPrompt
     var seed = randomSeed()
@@ -272,6 +288,8 @@ private class ComfyUITestViewModel {
     var useTwoImageWorkflow = false
     var usePhotoLibraryDepthImage = false
     var photoLibraryImages = [PhotoLibraryService.PhotoLibraryImage]()
+    var isLoadingPhotoLibraryImages = false
+    var canLoadMorePhotoLibraryImages = true
     var selectedPhotoLibraryImageId: String?
     var selectedPhotoLibraryDisplayImage: UIImage?
     private var selectedPhotoLibraryImage: PhotoLibraryService.PhotoLibraryImage?
@@ -338,19 +356,52 @@ private class ComfyUITestViewModel {
             return
         }
 
+        canLoadMorePhotoLibraryImages = true
+        loadNextPhotoLibraryImages(using: photoLibraryService)
+    }
+
+    func loadNextPhotoLibraryBatchIfNeeded(currentPhoto photo: PhotoLibraryService.PhotoLibraryImage, using photoLibraryService: PhotoLibraryService) {
+        guard photo.id == photoLibraryImages.last?.id else {
+            return
+        }
+
+        loadNextPhotoLibraryImages(using: photoLibraryService)
+    }
+
+    private func loadNextPhotoLibraryImages(using photoLibraryService: PhotoLibraryService) {
+        guard !isLoadingPhotoLibraryImages, canLoadMorePhotoLibraryImages else {
+            return
+        }
+
         photoLibraryService.checkAuthStatus()
         guard photoLibraryService.canAccess else {
             error = "Photo library access is required to pick a second image."
             return
         }
 
+        isLoadingPhotoLibraryImages = true
+        let offset = photoLibraryImages.count
+
         Task {
-            for await photo in photoLibraryService.getImages(limit: 20, size: CGSize(width: 512, height: 512)) {
+            var loadedCount = 0
+            var loadedPhotoIds = Set(photoLibraryImages.map(\.id))
+
+            for await photo in photoLibraryService.getImages(limit: Self.photoLibraryBatchSize, offset: offset, size: CGSize(width: 512, height: 512)) {
+                guard !loadedPhotoIds.contains(photo.id) else {
+                    continue
+                }
+
+                loadedPhotoIds.insert(photo.id)
                 photoLibraryImages.append(photo)
+                loadedCount += 1
+
                 if usePhotoLibraryDepthImage {
                     loadDepthImage(for: photo, using: photoLibraryService)
                 }
             }
+
+            canLoadMorePhotoLibraryImages = loadedCount == Self.photoLibraryBatchSize
+            isLoadingPhotoLibraryImages = false
         }
     }
 

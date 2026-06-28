@@ -9,6 +9,7 @@ import Photos
 import UIKit
 import CoreImage
 import CoreImage.CIFilterBuiltins
+import ImageIO
 
 @MainActor
 class PhotoLibraryService {
@@ -56,7 +57,7 @@ class PhotoLibraryService {
         var canny: UIImage? = nil
     }
     
-    func getImages(limit: Int = 10, size: CGSize = CGSize(width: 512, height: 512)) -> AsyncStream<PhotoLibraryImage> {
+    func getImages(limit: Int = 10, offset: Int = 0, size: CGSize = CGSize(width: 512, height: 512)) -> AsyncStream<PhotoLibraryImage> {
         
         guard canAccess else {
             print("no access")
@@ -65,9 +66,11 @@ class PhotoLibraryService {
         
         let manager = PHImageManager.default()
         let fetch = PHFetchOptions()
-        fetch.fetchLimit = limit
         fetch.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         let result = PHAsset.fetchAssets(with: .image, options: fetch)
+        let startIndex = min(offset, result.count)
+        let endIndex = min(startIndex + limit, result.count)
+        let requestedCount = endIndex - startIndex
 
         let request = PHImageRequestOptions()
         request.isSynchronous = false
@@ -76,8 +79,14 @@ class PhotoLibraryService {
         request.deliveryMode = .highQualityFormat
         
         return AsyncStream { continuation in
+            guard requestedCount > 0 else {
+                continuation.finish()
+                return
+            }
+
             var count = 0
-            result.enumerateObjects { asset, i, pointer in
+            for index in startIndex..<endIndex {
+                let asset = result.object(at: index)
                 manager.requestImage(for: asset,
                                      targetSize: size,
                                      contentMode: .aspectFill,
@@ -90,7 +99,7 @@ class PhotoLibraryService {
                     }
                     
                     count += 1
-                    if count >= fetch.fetchLimit {
+                    if count >= requestedCount {
                         print("finished")
                         continuation.finish()
                     }
@@ -256,20 +265,26 @@ class PhotoLibraryService {
     
     // from https://developer.apple.com/videos/play/wwdc2017/507/
     func depth(imageData: Data) -> AVDepthData? {
-        guard let imageSource = CGImageSourceCreateWithData(imageData as CFData, nil) else {
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let imageSource = CGImageSourceCreateWithData(imageData as CFData, sourceOptions),
+              let auxData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(imageSource, 0, kCGImageAuxiliaryDataTypeDisparity) as? [AnyHashable: Any] else {
             return nil
         }
-        
-        guard let auxData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(imageSource, 0, kCGImageAuxiliaryDataTypeDisparity) as? [AnyHashable : Any] else {
-            return nil
-        }
-        
+
         do {
-            let depthData = try AVDepthData(fromDictionaryRepresentation: auxData)
+            let depthData = try AVDepthData(fromDictionaryRepresentation: sanitizedAuxiliaryData(auxData))
             return depthData.converting(toDepthDataType: kCVPixelFormatType_DisparityFloat32)
         } catch {
             return nil
         }
+    }
+
+    private func sanitizedAuxiliaryData(_ auxData: [AnyHashable: Any]) -> [AnyHashable: Any] {
+        var result = auxData
+        if result[kCGImageAuxiliaryDataInfoMetadata] is NSNull {
+            result[kCGImageAuxiliaryDataInfoMetadata] = [:] as CFDictionary
+        }
+        return result.filter { !($0.value is NSNull) }
     }
     
     // from https://stackoverflow.com/questions/8072208/how-to-turn-a-cvpixelbuffer-into-a-uiimage
