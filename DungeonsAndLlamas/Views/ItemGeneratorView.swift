@@ -9,7 +9,7 @@ import SwiftUI
 import Observation
 
 struct ItemGeneratorView: View {
-    @State var flowState: ContentFlowState
+    let flowState: ContentFlowState
     @State var viewModel = ItemGeneratorViewModel()
 
     var body: some View {

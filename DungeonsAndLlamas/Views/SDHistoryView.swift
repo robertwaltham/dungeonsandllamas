@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct SDHistoryView: View {
-    @State var flowState: ContentFlowState
-    @State var generationService: GenerationService
+    let flowState: ContentFlowState
+    let generationService: GenerationService
     @State var filter: String?
     @State var loraFilter: String?
     @State var columns = 4
@@ -98,8 +98,8 @@ struct SDHistoryView: View {
 }
 
 struct SDHistoryDetailView: View {
-    @State var flowState: ContentFlowState
-    @State var generationService: GenerationService
+    let flowState: ContentFlowState
+    let generationService: GenerationService
     let history: ImageHistoryModel
     @State private var saved: String?
 

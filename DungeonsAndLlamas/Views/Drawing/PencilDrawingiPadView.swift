@@ -10,8 +10,8 @@ import PencilKit
 
 struct PencilDrawingiPadView: View {
     @State var viewModel: PencilViewModel
-    @State var flowState: ContentFlowState
-    @State var generationService: GenerationService
+    let flowState: ContentFlowState
+    @Bindable var generationService: GenerationService
     @FocusState private var keyboardShown: Bool
     @State var showPrompts: Bool = false
     @State var showLoras: Bool = false

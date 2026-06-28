@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct ModelSettingsView: View {
-    @State var flowState: ContentFlowState
-    @State var generationService: GenerationService
+    let flowState: ContentFlowState
+    @Bindable var generationService: GenerationService
     
     var body: some View {
         ScrollView() {

@@ -12,9 +12,9 @@ import Foundation
 
 struct StepView: View {
     
-    @State var flowState: ContentFlowState
+    let flowState: ContentFlowState
     @State var viewModel: PencilViewModel
-    @State var generationService: GenerationService
+    let generationService: GenerationService
     @State var cancel = true
     @State var iterateSamplers = false
     @State var columns = 3

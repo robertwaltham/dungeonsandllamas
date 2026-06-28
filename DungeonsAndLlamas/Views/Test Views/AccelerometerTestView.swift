@@ -10,7 +10,7 @@ import CoreMotion
 
 struct AccelerometerTestView: View {
     @State var viewModel = AccelerometerViewModel()
-    @State var flowState: ContentFlowState
+    let flowState: ContentFlowState
     
     var body: some View {
         VStack {

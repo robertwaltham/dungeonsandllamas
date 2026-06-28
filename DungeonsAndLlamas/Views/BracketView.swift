@@ -10,9 +10,9 @@ import Observation
 import PencilKit
 
 struct BracketView: View {
-    @State var flowState: ContentFlowState
+    let flowState: ContentFlowState
     @State var viewModel: PencilViewModel
-    @State var generationService: GenerationService
+    let generationService: GenerationService
     @State private var showingPopover = false
     @State var cancel = true
     @State var columns = 3

@@ -11,8 +11,8 @@ import PencilKit
 
 struct PencilOverlayDrawingView: View {
     @State var viewModel: PencilViewModel
-    @State var flowState: ContentFlowState
-    @State var generationService: GenerationService
+    let flowState: ContentFlowState
+    @Bindable var generationService: GenerationService
     @State var showPopover = false
     
     var body: some View {

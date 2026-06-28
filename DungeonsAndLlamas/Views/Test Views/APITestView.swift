@@ -10,7 +10,7 @@ import Observation
 
 struct APITestView: View {
     @State var viewModel: APITestViewModel = APITestViewModel()
-    @State var flowState: ContentFlowState
+    let flowState: ContentFlowState
     
     var body: some View {
         VStack {

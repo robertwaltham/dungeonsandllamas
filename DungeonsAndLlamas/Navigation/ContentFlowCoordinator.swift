@@ -9,20 +9,18 @@ import Foundation
 import SwiftUI
 
 struct ContentFlowCoordinator<Content: View>: View {
-    @State var flowState: ContentFlowState
-    @State var generationService: GenerationService
-    let userInterfaceIdiom: UIUserInterfaceIdiom
+    @Bindable private var flowState: ContentFlowState
+    private let generationService: GenerationService
+    private let userInterfaceIdiom: UIUserInterfaceIdiom
+    private let content: () -> Content
     
     @MainActor
     init(flowState: ContentFlowState, generationService: GenerationService, content: @escaping () -> Content) {
         self.flowState = flowState
         self.generationService = generationService
         self.content = content
-        
         self.userInterfaceIdiom = UIDevice.current.userInterfaceIdiom
     }
-    
-    let content: () -> Content
     
     var body: some View {
         NavigationStack(path: $flowState.path) {

@@ -9,8 +9,8 @@ import SwiftUI
 import Combine
 
 struct LandingView: View {    
-    @State var flowState: ContentFlowState
-    @State var generationService: GenerationService
+    let flowState: ContentFlowState
+    let generationService: GenerationService
     @State var history = [UIImage]()
     @State private var showingComfyUIStatus = false
     let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()

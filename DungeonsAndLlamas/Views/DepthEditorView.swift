@@ -10,8 +10,8 @@ import Observation
 import PencilKit
 
 struct DepthEditorView: View {
-    var flowState: ContentFlowState
-    @State var generationService: GenerationService
+    let flowState: ContentFlowState
+    @Bindable var generationService: GenerationService
     @State var viewModel: DepthEditorViewModel
     @Environment(\.undoManager) private var undoManager
     

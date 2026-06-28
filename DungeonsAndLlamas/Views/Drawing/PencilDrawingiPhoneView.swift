@@ -12,8 +12,8 @@ import PencilKit
 
 struct PencilDrawingiPhoneView: View {
     @State var viewModel: PencilViewModel
-    @State var flowState: ContentFlowState
-    @State var generationService: GenerationService
+    let flowState: ContentFlowState
+    @Bindable var generationService: GenerationService
     @State var showLora = false
     @State var showSettings = false
 

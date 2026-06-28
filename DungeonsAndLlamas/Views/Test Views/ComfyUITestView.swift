@@ -14,10 +14,10 @@ struct ComfyUITestView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = ComfyUITestViewModel()
     @State private var showingPhotoLibraryPopover = false
-    @State var generationService: GenerationService
+    let generationService: GenerationService
 
     init(generationService: GenerationService, workflow: ComfyUITestWorkflow = .one, history: ImageHistoryModel? = nil) {
-        self._generationService = State(initialValue: generationService)
+        self.generationService = generationService
         self._viewModel = State(initialValue: ComfyUITestViewModel(workflow: workflow, history: history, generationService: generationService))
     }
 

@@ -9,8 +9,8 @@ import SwiftUI
 
 struct BindingStreamTestView: View {
     @State var viewModel = BindingStreamTestViewModel()
-    @State var flowState: ContentFlowState
-    @State var generationService: GenerationService
+    let flowState: ContentFlowState
+    let generationService: GenerationService
 
     var body: some View {
         

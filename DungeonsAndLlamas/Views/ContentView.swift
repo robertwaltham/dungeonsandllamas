@@ -10,8 +10,8 @@ import SwiftData
 import Observation
 
 struct ContentView: View {
-    @State var flowState = ContentFlowState()
-    @State var generationService: GenerationService
+    @State private var flowState = ContentFlowState()
+    let generationService: GenerationService
     
     var body: some View {
         ContentFlowCoordinator(flowState: flowState, generationService: generationService) {
