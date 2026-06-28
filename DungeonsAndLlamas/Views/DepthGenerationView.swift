@@ -367,9 +367,10 @@ class DepthGenerationViewModel: @unchecked Sendable {
         MLService.PredictionResult(label: "Ham", probability: 0.4),
         MLService.PredictionResult(label: "Green Eggs", probability: 0.2),
     ]
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         view
     }
+    .environment(service)
 }
 
 

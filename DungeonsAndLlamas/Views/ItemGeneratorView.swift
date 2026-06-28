@@ -173,7 +173,9 @@ enum Quality: String, CaseIterable {
 
 #Preview {
     let flowState = ContentFlowState()
-    return ContentFlowCoordinator(flowState: flowState, generationService: GenerationService()) {
+    let service = GenerationService()
+    return ContentFlowCoordinator(flowState: flowState) {
         ItemGeneratorView(flowState: flowState)
     }
+    .environment(service)
 }

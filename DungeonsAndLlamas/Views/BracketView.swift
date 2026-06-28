@@ -376,9 +376,10 @@ struct BracketView: View {
                                            result: UIImage(named: "lighthouse")!)
         )
     }
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         return view
     }
+    .environment(service)
 }
 
 

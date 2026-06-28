@@ -160,7 +160,8 @@ struct ModelSettingsView: View {
     let service = GenerationService()
     
 //    service.getModels()
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         ModelSettingsView(flowState: flowState, generationService: service)
     }
+    .environment(service)
 }

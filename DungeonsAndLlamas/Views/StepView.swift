@@ -220,7 +220,8 @@ struct StepView: View {
             GenerationService.Step.init(steps: i, start: Date.now.addingTimeInterval(TimeInterval(i)), end: Date.now.addingTimeInterval(TimeInterval(Double(i) + Double.random(in: 0...5))), result: UIImage(named: "lighthouse")!, sampler: "sampler \(i)")
         )
     }
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         return view
     }
+    .environment(service)
 }

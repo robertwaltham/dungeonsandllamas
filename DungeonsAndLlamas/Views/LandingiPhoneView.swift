@@ -215,8 +215,9 @@ struct LandingiPhoneView: View {
     let flowState = ContentFlowState()
     let service = GenerationService()
     service.setupForTesting()
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         LandingiPhoneView(flowState: flowState, generationService: service)
     }
+    .environment(service)
 }
 

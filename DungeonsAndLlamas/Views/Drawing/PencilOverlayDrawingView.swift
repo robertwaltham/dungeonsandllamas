@@ -208,7 +208,8 @@ struct PencilOverlayDrawingView: View {
                                         history: service.imageHistory.first!)
     view.viewModel.drawing = drawing
     
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         view
     }
+    .environment(service)
 }

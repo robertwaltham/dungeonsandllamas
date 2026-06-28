@@ -14,7 +14,8 @@ struct DungeonsAndLlamasApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView(generationService: appDelegate.generationService)
+            ContentView()
+                .environment(appDelegate.generationService)
         }
     }
 }

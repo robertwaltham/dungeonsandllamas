@@ -74,7 +74,8 @@ class BindingStreamTestViewModel {
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         BindingStreamTestView(flowState: flowState, generationService: service)
     }
+    .environment(service)
 }

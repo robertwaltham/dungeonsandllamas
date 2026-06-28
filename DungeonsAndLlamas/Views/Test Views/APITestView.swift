@@ -428,7 +428,8 @@ class APITestViewModel {
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         APITestView(flowState: flowState)
     }
+    .environment(service)
 }

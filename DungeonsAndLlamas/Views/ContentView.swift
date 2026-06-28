@@ -10,11 +10,11 @@ import SwiftData
 import Observation
 
 struct ContentView: View {
+    @Environment(GenerationService.self) private var generationService
     @State private var flowState = ContentFlowState()
-    let generationService: GenerationService
     
     var body: some View {
-        ContentFlowCoordinator(flowState: flowState, generationService: generationService) {
+        ContentFlowCoordinator(flowState: flowState) {
             landing()
         }
     }
@@ -30,5 +30,6 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView(generationService: GenerationService())
+    ContentView()
+        .environment(GenerationService())
 }

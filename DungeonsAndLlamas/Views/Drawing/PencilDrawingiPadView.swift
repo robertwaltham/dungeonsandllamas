@@ -354,7 +354,8 @@ struct PencilDrawingiPadView: View {
     Task {
         service.getModels()
     }
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         PencilDrawingiPadView(flowState: flowState, generationService: service)
     }
+    .environment(service)
 }

@@ -158,7 +158,8 @@ class DepthEditorViewModel {
 
     let viewModel = DepthEditorViewModel(output: output, input: image, drawing: drawiningBinding)
     
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         DepthEditorView(flowState: flowState, generationService: service, viewModel: viewModel)
     }
+    .environment(service)
 }

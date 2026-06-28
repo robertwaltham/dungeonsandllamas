@@ -211,7 +211,8 @@ struct SDHistoryDetailView: View {
     let service = GenerationService()
     service.setupForTesting()
     
-    return ContentFlowCoordinator(flowState: flowState, generationService: service) {
+    return ContentFlowCoordinator(flowState: flowState) {
         SDHistoryView(flowState: flowState, generationService: service)
     }
+    .environment(service)
 }

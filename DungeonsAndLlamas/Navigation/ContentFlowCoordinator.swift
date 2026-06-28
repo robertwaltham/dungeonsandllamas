@@ -9,15 +9,14 @@ import Foundation
 import SwiftUI
 
 struct ContentFlowCoordinator<Content: View>: View {
+    @Environment(GenerationService.self) private var generationService
     @Bindable private var flowState: ContentFlowState
-    private let generationService: GenerationService
     private let userInterfaceIdiom: UIUserInterfaceIdiom
     private let content: () -> Content
     
     @MainActor
-    init(flowState: ContentFlowState, generationService: GenerationService, content: @escaping () -> Content) {
+    init(flowState: ContentFlowState, content: @escaping () -> Content) {
         self.flowState = flowState
-        self.generationService = generationService
         self.content = content
         self.userInterfaceIdiom = UIDevice.current.userInterfaceIdiom
     }
