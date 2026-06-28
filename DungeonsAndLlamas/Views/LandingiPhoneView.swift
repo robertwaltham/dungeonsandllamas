@@ -100,7 +100,7 @@ struct LandingiPhoneView: View {
                 
                 HStack {
                     Button(action: {
-                        flowState.nextLink(.comfyUITest)
+                        flowState.nextLink(.comfyUITest(.one))
                     }, label: {
                         Text("ComfyUI")
                     })

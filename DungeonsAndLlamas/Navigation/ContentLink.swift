@@ -10,6 +10,11 @@ import SwiftUI
 import UIKit
 import PencilKit
 
+enum ComfyUITestWorkflow: Hashable {
+    case one
+    case two
+}
+
 enum ContentLink: Hashable, Equatable, Identifiable {
     static func == (lhs: ContentLink, rhs: ContentLink) -> Bool {
         return lhs.hashValue == rhs.hashValue
@@ -27,8 +32,9 @@ enum ContentLink: Hashable, Equatable, Identifiable {
             hasher.combine("accelerometer")
         case .apiTest:
             hasher.combine("apiTest")
-        case .comfyUITest:
+        case .comfyUITest(let workflow):
             hasher.combine("comfyUITest")
+            hasher.combine(workflow)
         case .drawing:
             hasher.combine("drawing")
         case .drawingFrom(history: let history):
@@ -66,7 +72,7 @@ enum ContentLink: Hashable, Equatable, Identifiable {
     case secondLink(text: String)
     case accelerometer
     case apiTest
-    case comfyUITest
+    case comfyUITest(ComfyUITestWorkflow)
     case drawing
     case drawingFrom(history: ImageHistoryModel)
     case itemGenerator

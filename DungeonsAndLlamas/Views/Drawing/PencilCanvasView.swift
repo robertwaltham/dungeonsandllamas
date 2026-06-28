@@ -37,6 +37,7 @@ struct PencilCanvasView: UIViewRepresentable {
             view.drawing = drawing
         }
         view.isOpaque = opaque
+        view.backgroundColor = opaque ? .white : .clear
         
         if let tool {
             view.tool = tool

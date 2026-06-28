@@ -71,23 +71,43 @@ struct LandingView: View {
                 
                 let size: CGFloat = 150
                 HStack {
-                    Button(action: {
-                        flowState.nextLink(.modelInfo)
-                    }, label: {
-                        Text("Model Info")
-                    })
-                    .frame(width: size, height: size)
-                    .background(Color(white: 0.7))
-                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+//                    Button(action: {
+//                        flowState.nextLink(.modelInfo)
+//                    }, label: {
+//                        Text("Model Info")
+//                    })
+//                    .frame(width: size, height: size)
+//                    .background(Color(white: 0.7))
+//                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+//                    
+//                    Button(action: {
+//                        flowState.nextLink(.drawing)
+//                    }, label: {
+//                        Text("Drawing")
+//                    })
+//                    .frame(width: size, height: size)
+//                    .background(Color(white: 0.7))
+//                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                     
                     Button(action: {
-                        flowState.nextLink(.drawing)
+                        flowState.nextLink(.comfyUITest(.one))
                     }, label: {
-                        Text("Drawing")
+                        Text("Flux2 Paint")
                     })
                     .frame(width: size, height: size)
                     .background(Color(white: 0.7))
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+
+                    Button(action: {
+                        flowState.nextLink(.comfyUITest(.two))
+                    }, label: {
+                        Text("Flux2 Image+Paint")
+                    })
+                    .frame(width: size, height: size)
+                    .background(Color(white: 0.7))
+                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+
+                    
                     
                     Button(action: {
                         flowState.nextLink(.sdHistory)
@@ -99,34 +119,34 @@ struct LandingView: View {
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                 }
                 
-                HStack {
-                    Button(action: {
-                        flowState.nextLink(.depth)
-                    }, label: {
-                        Text("Depth")
-                    })
-                    .frame(width: size, height: size)
-                    .background(Color(white: 0.7))
-                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
-                    
-                    Button(action: {
-                        flowState.nextLink(.apiTest)
-                    }, label: {
-                        Text("API Test")
-                    })
-                    .frame(width: size, height: size)
-                    .background(Color(white: 0.7))
-                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
-                    
-                    Button(action: {
-                        flowState.nextLink(.comfyUITest)
-                    }, label: {
-                        Text("ComfyUI")
-                    })
-                    .frame(width: size, height: size)
-                    .background(Color(white: 0.7))
-                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
-                }
+//                HStack {
+//                    Button(action: {
+//                        flowState.nextLink(.depth)
+//                    }, label: {
+//                        Text("Depth")
+//                    })
+//                    .frame(width: size, height: size)
+//                    .background(Color(white: 0.7))
+//                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+//                    
+//                    Button(action: {
+//                        flowState.nextLink(.apiTest)
+//                    }, label: {
+//                        Text("API Test")
+//                    })
+//                    .frame(width: size, height: size)
+//                    .background(Color(white: 0.7))
+//                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+//                    
+//                    Button(action: {
+//                        flowState.nextLink(.comfyUITest(.one))
+//                    }, label: {
+//                        Text("ComfyUI")
+//                    })
+//                    .frame(width: size, height: size)
+//                    .background(Color(white: 0.7))
+//                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+//                }
                 
                 Spacer()
                 

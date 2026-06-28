@@ -16,10 +16,11 @@ struct ComfyUITestView: View {
     @State private var showingPhotoLibraryPopover = false
     @State var generationService: GenerationService
 
-    init(generationService: GenerationService, history: ImageHistoryModel? = nil) {
+    init(generationService: GenerationService, workflow: ComfyUITestWorkflow = .one, history: ImageHistoryModel? = nil) {
         self._generationService = State(initialValue: generationService)
-        self._viewModel = State(initialValue: ComfyUITestViewModel(history: history, generationService: generationService))
+        self._viewModel = State(initialValue: ComfyUITestViewModel(workflow: workflow, history: history, generationService: generationService))
     }
+
 
     private var isCompact: Bool {
         horizontalSizeClass == .compact
@@ -45,14 +46,9 @@ struct ComfyUITestView: View {
         ScrollView {
             VStack(alignment: .center, spacing: 16) {
                 controls
-
-//                HStack(alignment: .top, spacing: 24) {
-                    canvasSection(canvasDimension: 512)
-                    outputSection(maxImageHeight: 512)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-//                }
-
-//                detailsSection
+                canvasSection(canvasDimension: 512)
+                outputSection(maxImageHeight: 512)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .padding()
         }
@@ -64,7 +60,6 @@ struct ComfyUITestView: View {
                 controls
                 canvasSection(canvasDimension: canvasDimension)
                 outputSection(maxImageHeight: canvasDimension)
-//                detailsSection
             }
             .padding()
             .frame(maxWidth: .infinity)
@@ -73,45 +68,41 @@ struct ComfyUITestView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
+            
+            TextField("Prompt", text: $viewModel.prompt, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(1...6)
+            
             HStack(alignment: .bottom, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-//                    Text("Prompt")
-//                        .font(.headline)
-                    TextField("Prompt", text: $viewModel.prompt, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(1...6)
-                }
 
                 Button("Generate") {
                     viewModel.generate(using: generationService)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(viewModel.loading)
-//            }
+                .disabled(viewModel.loading || (viewModel.useTwoImageWorkflow && viewModel.selectedPhotoLibraryDisplayImage == nil))
 
-//            HStack(spacing: 12) {
                 Button("Clear Drawing") {
                     viewModel.clearDrawing()
                 }
                 .buttonStyle(.bordered)
                 .disabled(viewModel.loading)
+                
+                photoLibrarySelectionView()
 
-                Button("Random Seed") {
-                    viewModel.randomizeSeed()
-                }
-                .buttonStyle(.bordered)
-                .disabled(viewModel.loading)
 
-                Toggle("2 Images", isOn: Binding(
-                    get: { viewModel.useTwoImageWorkflow },
-                    set: { viewModel.setTwoImageWorkflow($0, using: generationService) }
-                ))
-                .toggleStyle(.switch)
-                .disabled(viewModel.loading)
+//                Button("Random Seed") {
+//                    viewModel.randomizeSeed()
+//                }
+//                .buttonStyle(.bordered)
+//                .disabled(viewModel.loading)
 
-//                TextField("Seed", value: $viewModel.seed, format: .number.grouping(.never))
-//                    .textFieldStyle(.roundedBorder)
-//                    .disabled(true)
+//                Toggle("2 Images", isOn: Binding(
+//                    get: { viewModel.useTwoImageWorkflow },
+//                    set: { viewModel.setTwoImageWorkflow($0, using: generationService) }
+//                ))
+//                .toggleStyle(.switch)
+//                .disabled(viewModel.loading)
+
             }
 
             if viewModel.useTwoImageWorkflow {
@@ -122,28 +113,6 @@ struct ComfyUITestView: View {
                 .toggleStyle(.switch)
                 .disabled(viewModel.loading)
 
-                Button {
-                    showingPhotoLibraryPopover = true
-                } label: {
-                    if let selectedPhotoLibraryDisplayImage = viewModel.selectedPhotoLibraryDisplayImage {
-                        Image(uiImage: selectedPhotoLibraryDisplayImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 96, height: 96)
-                            .clipped()
-                            .border(.secondary)
-                    } else {
-                        Image(systemName: "photo.on.rectangle")
-                            .font(.system(size: 32))
-                            .frame(width: 96, height: 96)
-                            .border(.secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-                .disabled(viewModel.loading)
-                .popover(isPresented: $showingPhotoLibraryPopover) {
-                    photoLibraryPopover
-                }
             }
         }
     }
@@ -188,15 +157,40 @@ struct ComfyUITestView: View {
 
     private func canvasSection(canvasDimension: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-//            Text("Input Image")
-//                .font(.headline)
-            PencilCanvasView(
-                drawing: $viewModel.drawing,
-                showTooltip: $viewModel.showTooltip,
-                contentSize: $viewModel.canvasSize
-            )
+            ZStack {
+                Color.white
+
+                if viewModel.useTwoImageWorkflow,
+                   let selectedPhotoLibraryDisplayImage = viewModel.selectedPhotoLibraryDisplayImage {
+                    Image(uiImage: selectedPhotoLibraryDisplayImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: canvasDimension, height: canvasDimension)
+                        .clipped()
+                }
+
+                PencilCanvasView(
+                    drawing: $viewModel.drawing,
+                    showTooltip: $viewModel.showTooltip,
+                    contentSize: $viewModel.canvasSize,
+                    opaque: !viewModel.useTwoImageWorkflow
+                )
+            }
             .frame(width: canvasDimension, height: canvasDimension)
             .border(.secondary)
+            
+        }
+    }
+
+    private func photoLibrarySelectionView() -> some View {
+        Button("Pick Image") {
+            viewModel.loadPhotoLibraryImages(using: generationService.photos)
+            showingPhotoLibraryPopover = true
+        }
+        .buttonStyle(.bordered)
+        .disabled(viewModel.loading)
+        .popover(isPresented: $showingPhotoLibraryPopover) {
+            photoLibraryPopover
         }
     }
 
@@ -301,8 +295,12 @@ private class ComfyUITestViewModel {
     var uploadedInputFilename: String?
     var error: String?
 
-    init(history: ImageHistoryModel? = nil, generationService: GenerationService? = nil) {
+    init(workflow: ComfyUITestWorkflow = .one, history: ImageHistoryModel? = nil, generationService: GenerationService? = nil) {
         guard let history, let generationService else {
+            if workflow == .two {
+                prompt = Self.twoImageDefaultPrompt
+                useTwoImageWorkflow = true
+            }
             return
         }
 
@@ -333,6 +331,7 @@ private class ComfyUITestViewModel {
         }
     }
 
+
     func resetPromptId() {
         promptId = UUID().uuidString.lowercased()
     }
@@ -345,7 +344,6 @@ private class ComfyUITestViewModel {
         useTwoImageWorkflow = enabled
         if enabled, prompt == Self.oneImageDefaultPrompt {
             prompt = Self.twoImageDefaultPrompt
-            loadPhotoLibraryImages(using: generationService.photos)
         } else if !enabled, prompt == Self.twoImageDefaultPrompt {
             prompt = Self.oneImageDefaultPrompt
         }
