@@ -63,6 +63,8 @@ extension ContentFlowCoordinator {
             case .sdHistory:
                 SDHistoryView(flowState: flowState, generationService: generationService)
                     .navigationTitle("History")
+            case .sdHistoryDetail(history: let history):
+                SDHistoryDetailView(flowState: flowState, generationService: generationService, history: history)
             case .modelInfo:
                 ModelSettingsView(flowState: flowState, generationService: generationService)
                     .navigationTitle("Model Info")
@@ -101,6 +103,8 @@ extension ContentFlowCoordinator {
             case .sdHistory:
                 SDHistoryView(flowState: flowState, generationService: generationService)
                     .navigationTitle("History")
+            case .sdHistoryDetail(history: let history):
+                SDHistoryDetailView(flowState: flowState, generationService: generationService, history: history)
             case .modelInfo:
                 ModelSettingsView(flowState: flowState, generationService: generationService)
                     .navigationTitle("Model Info")

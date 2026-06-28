@@ -10,10 +10,8 @@ import SwiftUI
 struct SDHistoryView: View {
     @State var flowState: ContentFlowState
     @State var generationService: GenerationService
-    @State var presentedHistory: ImageHistoryModel?
     @State var filter: String?
     @State var loraFilter: String?
-    @State var saved: String?
     @State var columns = 4
     
     @ViewBuilder
@@ -27,7 +25,7 @@ struct SDHistoryView: View {
                 .scaledToFit()
         }
     }
-    
+
     var body: some View {
         
         ZStack {
@@ -64,140 +62,6 @@ struct SDHistoryView: View {
                     }
                 }
                 
-                if let history = presentedHistory {
-                    let image = generationService.loadOutputImage(history: history)
-                    let output = Image(uiImage: image)
-                    let imageSize: CGFloat = 400
-                    
-                    VStack {
-                        Text(history.prompt)
-                        if let error = history.errorDescription {
-                            Text(error)
-                        }
-                        
-                        HStack {
-                            output
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: imageSize, height: imageSize)
-                            
-                            
-                            if history.depthFilePath != nil {
-                                ZStack {
-                                    Image(uiImage: generationService.loadInputImage(history: history))
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: imageSize, height: imageSize)
-
-                                    HStack {
-                                        VStack {
-                                            Spacer()
-                                            
-                                            Image(uiImage: generationService.loadDepthImage(history: history))
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: imageSize / 4, height: imageSize / 4)
-                                                .padding()
-                                        }
-                                        Spacer()
-                                    }
-                                }
-                                
-                            } else {
-                                HStack(spacing: 8) {
-                                    ForEach(Array(generationService.loadInputImages(history: history).enumerated()), id: \.offset) { _, inputImage in
-                                        Image(uiImage: inputImage)
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: imageSize, height: imageSize)
-                                    }
-                                }
-                            }
-                        }
-                        
-                        VStack {
-                            
-                            HStack {
-                                ForEach(history.loras) { lora in
-                                    Text(lora.name + ":")
-                                    Text(lora.weight, format: .number.precision(.fractionLength(0...2)))
-                                }
-                                Text(history.sampler)
-                                Text("Steps: \(history.steps)")
-                                Text("Size: \(history.size)")
-                            }
-                            
-                            HStack {
-                                let photo = Photo(image: output, caption: history.prompt, description: history.prompt)
-                                
-                                ShareLink(item: photo, message: Text(history.prompt) ,preview: SharePreview(history.prompt, image: photo))
-                                    .padding()
-                                
-                                if saved != history.id.description {
-                                    Button {
-                                        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-                                        withAnimation(.bouncy) {
-                                            saved = history.id.description
-                                        }
-                                    } label: {
-                                        HStack {
-                                            Label("Save", systemImage: "photo.badge.arrow.down.fill")
-                                        }
-                                        .foregroundColor(.purple)
-                                    }
-                                } else {
-                                    Text("Saved!")
-                                        .foregroundColor(.purple)
-                                }
-                                
-                                if history.drawingFilePath != nil {
-                                    Button {
-                                        flowState.nextLink(.drawingFrom(history: history))
-                                    } label: {
-                                        HStack {
-                                            Label("Remix", systemImage: "photo.on.rectangle.angled")
-                                        }
-                                        .foregroundColor(.green)
-                                    }
-                                    .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
-                                }
-                                
-                                Button {
-                                    flowState.nextLink(.bracket(history: history))
-                                } label: {
-                                    HStack {
-                                        Label("Batch", systemImage: "list.bullet.clipboard")
-                                    }
-                                    .foregroundColor(.yellow)
-                                }
-                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
-                                
-                                Button {
-                                    flowState.nextLink(.step(history: history))
-                                } label: {
-                                    HStack {
-                                        Label("Step", systemImage: "figure.stair.stepper")
-                                    }
-                                    .foregroundColor(.yellow)
-                                }
-                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
-                                
-                                Button {
-                                    flowState.nextLink(.inpaint(history: history))
-                                } label: {
-                                    HStack {
-                                        Label("InPaint", systemImage: "paintbrush.pointed")
-                                    }
-                                    .foregroundColor(.green)
-                                }
-                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
-                                
-                            }
-                            
-                        }
-                    }
-                }
-                
                 ScrollView {
                     
                     let columns: [GridItem] = (0..<columns).map {_ in return GridItem(.flexible())}
@@ -219,9 +83,7 @@ struct SDHistoryView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .onTapGesture {
-                                    withAnimation {
-                                        presentedHistory = history
-                                    }
+                                    flowState.sheet(.sdHistoryDetail(history: history))
                                 }
                             
                         }
@@ -232,6 +94,115 @@ struct SDHistoryView: View {
             }
             .padding()
         }
+    }
+}
+
+struct SDHistoryDetailView: View {
+    @State var flowState: ContentFlowState
+    @State var generationService: GenerationService
+    let history: ImageHistoryModel
+    @State private var saved: String?
+
+    @ViewBuilder
+    @MainActor
+    private var presentedHistoryView: some View {
+        let image = generationService.loadOutputImage(history: history)
+        let output = Image(uiImage: image)
+        let imageSize: CGFloat = 400
+        
+        ZStack {
+            GradientView(type: .greyscale)
+
+            VStack {
+                
+                HStack {
+                    let photo = Photo(image: output, caption: history.prompt, description: history.prompt)
+                    
+                    ShareLink(item: photo, message: Text(history.prompt) ,preview: SharePreview(history.prompt, image: photo))
+                        .padding()
+                    
+                    if saved != history.id.description {
+                        Button {
+                            UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                            withAnimation(.bouncy) {
+                                saved = history.id.description
+                            }
+                        } label: {
+                            HStack {
+                                Label("Save", systemImage: "photo.badge.arrow.down.fill")
+                            }
+                            .foregroundColor(.purple)
+                        }
+                    } else {
+                        Text("Saved!")
+                            .foregroundColor(.purple)
+                    }
+                    
+                    if history.drawingFilePath != nil {
+                        Button {
+                            flowState.presentedItem = nil
+                            flowState.nextLink(.drawingFrom(history: history))
+                        } label: {
+                            HStack {
+                                Label("Remix", systemImage: "photo.on.rectangle.angled")
+                            }
+                            .foregroundColor(.green)
+                        }
+                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
+                    }
+                }
+                
+                if let error = history.errorDescription {
+                    Text(error)
+                }
+
+                output
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: imageSize, height: imageSize)
+                
+                Text(history.prompt)
+
+                
+                if history.depthFilePath != nil {
+                    ZStack {
+                        Image(uiImage: generationService.loadInputImage(history: history))
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: imageSize, height: imageSize)
+
+                        HStack {
+                            VStack {
+                                Spacer()
+                                
+                                Image(uiImage: generationService.loadDepthImage(history: history))
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: imageSize / 4, height: imageSize / 4)
+                                    .padding()
+                            }
+                            Spacer()
+                        }
+                    }
+                    
+                } else {
+                    HStack(spacing: 8) {
+                        ForEach(Array(generationService.loadInputImages(history: history).enumerated()), id: \.offset) { _, inputImage in
+                            Image(uiImage: inputImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: imageSize, height: imageSize)
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    var body: some View {
+        presentedHistoryView
     }
 }
 

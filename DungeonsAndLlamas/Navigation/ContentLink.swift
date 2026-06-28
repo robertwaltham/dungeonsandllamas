@@ -37,6 +37,8 @@ enum ContentLink: Hashable, Equatable, Identifiable {
             hasher.combine("itemGenerator")
         case .sdHistory:
             hasher.combine("sdHistory")
+        case .sdHistoryDetail(history: let history):
+            hasher.combine("sdHistoryDetail" + history.id)
         case .modelInfo:
             hasher.combine("modelInfo")
         case .bracket(history: let history):
@@ -69,6 +71,7 @@ enum ContentLink: Hashable, Equatable, Identifiable {
     case drawingFrom(history: ImageHistoryModel)
     case itemGenerator
     case sdHistory
+    case sdHistoryDetail(history: ImageHistoryModel)
     case modelInfo
     case bracket(history: ImageHistoryModel)
     case step(history: ImageHistoryModel)
@@ -78,4 +81,3 @@ enum ContentLink: Hashable, Equatable, Identifiable {
     case depthGeneration(localIdentifier: String)
     case depthEditor(input: UIImage, output: Binding<UIImage>, drawing: Binding<PKDrawing?>)
 }
-
