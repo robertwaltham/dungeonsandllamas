@@ -158,7 +158,9 @@ struct ComfyUITestView: View {
     }
 
     private func canvasSection(canvasDimension: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let canvasSize = Int(canvasDimension.rounded())
+
+        return VStack(alignment: .leading, spacing: 8) {
             ZStack {
                 Color.white
 
@@ -185,6 +187,12 @@ struct ComfyUITestView: View {
             }
             .frame(width: canvasDimension, height: canvasDimension)
             .border(.secondary)
+            .onAppear {
+                viewModel.updateCanvasSize(canvasSize)
+            }
+            .onChange(of: canvasSize) { _, newValue in
+                viewModel.updateCanvasSize(newValue)
+            }
             
         }
     }
@@ -337,6 +345,10 @@ private class ComfyUITestViewModel {
 
     func resetPromptId() {
         promptId = UUID().uuidString.lowercased()
+    }
+
+    func updateCanvasSize(_ size: Int) {
+        canvasSize = size
     }
 
     func randomizeSeed() {

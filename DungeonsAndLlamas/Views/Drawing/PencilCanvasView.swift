@@ -38,6 +38,7 @@ struct PencilCanvasView: UIViewRepresentable {
         }
         view.isOpaque = opaque
         view.backgroundColor = opaque ? .white : .clear
+        view.contentSize = CGSize(width: contentSize.wrappedValue, height: contentSize.wrappedValue)
         
         if let tool {
             view.tool = tool
@@ -66,6 +67,11 @@ struct PencilCanvasView: UIViewRepresentable {
             }
         } else {
             uiView.resignFirstResponder()
+        }
+        
+        let canvasSize = CGSize(width: contentSize.wrappedValue, height: contentSize.wrappedValue)
+        if uiView.contentSize != canvasSize {
+            uiView.contentSize = canvasSize
         }
         
         if let tool {
