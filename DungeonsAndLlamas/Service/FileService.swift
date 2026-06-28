@@ -62,40 +62,6 @@ class FileService {
         return URL.documentsDirectory.appendingPathComponent("imageCache")
     }
     
-    //MARK: - SD History
-    
-    func save(history: GenerationService.SDHistoryEntry) {
-        let filename = NSUUID().uuidString
-        let fileURL = sdHistoryDirectory().appending(component: filename + ".history")
-        
-        do {
-            try encoder.encode(history).write(to: fileURL)
-        } catch {
-            print(error)
-        }
-    }
-    
-    func loadSDHistory() -> [GenerationService.SDHistoryEntry] {
-        var result = [GenerationService.SDHistoryEntry]()
-        let manager = FileManager.default
-
-        do {
-            let directory = sdHistoryDirectory()
-            let paths = try manager.contentsOfDirectory(atPath: directory.path())
-            for path in paths {
-                let data = try Data(contentsOf: directory.appending(path: path))
-                result.append(try decoder.decode(GenerationService.SDHistoryEntry.self, from: data))
-            }
-
-        } catch {
-            print(error.localizedDescription)
-        }
-
-        return result.sorted { a, b in
-            a.start < b.start
-        }
-    }
-    
     //MARK: - Images
     
     func save(image: UIImage) -> String {

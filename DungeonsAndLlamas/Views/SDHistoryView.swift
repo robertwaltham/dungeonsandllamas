@@ -104,10 +104,14 @@ struct SDHistoryView: View {
                                 }
                                 
                             } else {
-                                Image(uiImage: generationService.loadInputImage(history: history))
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: imageSize, height: imageSize)
+                                HStack(spacing: 8) {
+                                    ForEach(Array(generationService.loadInputImages(history: history).enumerated()), id: \.offset) { _, inputImage in
+                                        Image(uiImage: inputImage)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: imageSize, height: imageSize)
+                                    }
+                                }
                             }
                         }
                         

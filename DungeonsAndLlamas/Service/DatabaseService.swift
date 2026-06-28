@@ -180,9 +180,9 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         Expression<Int>("seed")
     }
 
-    var inputFilePath: String?
-    fileprivate static var inputFilePathExp: SQLite.Expression<String?> {
-        Expression<String?>("input_file_path")
+    var inputFilePaths = [String]()
+    fileprivate static var inputFilePathsExp: SQLite.Expression<String> {
+        Expression<String>("input_file_paths")
     }
     var outputFilePath: String?
     fileprivate static var outputFilePathExp: SQLite.Expression<String?> {
@@ -227,7 +227,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             ImageHistoryModel.stepsExp <- steps,
             ImageHistoryModel.sizeExp <- size,
             ImageHistoryModel.seedExp <- seed,
-            ImageHistoryModel.inputFilePathExp <- inputFilePath,
+            ImageHistoryModel.inputFilePathsExp <- ImageHistoryModel.encodedInputFilePaths(inputFilePaths),
             ImageHistoryModel.outputFilePathExp <- outputFilePath,
             ImageHistoryModel.drawingFilePathExp <- drawingFilePath,
             ImageHistoryModel.depthFilePathExp <- depthFilePath,
@@ -256,7 +256,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                             steps: entry[stepsExp],
                                             size: entry[sizeExp],
                                             seed: entry[seedExp],
-                                            inputFilePath: entry[inputFilePathExp],
+                                            inputFilePaths: decodedInputFilePaths(entry[inputFilePathsExp]),
                                             outputFilePath: entry[outputFilePathExp],
                                             drawingFilePath: entry[drawingFilePathExp],
                                             depthFilePath: entry[depthFilePathExp],
@@ -281,7 +281,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                 t.column(stepsExp)
                 t.column(sizeExp)
                 t.column(seedExp)
-                t.column(inputFilePathExp)
+                t.column(inputFilePathsExp)
                 t.column(outputFilePathExp)
                 t.column(drawingFilePathExp)
                 t.column(depthFilePathExp)
@@ -296,6 +296,22 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         return Table("image_history")
     }
 
+    fileprivate static func encodedInputFilePaths(_ paths: [String]) -> String {
+        guard let data = try? JSONEncoder().encode(paths),
+              let encoded = String(data: data, encoding: .utf8) else {
+            return "[]"
+        }
+        return encoded
+    }
+
+    fileprivate static func decodedInputFilePaths(_ encoded: String) -> [String] {
+        guard let data = encoded.data(using: .utf8),
+              let paths = try? JSONDecoder().decode([String].self, from: data) else {
+            return []
+        }
+        return paths
+    }
+
     static func generateHistoryForTesting(db: Connection, fileService: FileService) throws {
         var entry = ImageHistoryModel(id: "",
                                       start: Date.now,
@@ -308,7 +324,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                       session: NSUUID().uuidString,
                                       sequence: 0,
                                       loras: [])
-        entry.inputFilePath = fileService.save(image: UIImage(named: "catglasses")!)
+        entry.inputFilePaths = [fileService.save(image: UIImage(named: "catglasses")!)]
         entry.outputFilePath = fileService.save(image: UIImage(named: "trees")!)
         entry.depthFilePath = fileService.save(image: UIImage(named: "depth_preview")!)
         let drawingUrl = Bundle.main.url(forResource: "fancycat", withExtension: "drawing")!

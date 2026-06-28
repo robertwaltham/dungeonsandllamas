@@ -105,7 +105,6 @@ class GenerationService {
     var controlNetModules: [String] = []
     
     var LLMHistory = [LLMHistoryEntry]()
-    fileprivate var SDHistory = [SDHistoryEntry]() // TODO: Remove
     var imageHistory = [ImageHistoryModel]()
     var lastHistory: ImageHistoryModel?
     
@@ -122,46 +121,6 @@ class GenerationService {
     
     func loadHistory() {
         imageHistory = db.loadHistory()
-        if imageHistory.count == 0 {
-            migrateHistory()
-        }
-    }
-    
-    func migrateHistory() { // TODO: remove
-        SDHistory = fileService.loadSDHistory()
-        
-        for i in 0..<SDHistory.count {
-            if let loraName = SDHistory[i].lora {
-                let loraWeight = SDHistory[i].loraWeight ?? 0
-                SDHistory[i].loras = [SDHistoryEntry.LoraHistoryEntry]()
-                SDHistory[i].loras?.append(SDHistoryEntry.LoraHistoryEntry(name: loraName, weight: loraWeight))
-            }
-            let history = SDHistory[i]
-            let id = NSUUID().uuidString
-            let loras: [LoraHistoryModel] = (history.loras ?? []).map { entry in
-                return LoraHistoryModel(id: NSUUID().uuidString,
-                                 name: "",
-                                 weight: 1,
-                                 historyModelId: id)
-            }
-            let entry = ImageHistoryModel(id: id,
-                                          start: history.start,
-                                          end: history.end,
-                                          prompt: history.prompt,
-                                          model: history.model,
-                                          sampler: history.sampler ?? "",
-                                          steps: history.steps ?? 20,
-                                          size: history.size ?? 512,
-                                          seed: history.seed ?? -1,
-                                          inputFilePath: history.inputFilePath,
-                                          outputFilePath: history.outputFilePaths.first,
-                                          drawingFilePath: history.drawingPath,
-                                          errorDescription: history.errorDescription,
-                                          session: NSUUID().uuidString,
-                                          sequence: 0,
-                                          loras: loras)
-            db.save(history: entry)
-        }
     }
     
     func loadOutputImage(history: ImageHistoryModel) -> UIImage {
@@ -169,9 +128,13 @@ class GenerationService {
     }
     
     func loadInputImage(history: ImageHistoryModel) -> UIImage {
-        return fileService.loadImage(path: history.inputFilePath ?? "") // TODO: error handling
+        return fileService.loadImage(path: history.inputFilePaths.first ?? "") // TODO: error handling
     }
-    
+
+    func loadInputImages(history: ImageHistoryModel) -> [UIImage] {
+        history.inputFilePaths.map { fileService.loadImage(path: $0) }
+    }
+
     func loadDepthImage(history: ImageHistoryModel) -> UIImage {
         return fileService.loadImage(path: history.depthFilePath ?? "") // TODO: error handling
     }
@@ -428,7 +391,7 @@ class GenerationService {
                                             steps: steps,
                                             size: imageSize,
                                             seed: seed,
-                                            inputFilePath: fileService.save(image: image),
+                                            inputFilePaths: [fileService.save(image: image)],
                                             drawingFilePath: fileService.save(drawing: drawing),
                                             session: session,
                                             sequence: sequence,
@@ -547,7 +510,7 @@ class GenerationService {
                                             steps: steps,
                                             size: imageSize,
                                             seed: seed,
-                                            inputFilePath: fileService.save(image: input),
+                                            inputFilePaths: [fileService.save(image: input)],
                                             depthFilePath: fileService.save(image: depth),
                                             session: session,
                                             sequence: sequence,
@@ -984,38 +947,6 @@ class GenerationService {
         var result: String = ""
         var model: String
         var errorDescription: String?
-    }
-    
-    struct SDHistoryEntry: Codable, Identifiable, Hashable { // TODO: remove
-        var id: Date {
-            start
-        }
-        
-        struct LoraHistoryEntry: Codable, Equatable, Hashable, Identifiable {
-            var id: String {
-                name
-            }
-            var name: String
-            var weight: Double
-        }
-        
-        var start: Date = Date.now
-        var end: Date?
-        var prompt: String
-        var promptAdd: String?
-        var negativePrompt: String
-        var inputFilePath: String?
-        var outputFilePaths = [String]()
-        var model: String
-        var errorDescription: String?
-        var lora: String?
-        var loraWeight: Double?
-        var loras: [LoraHistoryEntry]?
-        var drawingPath: String?
-        var seed: Int?
-        var sampler: String?
-        var steps: Int?
-        var size: Int?
     }
     
     //MARK: - Testing

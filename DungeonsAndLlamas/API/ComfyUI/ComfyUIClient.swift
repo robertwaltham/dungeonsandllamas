@@ -339,6 +339,16 @@ actor ComfyUIClient {
         return try await submitPrompt(PromptSubmission(prompt: workflowPrompt, clientId: clientId.lowercased(), promptId: promptId.lowercased()))
     }
 
+    func submitImageFlux2Klein2ImageEdit(prompt: String, seed: Int64, firstImageFilename: String, secondImageFilename: String, clientId: String, promptId: String) async throws -> PromptResponse {
+        let workflowPrompt = try ComfyUIClient.imageFlux2Klein2ImageEditWorkflow(
+            prompt: prompt,
+            seed: seed,
+            firstImageFilename: firstImageFilename,
+            secondImageFilename: secondImageFilename
+        )
+        return try await submitPrompt(PromptSubmission(prompt: workflowPrompt, clientId: clientId.lowercased(), promptId: promptId.lowercased()))
+    }
+
     func imageOutputPaths(promptId: String) async throws -> [String: [String]] {
         let promptId = promptId.lowercased()
         let history = try await promptHistory(promptId: promptId)
@@ -629,6 +639,39 @@ actor ComfyUIClient {
         seedInputs["noise_seed"] = seed
         seedNode["inputs"] = seedInputs
         workflow["75:73"] = seedNode
+
+        return workflow.mapValues { AnyCodable($0) }
+    }
+
+    private static func imageFlux2Klein2ImageEditWorkflow(prompt: String, seed: Int64, firstImageFilename: String, secondImageFilename: String) throws -> [String: AnyCodable] {
+        let data = try workflowData(named: "image_flux2_klein_2_image_edit_4b_distilled", extension: "json")
+        guard var workflow = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              var firstLoadImageNode = workflow["76"] as? [String: Any],
+              var firstLoadImageInputs = firstLoadImageNode["inputs"] as? [String: Any],
+              var secondLoadImageNode = workflow["81"] as? [String: Any],
+              var secondLoadImageInputs = secondLoadImageNode["inputs"] as? [String: Any],
+              var textNode = workflow["92:109"] as? [String: Any],
+              var textInputs = textNode["inputs"] as? [String: Any],
+              var seedNode = workflow["92:106"] as? [String: Any],
+              var seedInputs = seedNode["inputs"] as? [String: Any] else {
+            throw APIError.requestError("invalid two image edit workflow")
+        }
+
+        firstLoadImageInputs["image"] = firstImageFilename
+        firstLoadImageNode["inputs"] = firstLoadImageInputs
+        workflow["76"] = firstLoadImageNode
+
+        secondLoadImageInputs["image"] = secondImageFilename
+        secondLoadImageNode["inputs"] = secondLoadImageInputs
+        workflow["81"] = secondLoadImageNode
+
+        textInputs["text"] = prompt
+        textNode["inputs"] = textInputs
+        workflow["92:109"] = textNode
+
+        seedInputs["noise_seed"] = seed
+        seedNode["inputs"] = seedInputs
+        workflow["92:106"] = seedNode
 
         return workflow.mapValues { AnyCodable($0) }
     }

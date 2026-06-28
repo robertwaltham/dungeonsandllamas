@@ -50,7 +50,7 @@ extension ContentFlowCoordinator {
                 PencilDrawingiPhoneView(flowState: flowState, generationService: generationService)
                 //                    .navigationTitle("Drawing")
             case .drawingFrom(let history):
-                PencilDrawingiPhoneView(flowState: flowState, generationService: generationService, history: history)
+                ComfyUITestView(generationService: generationService, history: history)
                 //                    .navigationTitle("Drawing")
             case .accelerometer:
                 AccelerometerTestView(flowState: flowState)
@@ -88,8 +88,8 @@ extension ContentFlowCoordinator {
                 PencilDrawingiPadView(flowState: flowState, generationService: generationService)
                     .navigationTitle("Drawing")
             case .drawingFrom(let history):
-                PencilDrawingiPadView(flowState: flowState, generationService: generationService, history: history)
-                    .navigationTitle("Drawing")
+                ComfyUITestView(generationService: generationService, history: history)
+                    .navigationTitle("ComfyUI Test")
             case .accelerometer:
                 AccelerometerTestView(flowState: flowState)
             case .apiTest:
