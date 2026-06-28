@@ -102,13 +102,21 @@ struct SDHistoryDetailView: View {
     let generationService: GenerationService
     let history: ImageHistoryModel
     @State private var saved: String?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var outputImageSize: CGFloat {
+        horizontalSizeClass == .compact ? 320 : 400
+    }
+
+    private var inputImageSize: CGFloat {
+        horizontalSizeClass == .compact ? 180 : 400
+    }
 
     @ViewBuilder
     @MainActor
     private var presentedHistoryView: some View {
         let image = generationService.loadOutputImage(history: history)
         let output = Image(uiImage: image)
-        let imageSize: CGFloat = 400
         
         ZStack {
             GradientView(type: .greyscale)
@@ -159,7 +167,7 @@ struct SDHistoryDetailView: View {
                 output
                     .resizable()
                     .scaledToFit()
-                    .frame(width: imageSize, height: imageSize)
+                    .frame(width: outputImageSize, height: outputImageSize)
                 
                 Text(history.prompt)
 
@@ -169,7 +177,7 @@ struct SDHistoryDetailView: View {
                         Image(uiImage: generationService.loadInputImage(history: history))
                             .resizable()
                             .scaledToFit()
-                            .frame(width: imageSize, height: imageSize)
+                            .frame(width: inputImageSize, height: inputImageSize)
 
                         HStack {
                             VStack {
@@ -178,7 +186,7 @@ struct SDHistoryDetailView: View {
                                 Image(uiImage: generationService.loadDepthImage(history: history))
                                     .resizable()
                                     .scaledToFit()
-                                    .frame(width: imageSize / 4, height: imageSize / 4)
+                                    .frame(width: inputImageSize / 4, height: inputImageSize / 4)
                                     .padding()
                             }
                             Spacer()
@@ -191,7 +199,7 @@ struct SDHistoryDetailView: View {
                             Image(uiImage: inputImage)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: imageSize, height: imageSize)
+                                .frame(width: inputImageSize, height: inputImageSize)
                         }
                     }
                 }
