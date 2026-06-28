@@ -61,53 +61,36 @@ struct LandingiPhoneView: View {
                 let buttonSize: CGFloat = 120
                 
                 HStack {
-                    //                Button(action: {
-                    //                    flowState.nextLink(.itemGenerator)
-                    //                }, label: {
-                    //                    Text("Items")
-                    //                })
-                    //                .frame(width: 200, height: 200)
-                    //                .background(Color(white: 0.7))
-                    //                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                     
-//                    Button(action: {
-//                        flowState.nextLink(.apiTest)
-//                    }, label: {
-//                        Text("APITest")
-//                    })
-//                    .frame(width: buttonSize, height: buttonSize)
-//                    .background(Color(white: 0.7))
-//                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
-//                    
+                    HStack {
+                        Button(action: {
+                            flowState.nextLink(.comfyUITest(.one))
+                        }, label: {
+                            Text("Flux2\nPaint")
+                        })
+                        .frame(width: buttonSize, height: buttonSize)
+                        .background(Color(white: 0.7))
+                        .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+                    }
+
                     Button(action: {
-                        flowState.nextLink(.drawing)
+                        flowState.nextLink(.comfyUITest(.two))
                     }, label: {
-                        Text("Drawing")
-                    })
-                    .frame(width: buttonSize, height: buttonSize)
-                    .background(Color(white: 0.7))
-                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
-                    
-                    Button(action: {
-                        flowState.nextLink(.sdHistory)
-                    }, label: {
-                        Text("History")
+                        Text("Flux2\nPaint+Image")
                     })
                     .frame(width: buttonSize, height: buttonSize)
                     .background(Color(white: 0.7))
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                 }
                 
-                HStack {
-                    Button(action: {
-                        flowState.nextLink(.comfyUITest(.one))
-                    }, label: {
-                        Text("ComfyUI")
-                    })
-                    .frame(width: buttonSize, height: buttonSize)
-                    .background(Color(white: 0.7))
-                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
-                }
+                Button(action: {
+                    flowState.nextLink(.sdHistory)
+                }, label: {
+                    Text("History")
+                })
+                .frame(width: buttonSize, height: buttonSize)
+                .background(Color(white: 0.7))
+                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                 
                 Spacer()
                 

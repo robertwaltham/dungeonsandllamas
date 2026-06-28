@@ -60,10 +60,12 @@ struct ComfyUITestView: View {
                 controls
                 canvasSection(canvasDimension: canvasDimension)
                 outputSection(maxImageHeight: canvasDimension)
+                Spacer().frame(height: 50)
             }
             .padding()
             .frame(maxWidth: .infinity)
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var controls: some View {
@@ -175,6 +177,11 @@ struct ComfyUITestView: View {
                     contentSize: $viewModel.canvasSize,
                     opaque: !viewModel.useTwoImageWorkflow
                 )
+                
+                if viewModel.loading {
+                    LoadingView()
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                }
             }
             .frame(width: canvasDimension, height: canvasDimension)
             .border(.secondary)
@@ -196,10 +203,6 @@ struct ComfyUITestView: View {
 
     private func outputSection(maxImageHeight: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            if viewModel.loading {
-                LoadingView()
-                    .frame(maxWidth: .infinity, minHeight: 120)
-            }
 
             if let error = viewModel.error {
                 Text(error)
@@ -270,7 +273,7 @@ private struct LoadingView: View {
 private class ComfyUITestViewModel {
     private static let oneImageDefaultPrompt = "make realistic"
     private static let twoImageDefaultPrompt = "stylize image 2 with the colors and theme of image 1"
-    private static let photoLibraryBatchSize = 20
+    private static let photoLibraryBatchSize = 40
 
     var prompt = oneImageDefaultPrompt
     var seed = randomSeed()
