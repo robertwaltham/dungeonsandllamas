@@ -16,9 +16,9 @@ struct ComfyUITestView: View {
     @State private var showingPhotoLibraryPopover = false
     let generationService: GenerationService
 
-    init(generationService: GenerationService, workflow: ComfyUITestWorkflow = .one, history: ImageHistoryModel? = nil) {
+    init(generationService: GenerationService, workflow: ComfyUITestWorkflow = .one, history: ImageHistoryModel? = nil, sharedImage: UIImage? = nil) {
         self.generationService = generationService
-        self._viewModel = State(initialValue: ComfyUITestViewModel(workflow: workflow, history: history, generationService: generationService))
+        self._viewModel = State(initialValue: ComfyUITestViewModel(workflow: workflow, history: history, generationService: generationService, sharedImage: sharedImage))
     }
 
 
@@ -298,11 +298,15 @@ private class ComfyUITestViewModel {
     var uploadedInputFilename: String?
     var error: String?
 
-    init(workflow: ComfyUITestWorkflow = .one, history: ImageHistoryModel? = nil, generationService: GenerationService? = nil) {
+    init(workflow: ComfyUITestWorkflow = .one, history: ImageHistoryModel? = nil, generationService: GenerationService? = nil, sharedImage: UIImage? = nil) {
         guard let history, let generationService else {
-            if workflow == .two {
+            if workflow == .two || sharedImage != nil {
                 prompt = Self.twoImageDefaultPrompt
                 useTwoImageWorkflow = true
+            }
+
+            if let sharedImage {
+                selectSharedImage(sharedImage)
             }
             return
         }
@@ -426,6 +430,13 @@ private class ComfyUITestViewModel {
         return photo.image
     }
 
+    private func selectSharedImage(_ image: UIImage) {
+        selectedPhotoLibraryImage = nil
+        selectedPhotoLibraryImageId = "shared-image"
+        error = nil
+        prepareSelectedPhotoLibraryImage(image, filenamePrefix: "comfy-shared")
+    }
+
     func selectPhotoLibraryImage(_ photo: PhotoLibraryService.PhotoLibraryImage, using generationService: GenerationService) {
         selectedPhotoLibraryImage = photo
         selectedPhotoLibraryImageId = photo.id
@@ -473,9 +484,9 @@ private class ComfyUITestViewModel {
         }
     }
 
-    private func prepareSelectedPhotoLibraryImage(_ image: UIImage) {
+    private func prepareSelectedPhotoLibraryImage(_ image: UIImage, filenamePrefix: String? = nil) {
         do {
-            let filenamePrefix = usePhotoLibraryDepthImage ? "comfy-depth" : "comfy-photo"
+            let filenamePrefix = filenamePrefix ?? (usePhotoLibraryDepthImage ? "comfy-depth" : "comfy-photo")
             pickedPhotoInputImage = try inputImage(from: image, filenamePrefix: filenamePrefix)
             selectedPhotoLibraryDisplayImage = image
         } catch {

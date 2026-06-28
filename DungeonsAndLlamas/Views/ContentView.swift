@@ -17,6 +17,7 @@ struct ContentView: View {
         ContentFlowCoordinator(flowState: flowState) {
             landing()
         }
+        .onOpenURL(perform: handleOpenURL)
     }
     
     @MainActor @ViewBuilder
@@ -26,6 +27,16 @@ struct ContentView: View {
         } else {
             LandingView(flowState: flowState, generationService: generationService)
         }
+    }
+
+    @MainActor
+    private func handleOpenURL(_ url: URL) {
+        guard let image = SharedImageImportService.loadSharedImage(for: url) else {
+            return
+        }
+
+        flowState.path = NavigationPath()
+        flowState.nextLink(.comfyUITestSharedImage(image))
     }
 }
 

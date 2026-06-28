@@ -55,6 +55,8 @@ extension ContentFlowCoordinator {
                 APITestView(flowState: flowState)
             case .comfyUITest(let workflow):
                 ComfyUITestView(generationService: generationService, workflow: workflow)
+            case .comfyUITestSharedImage(let image):
+                ComfyUITestView(generationService: generationService, sharedImage: image)
             case .itemGenerator:
                 ItemGeneratorView(flowState: flowState)
             case .sdHistory:
@@ -95,6 +97,8 @@ extension ContentFlowCoordinator {
                 APITestView(flowState: flowState)
             case .comfyUITest(let workflow):
                 ComfyUITestView(generationService: generationService, workflow: workflow)
+            case .comfyUITestSharedImage(let image):
+                ComfyUITestView(generationService: generationService, sharedImage: image)
             case .itemGenerator:
                 ItemGeneratorView(flowState: flowState)
             case .sdHistory:
