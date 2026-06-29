@@ -145,18 +145,19 @@ class GenerationService {
         for index in imageHistory.indices {
             var history = imageHistory[index]
             var didUpdate = false
+            let forceUpdate = false
             
-            if history.promptEmbedding == nil {
+            if (history.promptEmbedding == nil || forceUpdate) {
                 history.promptEmbedding = try? await mlService.textEmbedding(for: history.prompt)
                 didUpdate = history.promptEmbedding != nil
             }
             
-            if history.inputEmbedding == nil, let inputImage = embeddingInputImage(for: history) {
+            if (history.inputEmbedding == nil || forceUpdate), let inputImage = embeddingInputImage(for: history) {
                 history.inputEmbedding = try? await mlService.imageEmbedding(for: inputImage)
                 didUpdate = didUpdate || history.inputEmbedding != nil
             }
             
-            if history.outputEmbedding == nil,
+            if (history.outputEmbedding == nil || forceUpdate),
                let outputFilePath = history.outputFilePath {
                 let outputImage = fileService.loadImage(path: outputFilePath)
                 history.outputEmbedding = try? await mlService.imageEmbedding(for: outputImage)
@@ -201,7 +202,7 @@ class GenerationService {
         
         let queryEmbedding = try await mlService.textEmbedding(for: trimmedQuery)
         let scores = imageHistory.compactMap { history -> (history: ImageHistoryModel, score: Float)? in
-            let embeddings = [history.promptEmbedding, history.inputEmbedding, history.outputEmbedding].compactMap { $0 }
+            let embeddings = [/*history.promptEmbedding,*/ history.inputEmbedding, history.outputEmbedding].compactMap { $0 }
             let score = embeddings.compactMap { embedding in
                 try? MLService.cosineSimilarity(queryEmbedding, embedding)
             }.max()
@@ -210,10 +211,12 @@ class GenerationService {
             }
             return (history, score)
         }
+        .filter {
+            $0.score > 0.2
+        }
         .sorted { lhs, rhs in
             lhs.score > rhs.score
         }
-        
         
         return scores.map(\.history)
     }

@@ -35,8 +35,8 @@ actor MLService {
     static let targetDepthSize = CGSize(width: 518, height: 392)
     static let targetClassifierSize = CGSize(width: 256, height: 256)
     static let targetClipImageSize = CGSize(width: 256, height: 256)
-    static let clipImageMean: [Float] = [0.48145466, 0.4578275, 0.40821073]
-    static let clipImageStandardDeviation: [Float] = [0.26862954, 0.26130258, 0.27577711]
+    static let clipImageMean: [Float] = [0, 0, 0]
+    static let clipImageStandardDeviation: [Float] = [1, 1, 1]
 
     /// The depth model.
     var depthModel: DepthAnythingV2SmallF16?

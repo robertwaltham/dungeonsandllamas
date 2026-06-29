@@ -17,6 +17,11 @@ struct SDHistoryView: View {
     @State private var searchResults: [ImageHistoryModel]?
     @State private var isSearching = false
     @State private var searchError: String?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var isCompact: Bool {
+        horizontalSizeClass == .compact
+    }
     
     @ViewBuilder
     @MainActor
@@ -81,42 +86,30 @@ struct SDHistoryView: View {
             VStack {
                 
                 HStack {
-//                    Picker("Filter", selection: $filter) {
-//                        Text("Model Filter").tag(nil as String?)
-//                        ForEach(generationService.modelsFromHistory(), id: \.self) { model in
-//                            Text(model).tag(model as String?)
-//                        }
-//                    }
-//                    Picker("Lora Filter", selection: $loraFilter) {
-//                        Text("Lora Filter").tag(nil as String?)
-//                        ForEach(generationService.lorasFromHistory(), id: \.self) { lora in
-//                            Text(lora).tag(lora as String?)
-//                        }
-//                    }
                     
-                    Text("Cols")
-                    Picker("End", selection: $columns) {
-                        ForEach(3..<10) { i in
-                            Text("\(i)").tag(i)
+                    if !isCompact {
+                        Text("Cols")
+                        Picker("End", selection: $columns) {
+                            ForEach(3..<10) { i in
+                                Text("\(i)").tag(i)
+                            }
                         }
                     }
                     
                     TextField("Search", text: $searchText)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 220)
+                        .frame(width: isCompact ? 150 : 220)
                         .onSubmit(runSearch)
                     Button("Search", systemImage: "magnifyingglass") {
                         runSearch()
                     }
                     .disabled(isSearching)
-                    if searchResults != nil {
-                        Button("Clear", systemImage: "xmark.circle") {
-                            clearSearch()
-                        }
+                    
+                    Button("Clear", systemImage: "xmark.circle") {
+                        clearSearch()
                     }
-                    if isSearching {
-                        ProgressView()
-                    }
+                    .disabled(searchResults == nil)
+
                     Spacer()
                     
                     if flowState.coverItem != nil {
