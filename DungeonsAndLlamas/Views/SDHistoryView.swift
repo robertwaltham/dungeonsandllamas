@@ -13,6 +13,10 @@ struct SDHistoryView: View {
     @State var filter: String?
     @State var loraFilter: String?
     @State var columns = 4
+    @State private var searchText = ""
+    @State private var searchResults: [ImageHistoryModel]?
+    @State private var isSearching = false
+    @State private var searchError: String?
     
     @ViewBuilder
     @MainActor
@@ -25,6 +29,49 @@ struct SDHistoryView: View {
                 .scaledToFit()
         }
     }
+    
+    private var displayedHistory: [ImageHistoryModel] {
+        let history = searchResults ?? generationService.imageHistory.reversed()
+        return history.filter { entry in
+            var result = true
+            if let filter {
+                result = entry.model == filter
+            }
+            if let loraFilter, result {
+                result = entry.loras.contains { lora in
+                    lora.name == loraFilter
+                }
+            }
+            return result
+        }
+    }
+    
+    private func runSearch() {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            searchResults = nil
+            searchError = nil
+            return
+        }
+        
+        isSearching = true
+        searchError = nil
+        Task {
+            do {
+                searchResults = try await generationService.searchHistory(query: query)
+            } catch {
+                searchError = error.localizedDescription
+                searchResults = []
+            }
+            isSearching = false
+        }
+    }
+    
+    private func clearSearch() {
+        searchText = ""
+        searchResults = nil
+        searchError = nil
+    }
 
     var body: some View {
         
@@ -34,24 +81,41 @@ struct SDHistoryView: View {
             VStack {
                 
                 HStack {
-                    Picker("Filter", selection: $filter) {
-                        Text("Model Filter").tag(nil as String?)
-                        ForEach(generationService.modelsFromHistory(), id: \.self) { model in
-                            Text(model).tag(model as String?)
-                        }
-                    }
-                    Picker("Lora Filter", selection: $loraFilter) {
-                        Text("Lora Filter").tag(nil as String?)
-                        ForEach(generationService.lorasFromHistory(), id: \.self) { lora in
-                            Text(lora).tag(lora as String?)
-                        }
-                    }
+//                    Picker("Filter", selection: $filter) {
+//                        Text("Model Filter").tag(nil as String?)
+//                        ForEach(generationService.modelsFromHistory(), id: \.self) { model in
+//                            Text(model).tag(model as String?)
+//                        }
+//                    }
+//                    Picker("Lora Filter", selection: $loraFilter) {
+//                        Text("Lora Filter").tag(nil as String?)
+//                        ForEach(generationService.lorasFromHistory(), id: \.self) { lora in
+//                            Text(lora).tag(lora as String?)
+//                        }
+//                    }
                     
                     Text("Cols")
                     Picker("End", selection: $columns) {
                         ForEach(3..<10) { i in
                             Text("\(i)").tag(i)
                         }
+                    }
+                    
+                    TextField("Search", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 220)
+                        .onSubmit(runSearch)
+                    Button("Search", systemImage: "magnifyingglass") {
+                        runSearch()
+                    }
+                    .disabled(isSearching)
+                    if searchResults != nil {
+                        Button("Clear", systemImage: "xmark.circle") {
+                            clearSearch()
+                        }
+                    }
+                    if isSearching {
+                        ProgressView()
                     }
                     Spacer()
                     
@@ -62,22 +126,16 @@ struct SDHistoryView: View {
                     }
                 }
                 
+                if let searchError {
+                    Text(searchError)
+                        .foregroundStyle(.red)
+                }
+                
                 ScrollView {
                     
                     let columns: [GridItem] = (0..<columns).map {_ in return GridItem(.flexible())}
                     LazyVGrid(columns: columns) {
-                        ForEach(generationService.imageHistory.filter({ e in
-                            var result = true
-                            if let filter {
-                                result = e.model == filter
-                            }
-                            if let loraFilter, result {
-                                result = e.loras.contains { e in
-                                    e.name == loraFilter
-                                }
-                            }
-                            return result
-                        }) .reversed()) { history in
+                        ForEach(displayedHistory) { history in
                             
                             Image(uiImage: generationService.loadOutputImage(history: history))
                                 .resizable()

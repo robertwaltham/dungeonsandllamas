@@ -17,6 +17,7 @@ class GenerationService {
     var llmClient = LargeLangageModelClient()
     var stableDiffusionClient = StableDiffusionClient()
     var comfyUIClient = ComfyUIClient()
+    var mlService = MLService()
     
     var fileService = FileService()
     var db = DatabaseService()
@@ -114,6 +115,7 @@ class GenerationService {
     private(set) var statusTask: Task<Void, Never>?
     private(set) var modelTask: Task<Void, Never>?
     private(set) var comfyUIModelsTask: Task<Void, Never>?
+    private(set) var embeddingMigrationTask: Task<Void, Never>?
     
     private var storedPrompt: String?
     
@@ -121,6 +123,99 @@ class GenerationService {
     
     func loadHistory() {
         imageHistory = db.loadHistory()
+    }
+    
+    func migrateHistoryEmbeddingsOnStartup() {
+        guard embeddingMigrationTask == nil else {
+            return
+        }
+        
+        embeddingMigrationTask = Task {
+            do {
+                try await mlService.waitUntilLoaded()
+                await migrateHistoryEmbeddings()
+            } catch {
+                print(error)
+            }
+            embeddingMigrationTask = nil
+        }
+    }
+    
+    private func migrateHistoryEmbeddings() async {
+        for index in imageHistory.indices {
+            var history = imageHistory[index]
+            var didUpdate = false
+            
+            if history.promptEmbedding == nil {
+                history.promptEmbedding = try? await mlService.textEmbedding(for: history.prompt)
+                didUpdate = history.promptEmbedding != nil
+            }
+            
+            if history.inputEmbedding == nil, let inputImage = embeddingInputImage(for: history) {
+                history.inputEmbedding = try? await mlService.imageEmbedding(for: inputImage)
+                didUpdate = didUpdate || history.inputEmbedding != nil
+            }
+            
+            if history.outputEmbedding == nil,
+               let outputFilePath = history.outputFilePath {
+                let outputImage = fileService.loadImage(path: outputFilePath)
+                history.outputEmbedding = try? await mlService.imageEmbedding(for: outputImage)
+                didUpdate = didUpdate || history.outputEmbedding != nil
+            }
+            
+            guard didUpdate else {
+                continue
+            }
+            
+            db.updateEmbeddings(history: history)
+            imageHistory[index] = history
+            if lastHistory?.id == history.id {
+                lastHistory = history
+            }
+        }
+    }
+    
+    private func embeddingInputImage(for history: ImageHistoryModel) -> UIImage? {
+        if history.inputFilePaths.indices.contains(1) {
+            return fileService.loadImage(path: history.inputFilePaths[1])
+        }
+        guard let inputFilePath = history.inputFilePaths.first else {
+            return nil
+        }
+        return fileService.loadImage(path: inputFilePath)
+    }
+    
+    func searchHistory(query: String) async throws -> [ImageHistoryModel] {
+        
+        let clock = ContinuousClock()
+        let start = clock.now
+        defer {
+            let duration = clock.now - start
+            print("Search (took \(duration.formatted(.units(allowed: [.seconds, .milliseconds]))))")
+        }
+        
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else {
+            return imageHistory.reversed()
+        }
+        
+        let queryEmbedding = try await mlService.textEmbedding(for: trimmedQuery)
+        let scores = imageHistory.compactMap { history -> (history: ImageHistoryModel, score: Float)? in
+            let embeddings = [history.promptEmbedding, history.inputEmbedding, history.outputEmbedding].compactMap { $0 }
+            let score = embeddings.compactMap { embedding in
+                try? MLService.cosineSimilarity(queryEmbedding, embedding)
+            }.max()
+            guard let score else {
+                return nil
+            }
+            return (history, score)
+        }
+        .sorted { lhs, rhs in
+            lhs.score > rhs.score
+        }
+        
+        
+        return scores.map(\.history)
     }
     
     func loadOutputImage(history: ImageHistoryModel) -> UIImage {

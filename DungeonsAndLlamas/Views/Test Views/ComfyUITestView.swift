@@ -532,6 +532,7 @@ private class ComfyUITestViewModel {
         let promptId = UUID().uuidString.lowercased()
         let useTwoImageWorkflow = useTwoImageWorkflow
         let pickedPhotoInputImage = pickedPhotoInputImage
+        let selectedPhotoLibraryImage = selectedPhotoLibraryImage
         let drawing = drawing
         var inputFilePaths = [generationService.fileService.save(image: inputImage.image)]
         if let pickedPhotoInputImage {
@@ -606,6 +607,7 @@ private class ComfyUITestViewModel {
                 if let firstPath = paths.first, let loadedImage = UIImage(contentsOfFile: firstPath) {
                     image = loadedImage
                     history.outputFilePath = generationService.fileService.save(image: loadedImage)
+                    history.outputEmbedding = try? await generationService.mlService.imageEmbedding(for: loadedImage)
                     history.end = Date.now
                 } else {
                     error = "No image output returned."
@@ -618,6 +620,9 @@ private class ComfyUITestViewModel {
                 history.end = Date.now
             }
 
+            history.promptEmbedding = try? await generationService.mlService.textEmbedding(for: prompt)
+            let embeddingInputImage = useTwoImageWorkflow ? selectedPhotoLibraryImage?.image ?? inputImage.image : inputImage.image
+            history.inputEmbedding = try? await generationService.mlService.imageEmbedding(for: embeddingInputImage)
             generationService.db.save(history: history)
             generationService.imageHistory.append(history)
             generationService.lastHistory = history

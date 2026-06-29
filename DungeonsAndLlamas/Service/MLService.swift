@@ -45,6 +45,9 @@ actor MLService {
     var clipModel: AIModel?
     var clipTextFunction: InferenceFunction?
     var clipImageFunction: InferenceFunction?
+    var isModelLoaded = false
+    var modelLoadError: Error?
+    var modelLoadContinuations = [CheckedContinuation<Void, Error>]()
     
     /// A pixel buffer used as input to the model.
     let inputDepthPixelBuffer: CVPixelBuffer
@@ -83,14 +86,42 @@ actor MLService {
         Task.detached(priority: .userInitiated) {
             do {
                 try await self.loadModel()
+                await self.completeModelLoad(.success(()))
             } catch {
+                await self.completeModelLoad(.failure(error))
                 print(error)
             }
         }
     }
     
-    // TODO: this takes about 13s on an iPad Air M1
-    // skip this somehow for swiftUI previews
+    func waitUntilLoaded() async throws {
+        if isModelLoaded {
+            return
+        }
+        if let modelLoadError {
+            throw modelLoadError
+        }
+        try await withCheckedThrowingContinuation { continuation in
+            modelLoadContinuations.append(continuation)
+        }
+    }
+    
+    private func completeModelLoad(_ result: Result<Void, Error>) {
+        switch result {
+        case .success:
+            isModelLoaded = true
+        case .failure(let error):
+            modelLoadError = error
+        }
+        
+        let continuations = modelLoadContinuations
+        modelLoadContinuations.removeAll()
+        for continuation in continuations {
+            continuation.resume(with: result)
+        }
+    }
+    
+    // TODO: this takes about 13s on an iPad Air M1 - convert depth model to .aimodel for faster loading
     func loadModel() async throws {
 //        print("Loading Depth model...")
         
@@ -181,22 +212,38 @@ actor MLService {
     }
     
     func textEmbedding(for text: String) async throws -> [Float] {
+        try await waitUntilLoaded()
         guard let clipTextFunction else {
             throw EmbeddingError.modelNotLoaded
         }
         
+        let clock = ContinuousClock()
+        let start = clock.now
+        defer {
+            let duration = clock.now - start
+            print("Text Embedding (took \(duration.formatted(.units(allowed: [.seconds, .milliseconds]))))")
+        }
+        
         let tokens = tokenizer.encode_full(text: text).map(Int32.init)
         let input = NDArray(scalars: tokens, shape: [1, tokenizer.contextLength])
-        return try await embedding(function: clipTextFunction, inputName: "input", outputName: "output", input: input)
+        return try await embedding(function: clipTextFunction, inputName: "text", outputName: "text_features", input: input)
     }
     
     func imageEmbedding(for image: UIImage) async throws -> [Float] {
+        try await waitUntilLoaded()
         guard let clipImageFunction else {
             throw EmbeddingError.modelNotLoaded
         }
         
+        let clock = ContinuousClock()
+        let start = clock.now
+        defer {
+            let duration = clock.now - start
+            print("Image Embedding (took \(duration.formatted(.units(allowed: [.seconds, .milliseconds]))))")
+        }
+        
         let input = try clipImageArray(from: image)
-        return try await embedding(function: clipImageFunction, inputName: "input", outputName: "output", input: input)
+        return try await embedding(function: clipImageFunction, inputName: "image", outputName: "image_features", input: input)
     }
     
     func similarity(text: String, image: UIImage) async throws -> Float {

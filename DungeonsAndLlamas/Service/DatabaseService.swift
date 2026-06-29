@@ -54,8 +54,34 @@ class DatabaseService {
         do {
             try ImageHistoryModel.createTable(db: db)
             try LoraHistoryModel.createTable(db: db)
+            try migrateDatabase()
         } catch {
             fatalError(error.localizedDescription)
+        }
+    }
+    
+    fileprivate func migrateDatabase() throws {
+        let currentVersion = db.userVersion ?? 0
+        
+        if currentVersion < 1 {
+            if try !ImageHistoryModel.columnExists(db: db, name: "output_embedding") {
+                try db.run(ImageHistoryModel.table().addColumn(ImageHistoryModel.outputEmbeddingExp))
+            }
+            db.userVersion = 1
+        }
+        
+        if currentVersion < 2 {
+            if try !ImageHistoryModel.columnExists(db: db, name: "input_embedding") {
+                try db.run(ImageHistoryModel.table().addColumn(ImageHistoryModel.inputEmbeddingExp))
+            }
+            db.userVersion = 2
+        }
+        
+        if currentVersion < 3 {
+            if try !ImageHistoryModel.columnExists(db: db, name: "prompt_embedding") {
+                try db.run(ImageHistoryModel.table().addColumn(ImageHistoryModel.promptEmbeddingExp))
+            }
+            db.userVersion = 3
         }
     }
 }
@@ -73,6 +99,14 @@ extension DatabaseService {
     func save(history: ImageHistoryModel) {
         do {
             try history.save(db: db)
+        } catch {
+            print(error)
+        }
+    }
+    
+    func updateEmbeddings(history: ImageHistoryModel) {
+        do {
+            try history.updateEmbeddings(db: db)
         } catch {
             print(error)
         }
@@ -140,6 +174,10 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
     var end: Date?
     @SqlProperty
     var prompt: String
+    var promptEmbedding: [Float]?
+    fileprivate static var promptEmbeddingExp: SQLite.Expression<Data?> {
+        Expression<Data?>("prompt_embedding")
+    }
     @SqlProperty
     var negativePrompt: String?
     @SqlProperty
@@ -157,8 +195,16 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
     fileprivate static var inputFilePathsExp: SQLite.Expression<String> {
         Expression<String>("input_file_paths")
     }
+    var inputEmbedding: [Float]?
+    fileprivate static var inputEmbeddingExp: SQLite.Expression<Data?> {
+        Expression<Data?>("input_embedding")
+    }
     @SqlProperty
     var outputFilePath: String?
+    var outputEmbedding: [Float]?
+    fileprivate static var outputEmbeddingExp: SQLite.Expression<Data?> {
+        Expression<Data?>("output_embedding")
+    }
     @SqlProperty
     var drawingFilePath: String?
     @SqlProperty
@@ -178,6 +224,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             ImageHistoryModel.startExp <- start,
             ImageHistoryModel.endExp <- end,
             ImageHistoryModel.promptExp <- prompt,
+            ImageHistoryModel.promptEmbeddingExp <- ImageHistoryModel.encodedEmbedding(promptEmbedding),
             ImageHistoryModel.negativePromptExp <- negativePrompt,
             ImageHistoryModel.modelExp <- model,
             ImageHistoryModel.samplerExp <- sampler,
@@ -185,7 +232,9 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             ImageHistoryModel.sizeExp <- size,
             ImageHistoryModel.seedExp <- seed,
             ImageHistoryModel.inputFilePathsExp <- ImageHistoryModel.encodedInputFilePaths(inputFilePaths),
+            ImageHistoryModel.inputEmbeddingExp <- ImageHistoryModel.encodedEmbedding(inputEmbedding),
             ImageHistoryModel.outputFilePathExp <- outputFilePath,
+            ImageHistoryModel.outputEmbeddingExp <- ImageHistoryModel.encodedEmbedding(outputEmbedding),
             ImageHistoryModel.drawingFilePathExp <- drawingFilePath,
             ImageHistoryModel.depthFilePathExp <- depthFilePath,
             ImageHistoryModel.errorDescriptionExp <- errorDescription,
@@ -198,6 +247,14 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         }
     }
     
+    fileprivate func updateEmbeddings(db: Connection) throws {
+        try db.run(ImageHistoryModel.table().filter(ImageHistoryModel.idExp == id).update(
+            ImageHistoryModel.promptEmbeddingExp <- ImageHistoryModel.encodedEmbedding(promptEmbedding),
+            ImageHistoryModel.inputEmbeddingExp <- ImageHistoryModel.encodedEmbedding(inputEmbedding),
+            ImageHistoryModel.outputEmbeddingExp <- ImageHistoryModel.encodedEmbedding(outputEmbedding)
+        ))
+    }
+    
     fileprivate static func load(db: Connection) throws -> [ImageHistoryModel] {
         var result = [ImageHistoryModel]()
         for entry in try db.prepare(table()) {
@@ -207,6 +264,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                             start: entry[startExp],
                                             end: entry[endExp],
                                             prompt: entry[promptExp],
+                                            promptEmbedding: decodedEmbedding(entry[promptEmbeddingExp]),
                                             negativePrompt: entry[negativePromptExp],
                                             model: entry[modelExp],
                                             sampler: entry[samplerExp],
@@ -214,7 +272,9 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                             size: entry[sizeExp],
                                             seed: entry[seedExp],
                                             inputFilePaths: decodedInputFilePaths(entry[inputFilePathsExp]),
+                                            inputEmbedding: decodedEmbedding(entry[inputEmbeddingExp]),
                                             outputFilePath: entry[outputFilePathExp],
+                                            outputEmbedding: decodedEmbedding(entry[outputEmbeddingExp]),
                                             drawingFilePath: entry[drawingFilePathExp],
                                             depthFilePath: entry[depthFilePathExp],
                                             errorDescription: entry[errorDescriptionExp],
@@ -232,6 +292,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                 t.column(startExp)
                 t.column(endExp)
                 t.column(promptExp)
+                t.column(promptEmbeddingExp)
                 t.column(negativePromptExp)
                 t.column(modelExp)
                 t.column(samplerExp)
@@ -239,7 +300,9 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                 t.column(sizeExp)
                 t.column(seedExp)
                 t.column(inputFilePathsExp)
+                t.column(inputEmbeddingExp)
                 t.column(outputFilePathExp)
+                t.column(outputEmbeddingExp)
                 t.column(drawingFilePathExp)
                 t.column(depthFilePathExp)
                 t.column(errorDescriptionExp)
@@ -267,6 +330,34 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             return []
         }
         return paths
+    }
+    
+    fileprivate static func encodedEmbedding(_ embedding: [Float]?) -> Data? {
+        guard let embedding else {
+            return nil
+        }
+        return embedding.withUnsafeBufferPointer { buffer in
+            Data(buffer: buffer)
+        }
+    }
+    
+    fileprivate static func decodedEmbedding(_ data: Data?) -> [Float]? {
+        guard let data else {
+            return nil
+        }
+        let floatSize = MemoryLayout<Float>.stride
+        guard data.count.isMultiple(of: floatSize) else {
+            return nil
+        }
+        return data.withUnsafeBytes { buffer in
+            Array(buffer.bindMemory(to: Float.self))
+        }
+    }
+    
+    fileprivate static func columnExists(db: Connection, name: String) throws -> Bool {
+        try db.schema.columnDefinitions(table: "image_history").contains { column in
+            column.name == name
+        }
     }
 
     static func generateHistoryForTesting(db: Connection, fileService: FileService) throws {

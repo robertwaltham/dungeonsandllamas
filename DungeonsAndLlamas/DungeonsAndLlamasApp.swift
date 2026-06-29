@@ -27,6 +27,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         generationService.db.setup()
         generationService.checkStatusIfNeeded()
         generationService.loadHistory()
+        generationService.migrateHistoryEmbeddingsOnStartup()
         generationService.getModels()
         generationService.getComfyUIModels()
         generationService.photos.checkAuthStatus()

@@ -714,33 +714,33 @@ actor ComfyUIClient {
     }
 
     private static func debugPrintResponse(request: URLRequest, response: URLResponse, data: Data) {
-        let url = response.url ?? request.url
-        let statusCode = (response as? HTTPURLResponse)?.statusCode
-        let responseText = String(data: data, encoding: .utf8) ?? "<\(data.count) bytes>"
-
-        print("ComfyUI response url: \(url?.absoluteString ?? "n/a")")
-        print("ComfyUI response status: \(statusCode.map(String.init) ?? "n/a")")
-        print("ComfyUI response body: \(responseText)")
+//        let url = response.url ?? request.url
+//        let statusCode = (response as? HTTPURLResponse)?.statusCode
+//        let responseText = String(data: data, encoding: .utf8) ?? "<\(data.count) bytes>"
+//
+//        print("ComfyUI response url: \(url?.absoluteString ?? "n/a")")
+//        print("ComfyUI response status: \(statusCode.map(String.init) ?? "n/a")")
+//        print("ComfyUI response body: \(responseText)")
     }
 
     private static func debugPrintCurl(for request: URLRequest) {
-        guard let url = request.url else {
-            return
-        }
-
-        var components = ["curl"]
-        components.append("-X \(request.httpMethod ?? "GET")")
-
-        for (field, value) in request.allHTTPHeaderFields ?? [:] {
-            components.append("-H '\(shellEscaped("\(field): \(value)"))'")
-        }
-
-        if let httpBody = request.httpBody, let body = String(data: httpBody, encoding: .utf8) {
-            components.append("--data '\(shellEscaped(body))'")
-        }
-
-        components.append("'\(shellEscaped(url.absoluteString))'")
-        print(components.joined(separator: " "))
+//        guard let url = request.url else {
+//            return
+//        }
+//
+//        var components = ["curl"]
+//        components.append("-X \(request.httpMethod ?? "GET")")
+//
+//        for (field, value) in request.allHTTPHeaderFields ?? [:] {
+//            components.append("-H '\(shellEscaped("\(field): \(value)"))'")
+//        }
+//
+//        if let httpBody = request.httpBody, let body = String(data: httpBody, encoding: .utf8) {
+//            components.append("--data '\(shellEscaped(body))'")
+//        }
+//
+//        components.append("'\(shellEscaped(url.absoluteString))'")
+//        print(components.joined(separator: " "))
     }
 
     private static func shellEscaped(_ value: String) -> String {
