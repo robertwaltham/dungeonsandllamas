@@ -6,6 +6,7 @@
 //
 
 import SQLite
+import SQLPropertyMacros
 import Foundation
 import UIKit
 import PencilKit
@@ -79,22 +80,14 @@ extension DatabaseService {
 }
 
 struct LoraHistoryModel: Codable, Identifiable, Hashable {
+    @SqlProperty
     var id: String
-    fileprivate static var idExp: SQLite.Expression<String> {
-        Expression<String>("id")
-    }
+    @SqlProperty
     var name: String
-    fileprivate static var nameExp: SQLite.Expression<String> {
-        Expression<String>("name")
-    }
+    @SqlProperty
     var weight: Double
-    fileprivate static var weightExp: SQLite.Expression<Double> {
-        Expression<Double>("weight")
-    }
+    @SqlProperty
     var historyModelId: String
-    fileprivate static var historyModelIdExp: SQLite.Expression<String> {
-        Expression<String>("history_model_id")
-    }
     
     fileprivate static func table() -> Table {
         return Table("lora_history")
@@ -139,79 +132,43 @@ struct LoraHistoryModel: Codable, Identifiable, Hashable {
 
 struct ImageHistoryModel: Codable, Identifiable, Hashable {
     
+    @SqlProperty
     var id: String
-    fileprivate static var idExp: SQLite.Expression<String> {
-        Expression<String>("id")
-    }
+    @SqlProperty
     var start: Date
-    fileprivate static var startExp: SQLite.Expression<Date> {
-        Expression<Date>("start")
-    }
+    @SqlProperty
     var end: Date?
-    fileprivate static var endExp: SQLite.Expression<Date?> {
-        Expression<Date?>("end")
-    }
+    @SqlProperty
     var prompt: String
-    fileprivate static var promptExp: SQLite.Expression<String> {
-        Expression<String>("prompt")
-    }
+    @SqlProperty
     var negativePrompt: String?
-    fileprivate static var negativePromptExp: SQLite.Expression<String?> {
-        Expression<String?>("negative_prompt")
-    }
+    @SqlProperty
     var model: String
-    fileprivate static var modelExp: SQLite.Expression<String> {
-        Expression<String>("model")
-    }
+    @SqlProperty
     var sampler: String
-    fileprivate static var samplerExp: SQLite.Expression<String> {
-        Expression<String>("sampler")
-    }
+    @SqlProperty
     var steps: Int
-    fileprivate static var stepsExp: SQLite.Expression<Int> {
-        Expression<Int>("steps")
-    }
+    @SqlProperty
     var size: Int
-    fileprivate static var sizeExp: SQLite.Expression<Int> {
-        Expression<Int>("size")
-    }
+    @SqlProperty
     var seed: Int
-    fileprivate static var seedExp: SQLite.Expression<Int> {
-        Expression<Int>("seed")
-    }
 
     var inputFilePaths = [String]()
     fileprivate static var inputFilePathsExp: SQLite.Expression<String> {
         Expression<String>("input_file_paths")
     }
+    @SqlProperty
     var outputFilePath: String?
-    fileprivate static var outputFilePathExp: SQLite.Expression<String?> {
-        Expression<String?>("output_file_path")
-    }
+    @SqlProperty
     var drawingFilePath: String?
-    fileprivate static var drawingFilePathExp: SQLite.Expression<String?> {
-        Expression<String?>("drawing_file_path")
-    }
-    
+    @SqlProperty
     var depthFilePath: String?
-    fileprivate static var depthFilePathExp: SQLite.Expression<String?> {
-        Expression<String?>("depth_file_path")
-    }
-    
+    @SqlProperty
     var errorDescription: String?
-    fileprivate static var errorDescriptionExp: SQLite.Expression<String?> {
-        Expression<String?>("error_description")
-    }
-    
+    @SqlProperty
     var session: String
-    fileprivate static var sessionExp: SQLite.Expression<String> {
-        Expression<String>("session")
-    }
-    
+    @SqlProperty
     var sequence: Int
-    fileprivate static var sequenceExp: SQLite.Expression<Int> {
-        Expression<Int>("sequence")
-    }
     
     var loras: [LoraHistoryModel]
     

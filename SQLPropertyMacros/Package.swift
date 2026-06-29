@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -19,20 +19,19 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0"),
-        .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.15.0")
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0-latest"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .macro(
-            name: "SQLPropertyMacros",
+            name: "SQLPropertyMacrosImplementation",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-                .product(name: "SQLite", package: "SQLite.swift")
             ]
         ),
+        .target(name: "SQLPropertyMacros", dependencies: ["SQLPropertyMacrosImplementation"]),
         .executableTarget(
             name: "SQLPropertyMacrosClient",
             dependencies: ["SQLPropertyMacros"]

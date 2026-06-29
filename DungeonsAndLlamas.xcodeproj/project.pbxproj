@@ -18,6 +18,7 @@
 		D16CAE4F2BB3724100ECA710 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D16CAE4E2BB3724100ECA710 /* Assets.xcassets */; };
 		D16CAE522BB3724100ECA710 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D16CAE512BB3724100ECA710 /* Preview Assets.xcassets */; };
 		D1BA89B12FF1CE29001D5466 /* mobileclip2_s2.aimodel in Sources */ = {isa = PBXBuildFile; fileRef = D1BA89B02FF1CE29001D5466 /* mobileclip2_s2.aimodel */; };
+		D1BA8A842FF1EF73001D5466 /* SQLPropertyMacros in Frameworks */ = {isa = PBXBuildFile; productRef = D1BA8A832FF1EF73001D5466 /* SQLPropertyMacros */; };
 		D1F839D22DA07C580028E034 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = D1F839D12DA07C580028E034 /* SQLite */; };
 /* End PBXBuildFile section */
 
@@ -49,6 +50,7 @@
 			files = (
 				D121A54B2DC19517000CE87D /* AnyCodable in Frameworks */,
 				D1F839D22DA07C580028E034 /* SQLite in Frameworks */,
+				D1BA8A842FF1EF73001D5466 /* SQLPropertyMacros in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -169,6 +171,7 @@
 			packageReferences = (
 				D1F839D02DA07C580028E034 /* XCRemoteSwiftPackageReference "SQLite" */,
 				D121A5492DC19517000CE87D /* XCRemoteSwiftPackageReference "AnyCodable" */,
+				D1BA8A822FF1EF73001D5466 /* XCLocalSwiftPackageReference "SQLPropertyMacros" */,
 			);
 			productRefGroup = D16CAE462BB3724000ECA710 /* Products */;
 			projectDirPath = "";
@@ -424,6 +427,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		D1BA8A822FF1EF73001D5466 /* XCLocalSwiftPackageReference "SQLPropertyMacros" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = SQLPropertyMacros;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		D121A5492DC19517000CE87D /* XCRemoteSwiftPackageReference "AnyCodable" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -448,6 +458,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D121A5492DC19517000CE87D /* XCRemoteSwiftPackageReference "AnyCodable" */;
 			productName = AnyCodable;
+		};
+		D1BA8A832FF1EF73001D5466 /* SQLPropertyMacros */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SQLPropertyMacros;
 		};
 		D1F839D12DA07C580028E034 /* SQLite */ = {
 			isa = XCSwiftPackageProductDependency;
