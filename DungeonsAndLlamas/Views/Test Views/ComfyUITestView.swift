@@ -14,6 +14,8 @@ struct ComfyUITestView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = ComfyUITestViewModel()
     @State private var showingPhotoLibraryPopover = false
+    @FocusState private var isPromptFocused: Bool
+    private let outputBottomID = "outputBottom"
     let generationService: GenerationService
 
     init(generationService: GenerationService, workflow: ComfyUITestWorkflow = .one, history: ImageHistoryModel? = nil) {
@@ -43,47 +45,76 @@ struct ComfyUITestView: View {
     }
 
     private var regularLayout: some View {
-        ScrollView {
-            VStack(alignment: .center, spacing: 16) {
-                controls
-                canvasSection(canvasDimension: 512)
-                outputSection(maxImageHeight: 512)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .center, spacing: 16) {
+                    controls
+                    canvasSection(canvasDimension: 512)
+                    outputSection(maxImageHeight: 512)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    Color.clear
+                        .frame(height: 1)
+                        .id(outputBottomID)
+                }
+                .padding()
             }
-            .padding()
+            .onChange(of: viewModel.generatedImageCount) { _, _ in
+                scrollToOutputBottom(with: proxy)
+            }
         }
     }
 
     private func compactLayout(canvasDimension: CGFloat) -> some View {
-        ScrollView {
-            VStack(alignment: .center, spacing: 16) {
-                controls
-                canvasSection(canvasDimension: canvasDimension)
-                outputSection(maxImageHeight: canvasDimension)
-                Spacer().frame(height: 50)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .center, spacing: 16) {
+                    controls
+                    canvasSection(canvasDimension: canvasDimension)
+                    outputSection(maxImageHeight: canvasDimension)
+                    Spacer().frame(height: 50)
+                    Color.clear
+                        .frame(height: 1)
+                        .id(outputBottomID)
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
             }
-            .padding()
-            .frame(maxWidth: .infinity)
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: viewModel.generatedImageCount) { _, _ in
+                scrollToOutputBottom(with: proxy)
+            }
         }
-        .scrollDismissesKeyboard(.interactively)
+    }
+
+    private func scrollToOutputBottom(with proxy: ScrollViewProxy) {
+        DispatchQueue.main.async {
+            withAnimation {
+                proxy.scrollTo(outputBottomID, anchor: .bottom)
+            }
+        }
     }
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
             
             TextField("Prompt", text: $viewModel.prompt, axis: .vertical)
+                .focused($isPromptFocused)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(1...6)
+                .onChange(of: isPromptFocused) { _, isFocused in
+                    viewModel.showTooltip = !isFocused
+                }
             
             HStack(alignment: .bottom, spacing: 12) {
 
                 Button("Generate") {
+                    isPromptFocused = false
                     viewModel.generate(using: generationService)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(viewModel.loading || (viewModel.useTwoImageWorkflow && viewModel.selectedPhotoLibraryDisplayImage == nil))
 
-                Button("Clear Drawing") {
+                Button("Clear") {
                     viewModel.clearDrawing()
                 }
                 .buttonStyle(.bordered)
@@ -107,15 +138,15 @@ struct ComfyUITestView: View {
 
             }
 
-            if viewModel.useTwoImageWorkflow {
-                Toggle("Use Depth", isOn: Binding(
-                    get: { viewModel.usePhotoLibraryDepthImage },
-                    set: { viewModel.setUsePhotoLibraryDepthImage($0, using: generationService) }
-                ))
-                .toggleStyle(.switch)
-                .disabled(viewModel.loading)
-
-            }
+//            if viewModel.useTwoImageWorkflow {
+//                Toggle("Use Depth", isOn: Binding(
+//                    get: { viewModel.usePhotoLibraryDepthImage },
+//                    set: { viewModel.setUsePhotoLibraryDepthImage($0, using: generationService) }
+//                ))
+//                .toggleStyle(.switch)
+//                .disabled(viewModel.loading)
+//
+//            }
         }
     }
 
@@ -302,6 +333,7 @@ private class ComfyUITestViewModel {
     private var pickedPhotoInputImage: InputImage?
     var image: UIImage?
     var imagePaths = [String]()
+    var generatedImageCount = 0
     var inputImagePath: String?
     var uploadedInputFilename: String?
     var error: String?
@@ -606,6 +638,7 @@ private class ComfyUITestViewModel {
 
                 if let firstPath = paths.first, let loadedImage = UIImage(contentsOfFile: firstPath) {
                     image = loadedImage
+                    generatedImageCount += 1
                     history.outputFilePath = generationService.fileService.save(image: loadedImage)
                     history.outputEmbedding = try? await generationService.mlService.imageEmbedding(for: loadedImage)
                     history.end = Date.now
