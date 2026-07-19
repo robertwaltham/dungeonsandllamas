@@ -3,11 +3,8 @@
 
 This is a project to explore the capabilties of modern LLM and Stable Diffusion AI as part of an iOS app using a "Bring your own cloud" approach. 
 
-The goal of the app is to build a Dungeon Master's companion that enables the generation of artwork and descriptions for characters, items, maps, etc by leveraging AI tools. 
-
-<img src="https://github.com/robertwaltham/dungeonsandllamas/assets/438673/caa3de56-c6fd-4b62-b095-f3f05275f428" width="300"/>
-
-Generated using the [Dungeons and Diffusion](https://huggingface.co/0xJustin/Dungeons-and-Diffusion) model
+<img width="600" alt="IMG_0206" src="https://github.com/user-attachments/assets/5f2d0d60-3a3a-4257-a08f-33380e649072" />
+<img width="300" alt="IMG_4454" src="https://github.com/user-attachments/assets/65e8ba40-2bc3-4960-8d5e-6c9856de3677" />
 
 ### App Architecture
 
@@ -25,7 +22,7 @@ Goals
 - Optimize for cost
 
 Features
-- SSH tunnel to provide a secure connection from my home PC to a remote server, in a way that penetrates the local NAT
+- SSH tunnel to provide a secure connection from a home PC to a remote server, in a way that penetrates the local NAT
 - Authorization to the remote server via HTTP Basic authorization + HTTPS encryption 
 
 <img width="783" alt="Screenshot 2024-04-06 at 8 44 44 PM" src="https://github.com/robertwaltham/dungeonsandllamas/assets/438673/aec1c92f-8634-4b66-af39-2bbeb88c4048">
@@ -38,20 +35,26 @@ Define /API/Secrets.swift
 class Secrets {
     static let host = "https://website.tld"
     static let authorization = "Bearer [token]"
+    static let username = "username"
+    static let password = "password"
 }
 ```
 
 Download models from huggingface to the Models folder
-https://huggingface.co/apple/coreml-depth-anything-small#download
+- https://huggingface.co/apple/coreml-depth-anything-small#download
+- https://huggingface.co/apple/MobileCLIP2-S2
+- https://huggingface.co/apple/coreml-FastViT-T8
+- https://huggingface.co/apple/coreml-FastViT-MA36
 
-
+Convert MobileCLIP2-S2 to an .aipackage using [CoreAI](https://developer.apple.com/documentation/coreai)
 
 ### Running
 
-This requires two services running on the target machine (or however your service is set up) on the following paths
+Set up ComfyUI
+- This uses the default [Flux2-Klein](https://docs.comfy.org/tutorials/flux/flux-2-klein) workflow
 
-- https://website.tld/ -> [Ollama](https://ollama.com/) 
-- https://website.tld/sd/ -> [stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
+Set up Routing using a cloud instance + nginx as a proxy
+- https://website.tld/ -> ComfyUI 
 
 A sample nginx config for a server can be found at [here](sample.conf)
 
