@@ -14,10 +14,10 @@
 		D121A54B2DC19517000CE87D /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = D121A54A2DC19517000CE87D /* AnyCodable */; };
 		D13024772DC969F5006EA67C /* FastViTMA36F16.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D13024762DC969F5006EA67C /* FastViTMA36F16.mlpackage */; };
 		D130247B2DC97011006EA67C /* FastViTT8F16.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D130247A2DC97011006EA67C /* FastViTT8F16.mlpackage */; };
+		D1433E4D300D25D600FB7E8C /* mobileclip2_s2.aimodel in Sources */ = {isa = PBXBuildFile; fileRef = D1433E4C300D25D600FB7E8C /* mobileclip2_s2.aimodel */; };
 		D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE482BB3724000ECA710 /* DungeonsAndLlamasApp.swift */; };
 		D16CAE4F2BB3724100ECA710 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D16CAE4E2BB3724100ECA710 /* Assets.xcassets */; };
 		D16CAE522BB3724100ECA710 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D16CAE512BB3724100ECA710 /* Preview Assets.xcassets */; };
-		D1BA89B12FF1CE29001D5466 /* mobileclip2_s2.aimodel in Sources */ = {isa = PBXBuildFile; fileRef = D1BA89B02FF1CE29001D5466 /* mobileclip2_s2.aimodel */; };
 		D1BA8A842FF1EF73001D5466 /* SQLPropertyMacros in Frameworks */ = {isa = PBXBuildFile; productRef = D1BA8A832FF1EF73001D5466 /* SQLPropertyMacros */; };
 		D1F839D22DA07C580028E034 /* SQLite in Frameworks */ = {isa = PBXBuildFile; productRef = D1F839D12DA07C580028E034 /* SQLite */; };
 /* End PBXBuildFile section */
@@ -29,11 +29,11 @@
 		D10D1DD62DA6F0F500746F53 /* fancycat.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = fancycat.drawing; sourceTree = "<group>"; };
 		D13024762DC969F5006EA67C /* FastViTMA36F16.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = FastViTMA36F16.mlpackage; sourceTree = "<group>"; };
 		D130247A2DC97011006EA67C /* FastViTT8F16.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = FastViTT8F16.mlpackage; sourceTree = "<group>"; };
+		D1433E4C300D25D600FB7E8C /* mobileclip2_s2.aimodel */ = {isa = PBXFileReference; lastKnownFileType = folder.aimodel; path = mobileclip2_s2.aimodel; sourceTree = "<group>"; };
 		D16CAE452BB3724000ECA710 /* DungeonsAndLlamas.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DungeonsAndLlamas.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D16CAE482BB3724000ECA710 /* DungeonsAndLlamasApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonsAndLlamasApp.swift; sourceTree = "<group>"; };
 		D16CAE4E2BB3724100ECA710 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D16CAE512BB3724100ECA710 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		D1BA89B02FF1CE29001D5466 /* mobileclip2_s2.aimodel */ = {isa = PBXFileReference; lastKnownFileType = folder.aimodel; path = mobileclip2_s2.aimodel; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -60,7 +60,7 @@
 		D10589C12DC2D8A400E0F3BE /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				D1BA89B02FF1CE29001D5466 /* mobileclip2_s2.aimodel */,
+				D1433E4C300D25D600FB7E8C /* mobileclip2_s2.aimodel */,
 				D130247A2DC97011006EA67C /* FastViTT8F16.mlpackage */,
 				D13024762DC969F5006EA67C /* FastViTMA36F16.mlpackage */,
 				D10589BF2DC2D8A400E0F3BE /* .gitkeep */,
@@ -202,11 +202,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D1BA89B12FF1CE29001D5466 /* mobileclip2_s2.aimodel in Sources */,
 				D10589C52DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage in Sources */,
 				D130247B2DC97011006EA67C /* FastViTT8F16.mlpackage in Sources */,
 				D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */,
 				D13024772DC969F5006EA67C /* FastViTMA36F16.mlpackage in Sources */,
+				D1433E4D300D25D600FB7E8C /* mobileclip2_s2.aimodel in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

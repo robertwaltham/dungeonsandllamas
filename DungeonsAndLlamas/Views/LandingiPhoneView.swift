@@ -39,7 +39,7 @@ struct LandingiPhoneView: View {
             .onReceive(timer) { input in
                 withAnimation(.linear(duration: 1.0)){
                     if history.count > 1 {
-                        let random = Int.random(in: 0..<history.count - 1) // TODO: fix bug with last cell sliding animation
+                        let random = Int.random(in: 0..<history.count - 2)
                         let img = generationService.loadOutputImage(history: generationService.imageHistory.randomElement()!)
                         if history.firstIndex(of: img) == nil {
                             history[random] = img
@@ -60,135 +60,55 @@ struct LandingiPhoneView: View {
                 
                 let buttonSize: CGFloat = 120
                 
-                HStack {
-                    
-                    HStack {
-                        Button(action: {
-                            flowState.nextLink(.comfyUITest(.one))
-                        }, label: {
-                            Text("Flux2\nPaint")
-                        })
-                        .frame(width: buttonSize, height: buttonSize)
-                        .background(Color(white: 0.7))
-                        .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
-                    }
+                VStack (alignment: .center, spacing: 25) {
+                    Button(action: {
+                        flowState.nextLink(.comfyUITest(.one))
+                    }, label: {
+                        Text("Flux2 Paint")
+                            .padding()
+                            .frame(width: 200)
+                    })
 
                     Button(action: {
                         flowState.nextLink(.comfyUITest(.two))
                     }, label: {
-                        Text("Flux2\nPaint+Image")
+                        Text("Flux2 Image+Paint")
+                            .padding()
+                            .frame(width: 200)
+
                     })
-                    .frame(width: buttonSize, height: buttonSize)
-                    .background(Color(white: 0.7))
-                    .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+
+                    Button(action: {
+                        flowState.nextLink(.sdHistory)
+                    }, label: {
+                        Text("History")
+                            .padding()
+                            .frame(width: 200)
+
+                    })
                 }
-                
-                Button(action: {
-                    flowState.nextLink(.sdHistory)
-                }, label: {
-                    Text("History")
-                })
-                .frame(width: buttonSize, height: buttonSize)
-                .background(Color(white: 0.7))
-                .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
+                .buttonStyle(.glass)
                 
                 Spacer()
                 
-                HStack {
-                    
-                    ZStack {
-                        if generationService.llmStatus.connected {
-                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
-                                .foregroundColor(.green)
-                        } else {
-                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
-                                .foregroundColor(.red)
-                        }
-                        
-                        Text("LLM")
-                    }
-                    
-                    ZStack {
-                        if generationService.sdStatus.connected {
-                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
-                                .foregroundColor(.green)
-                        } else {
-                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
-                                .foregroundColor(.red)
-                        }
-                        
-                        Text("SD")
-                    }
-                    
-                    ZStack {
-                        if generationService.comfyUIStatus.connected {
-                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
-                                .foregroundColor(.green)
-                        } else {
-                            RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)).frame(width: 70, height: 70)
-                                .foregroundColor(.red)
-                        }
-                        
-                        Text("CU")
-                    }
-                    .onTapGesture {
-                        showingComfyUIStatus = true
-                    }
-                    .popover(isPresented: $showingComfyUIStatus) {
-                        ComfyUISystemStatusView(
-                            connection: generationService.comfyUIConnectionInfo,
-                            status: generationService.comfyUISystemStatus,
-                            models: generationService.comfyUIModels,
-                            error: generationService.comfyUIStatus.error
-                        )
-                    }
-                    
-                    Button("Recheck") {
-                        generationService.checkStatusIfNeeded()
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(generationService.statusTask != nil)
-                    
-                }.padding()
-                
-                HStack {
-                    let modelDisabled = generationService.modelTask != nil
-                    
-                    if generationService.selectedSDModel != nil {
-                        Picker("Model", selection: $generationService.selectedSDModel) {
-                            ForEach(generationService.sdModels) { model in
-                                Text(model.modelName).tag(model as StableDiffusionClient.Model?)
-                            }
-                        }
-                        .frame(minWidth: 150)
-                        .disabled(modelDisabled)
-                    }
-                    
-                    //                if generationService.selectedLLMModel != nil {
-                    //                    Picker("Model", selection: $generationService.selectedLLMModel) {
-                    //                        ForEach(generationService.llmModels) { model in
-                    //                            Text(model.name).tag(model as LLMModel?)
-                    //                        }
-                    //                    }
-                    //                    .frame(minWidth: 150)
-                    //                    .disabled(modelDisabled)
-                    //                }
-                    
-                    
-                    if generationService.sdModels.count > 0 {
-                        Button("Set Model") {
-                            generationService.setSelectedModel()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(modelDisabled)
-                    } else {
-                        Button("Load Models") {
-                            generationService.getModels()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(modelDisabled)
-                    }
+                Button(action: {
+                    showingComfyUIStatus = true
+                }, label: {
+                    Text("Service Status")
+                        .padding()
+                })
+                .buttonStyle(.glassProminent)
+                .tint(generationService.comfyUIStatus.connected ? .green : .red)
+                .popover(isPresented: $showingComfyUIStatus) {
+                    ComfyUISystemStatusView(
+                        connection: generationService.comfyUIConnectionInfo,
+                        status: generationService.comfyUISystemStatus,
+                        models: generationService.comfyUIModels,
+                        error: generationService.comfyUIStatus.error
+                    )
                 }
+                
+                Spacer()
             }
         }
     }
