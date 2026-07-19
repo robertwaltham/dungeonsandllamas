@@ -13,6 +13,12 @@ The app is designed to leverage modern App development patterns including
 - Swift Concurrency
 - Coordinator pattern for navigation
 
+### App Features
+
+- Pencil Sketch -> Image generation
+- Photo Image + Pencil Sketch -> Image generation
+- Semantic image search with embedding distance
+
 ### Service Architecture
 
 Goals
