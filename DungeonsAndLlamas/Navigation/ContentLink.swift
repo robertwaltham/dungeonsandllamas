@@ -35,6 +35,10 @@ enum ContentLink: Hashable, Equatable, Identifiable {
         case .comfyUITest(let workflow):
             hasher.combine("comfyUITest")
             hasher.combine(workflow)
+        case .twoPhotoEdit:
+            hasher.combine("twoPhotoEdit")
+        case .twoPhotoEditFrom(let history):
+            hasher.combine("twoPhotoEditFrom" + history.id)
         case .drawing:
             hasher.combine("drawing")
         case .drawingFrom(history: let history):
@@ -73,6 +77,8 @@ enum ContentLink: Hashable, Equatable, Identifiable {
     case accelerometer
     case apiTest
     case comfyUITest(ComfyUITestWorkflow)
+    case twoPhotoEdit
+    case twoPhotoEditFrom(history: ImageHistoryModel)
     case drawing
     case drawingFrom(history: ImageHistoryModel)
     case itemGenerator

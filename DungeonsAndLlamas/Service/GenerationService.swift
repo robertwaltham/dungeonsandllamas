@@ -349,7 +349,7 @@ class GenerationService {
     }
 
     private func synchronize(candidate: HistoryCandidate, assetCache: HistoryAssetCache) async throws {
-        var local = imageHistory.first { $0.promptId?.lowercased() == candidate.promptId }
+        let local = imageHistory.first { $0.promptId?.lowercased() == candidate.promptId }
         var inputPaths = local?.inputFilePaths ?? []
 
         for (index, reference) in candidate.inputReferences.enumerated() {
@@ -381,9 +381,13 @@ class GenerationService {
         guard let outputPath else { return }
         let size = imageSize(path: inputPaths.first)
         let promptEmbedding = try? await mlService.textEmbedding(for: candidate.prompt)
-        var inputEmbedding: [Float]? = nil
-        if let inputPath = inputPaths.first {
+        let inputEmbedding: [Float]?
+        if inputPaths.count > 1 {
+            inputEmbedding = try? await mlService.combinedImageEmbedding(for: inputPaths.map { fileService.loadImage(path: $0) })
+        } else if let inputPath = inputPaths.first {
             inputEmbedding = try? await mlService.imageEmbedding(for: fileService.loadImage(path: inputPath))
+        } else {
+            inputEmbedding = nil
         }
         let outputEmbedding = try? await mlService.imageEmbedding(for: fileService.loadImage(path: outputPath))
         let imported = ImageHistoryModel(
@@ -459,6 +463,8 @@ class GenerationService {
     }
     
     private func migrateHistoryEmbeddings() async {
+        let combinedInputMigrationKey = "combined-two-photo-input-embedding-v1"
+        let shouldMigrateCombinedInputs = !UserDefaults.standard.bool(forKey: combinedInputMigrationKey)
         for index in imageHistory.indices {
             var history = imageHistory[index]
             var didUpdate = false
@@ -469,8 +475,13 @@ class GenerationService {
                 didUpdate = history.promptEmbedding != nil
             }
             
-            if (history.inputEmbedding == nil || forceUpdate), let inputImage = embeddingInputImage(for: history) {
-                history.inputEmbedding = try? await mlService.imageEmbedding(for: inputImage)
+            if (history.inputEmbedding == nil || forceUpdate || (shouldMigrateCombinedInputs && isTwoPhotoHistory(history))) {
+                if isTwoPhotoHistory(history) {
+                    let inputImages = history.inputFilePaths.map { fileService.loadImage(path: $0) }
+                    history.inputEmbedding = try? await mlService.combinedImageEmbedding(for: inputImages)
+                } else if let inputImage = embeddingInputImage(for: history) {
+                    history.inputEmbedding = try? await mlService.imageEmbedding(for: inputImage)
+                }
                 didUpdate = didUpdate || history.inputEmbedding != nil
             }
             
@@ -491,6 +502,13 @@ class GenerationService {
                 lastHistory = history
             }
         }
+        UserDefaults.standard.set(true, forKey: "combined-two-photo-input-embedding-v1")
+    }
+
+    private func isTwoPhotoHistory(_ history: ImageHistoryModel) -> Bool {
+        history.drawingFilePath == nil &&
+        history.inputFilePaths.count >= 2 &&
+        history.negativePrompt == "Flux2 Klein 2 image edit"
     }
     
     private func embeddingInputImage(for history: ImageHistoryModel) -> UIImage? {

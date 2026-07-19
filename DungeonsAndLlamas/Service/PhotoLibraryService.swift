@@ -20,6 +20,15 @@ class PhotoLibraryService {
     var canAccess: Bool {
         return status == .authorized || status == .limited
     }
+
+    func requestAccessIfNeeded() async {
+        let currentStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        if currentStatus == .notDetermined {
+            status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        } else {
+            status = currentStatus
+        }
+    }
     
     let defaultImage = UIImage(named: "lighthouse")!
     
@@ -61,7 +70,9 @@ class PhotoLibraryService {
         
         guard canAccess else {
             print("no access")
-            fatalError()
+            return AsyncStream { continuation in
+                continuation.finish()
+            }
         }
         
         let manager = PHImageManager.default()
@@ -103,6 +114,43 @@ class PhotoLibraryService {
                         print("finished")
                         continuation.finish()
                     }
+                }
+            }
+        }
+    }
+
+    func getImage(identifier: String, targetSize: CGSize) async throws -> UIImage {
+        guard canAccess else {
+            throw APIError.requestError("Photo library access is required to pick images.")
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let result = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
+            guard let asset = result.firstObject else {
+                continuation.resume(throwing: APIError.requestError("The selected photo is no longer available."))
+                return
+            }
+
+            let request = PHImageRequestOptions()
+            request.isSynchronous = false
+            request.isNetworkAccessAllowed = true
+            request.resizeMode = .exact
+            request.deliveryMode = .highQualityFormat
+
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: targetSize,
+                contentMode: .aspectFit,
+                options: request
+            ) { image, info in
+                if let cancelled = info?[PHImageCancelledKey] as? Bool, cancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else if let error = info?[PHImageErrorKey] as? Error {
+                    continuation.resume(throwing: error)
+                } else if let image {
+                    continuation.resume(returning: image)
+                } else {
+                    continuation.resume(throwing: APIError.requestError("Could not load the selected photo."))
                 }
             }
         }

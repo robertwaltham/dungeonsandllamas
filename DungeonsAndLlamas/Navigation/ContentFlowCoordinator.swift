@@ -45,16 +45,18 @@ extension ContentFlowCoordinator {
             switch link {
             case .drawing:
                 PencilDrawingiPhoneView(flowState: flowState, generationService: generationService)
-                //                    .navigationTitle("Drawing")
             case .drawingFrom(let history):
                 ComfyUITestView(generationService: generationService, history: history)
-                //                    .navigationTitle("Drawing")
             case .accelerometer:
                 AccelerometerTestView(flowState: flowState)
             case .apiTest:
                 APITestView(flowState: flowState)
             case .comfyUITest(let workflow):
                 ComfyUITestView(generationService: generationService, workflow: workflow)
+            case .twoPhotoEdit:
+                TwoPhotoEditView(generationService: generationService)
+            case .twoPhotoEditFrom(let history):
+                TwoPhotoEditView(generationService: generationService, history: history)
             case .itemGenerator:
                 ItemGeneratorView(flowState: flowState)
             case .sdHistory:
@@ -95,6 +97,10 @@ extension ContentFlowCoordinator {
                 APITestView(flowState: flowState)
             case .comfyUITest(let workflow):
                 ComfyUITestView(generationService: generationService, workflow: workflow)
+            case .twoPhotoEdit:
+                TwoPhotoEditView(generationService: generationService)
+            case .twoPhotoEditFrom(let history):
+                TwoPhotoEditView(generationService: generationService, history: history)
             case .itemGenerator:
                 ItemGeneratorView(flowState: flowState)
             case .sdHistory:

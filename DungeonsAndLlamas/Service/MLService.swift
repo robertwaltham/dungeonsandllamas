@@ -245,6 +245,30 @@ actor MLService {
         let input = try clipImageArray(from: image)
         return try await embedding(function: clipImageFunction, inputName: "image", outputName: "image_features", input: input)
     }
+
+    func combinedImageEmbedding(for images: [UIImage]) async throws -> [Float] {
+        guard !images.isEmpty else {
+            throw EmbeddingError.invalidImage
+        }
+        var embeddings = [[Float]]()
+        embeddings.reserveCapacity(images.count)
+        for image in images {
+            embeddings.append(try await imageEmbedding(for: image))
+        }
+        guard let first = embeddings.first, embeddings.allSatisfy({ $0.count == first.count }) else {
+            throw EmbeddingError.invalidEmbeddingDimensions(0, 0)
+        }
+        let normalized = embeddings.map { embedding in
+            let magnitude = sqrt(embedding.reduce(Float.zero) { $0 + $1 * $1 })
+            return magnitude == 0 ? embedding : embedding.map { $0 / magnitude }
+        }
+        let count = first.count
+        let average = (0..<count).map { index in
+            normalized.reduce(Float.zero) { $0 + $1[index] } / Float(normalized.count)
+        }
+        let magnitude = sqrt(average.reduce(Float.zero) { $0 + $1 * $1 })
+        return magnitude == 0 ? average : average.map { $0 / magnitude }
+    }
     
     func similarity(text: String, image: UIImage) async throws -> Float {
         let textEmbedding = try await textEmbedding(for: text)

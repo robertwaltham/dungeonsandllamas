@@ -58,8 +58,6 @@ struct LandingiPhoneView: View {
 
                 Spacer().frame(maxHeight: 200)
                 
-                let buttonSize: CGFloat = 120
-                
                 VStack (alignment: .center, spacing: 25) {
                     Button(action: {
                         flowState.nextLink(.comfyUITest(.one))
@@ -76,6 +74,14 @@ struct LandingiPhoneView: View {
                             .padding()
                             .frame(width: 200)
 
+                    })
+
+                    Button(action: {
+                        flowState.nextLink(.twoPhotoEdit)
+                    }, label: {
+                        Text("Flux2 Photo + Photo")
+                            .padding()
+                            .frame(width: 200)
                     })
 
                     Button(action: {
@@ -123,4 +129,3 @@ struct LandingiPhoneView: View {
     }
     .environment(service)
 }
-

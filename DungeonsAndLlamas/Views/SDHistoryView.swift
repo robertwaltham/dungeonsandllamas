@@ -197,10 +197,10 @@ struct SDHistoryDetailView: View {
                             .foregroundColor(.purple)
                     }
                     
-                    if history.drawingFilePath != nil {
+                    if let remixLink = remixLink(for: history) {
                         Button {
                             flowState.presentedItem = nil
-                            flowState.nextLink(.drawingFrom(history: history))
+                            flowState.nextLink(remixLink)
                         } label: {
                             HStack {
                                 Label("Remix", systemImage: "photo.on.rectangle.angled")
@@ -245,12 +245,19 @@ struct SDHistoryDetailView: View {
                     }
                     
                 } else {
-                    HStack(spacing: 8) {
-                        ForEach(Array(generationService.loadInputImages(history: history).enumerated()), id: \.offset) { _, inputImage in
-                            Image(uiImage: inputImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: inputImageSize, height: inputImageSize)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: inputImageSize), spacing: 8)], spacing: 8) {
+                        ForEach(Array(generationService.loadInputImages(history: history).enumerated()), id: \.offset) { index, inputImage in
+                            VStack(spacing: 4) {
+                                Image(uiImage: inputImage)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: inputImageSize, height: inputImageSize)
+                                if history.inputFilePaths.count > 1 {
+                                    Text("Image \(index + 1)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
                 }
@@ -262,6 +269,17 @@ struct SDHistoryDetailView: View {
 
     var body: some View {
         presentedHistoryView
+    }
+
+    private func remixLink(for history: ImageHistoryModel) -> ContentLink? {
+        if history.drawingFilePath != nil {
+            return .drawingFrom(history: history)
+        }
+        if history.inputFilePaths.count >= 2,
+           history.negativePrompt == "Flux2 Klein 2 image edit" {
+            return .twoPhotoEditFrom(history: history)
+        }
+        return nil
     }
 }
 

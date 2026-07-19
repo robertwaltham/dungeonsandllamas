@@ -83,6 +83,14 @@ struct LandingView: View {
                     })
 
                     Button(action: {
+                        flowState.nextLink(.twoPhotoEdit)
+                    }, label: {
+                        Text("Flux2 Photo + Photo")
+                            .padding()
+                            .frame(width: 200)
+                    })
+
+                    Button(action: {
                         flowState.nextLink(.sdHistory)
                     }, label: {
                         Text("History")
