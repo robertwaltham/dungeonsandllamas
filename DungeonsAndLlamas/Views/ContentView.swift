@@ -17,6 +17,13 @@ struct ContentView: View {
         ContentFlowCoordinator(flowState: flowState) {
             landing()
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let phase = generationService.historySyncPhase {
+                HistorySyncProgressView(phase: phase)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: generationService.historySyncPhase)
     }
     
     @MainActor @ViewBuilder
@@ -26,6 +33,29 @@ struct ContentView: View {
         } else {
             LandingView(flowState: flowState, generationService: generationService)
         }
+    }
+}
+
+private struct HistorySyncProgressView: View {
+    let phase: GenerationService.HistorySyncPhase
+
+    var body: some View {
+        HStack(spacing: 12) {
+            switch phase {
+            case .fetching:
+                ProgressView()
+                Text("Checking server history…")
+            case .processing(let completed, let total):
+                ProgressView(value: Double(completed), total: Double(max(total, 1)))
+                    .frame(maxWidth: 180)
+                Text("\(completed) of \(total)")
+            }
+        }
+        .font(.subheadline)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial)
     }
 }
 

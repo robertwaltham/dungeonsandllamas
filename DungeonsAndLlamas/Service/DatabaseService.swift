@@ -83,6 +83,13 @@ class DatabaseService {
             }
             db.userVersion = 3
         }
+
+        if currentVersion < 4 {
+            if try !ImageHistoryModel.columnExists(db: db, name: "prompt_id") {
+                try db.run(ImageHistoryModel.table().addColumn(ImageHistoryModel.promptIdExp))
+            }
+            db.userVersion = 4
+        }
     }
 }
 
@@ -107,6 +114,14 @@ extension DatabaseService {
     func updateEmbeddings(history: ImageHistoryModel) {
         do {
             try history.updateEmbeddings(db: db)
+        } catch {
+            print(error)
+        }
+    }
+
+    func updateAssets(history: ImageHistoryModel) {
+        do {
+            try history.updateAssets(db: db)
         } catch {
             print(error)
         }
@@ -174,6 +189,8 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
     var end: Date?
     @SqlProperty
     var prompt: String
+    @SqlProperty
+    var promptId: String? = nil
     var promptEmbedding: [Float]?
     fileprivate static var promptEmbeddingExp: SQLite.Expression<Data?> {
         Expression<Data?>("prompt_embedding")
@@ -224,6 +241,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             ImageHistoryModel.startExp <- start,
             ImageHistoryModel.endExp <- end,
             ImageHistoryModel.promptExp <- prompt,
+            ImageHistoryModel.promptIdExp <- promptId,
             ImageHistoryModel.promptEmbeddingExp <- ImageHistoryModel.encodedEmbedding(promptEmbedding),
             ImageHistoryModel.negativePromptExp <- negativePrompt,
             ImageHistoryModel.modelExp <- model,
@@ -254,6 +272,13 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             ImageHistoryModel.outputEmbeddingExp <- ImageHistoryModel.encodedEmbedding(outputEmbedding)
         ))
     }
+
+    fileprivate func updateAssets(db: Connection) throws {
+        try db.run(ImageHistoryModel.table().filter(ImageHistoryModel.idExp == id).update(
+            ImageHistoryModel.inputFilePathsExp <- ImageHistoryModel.encodedInputFilePaths(inputFilePaths),
+            ImageHistoryModel.outputFilePathExp <- outputFilePath
+        ))
+    }
     
     fileprivate static func load(db: Connection) throws -> [ImageHistoryModel] {
         var result = [ImageHistoryModel]()
@@ -264,6 +289,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                                             start: entry[startExp],
                                             end: entry[endExp],
                                             prompt: entry[promptExp],
+                                            promptId: entry[promptIdExp],
                                             promptEmbedding: decodedEmbedding(entry[promptEmbeddingExp]),
                                             negativePrompt: entry[negativePromptExp],
                                             model: entry[modelExp],

@@ -108,6 +108,13 @@ class GenerationService {
     var LLMHistory = [LLMHistoryEntry]()
     var imageHistory = [ImageHistoryModel]()
     var lastHistory: ImageHistoryModel?
+
+    enum HistorySyncPhase: Equatable, Sendable {
+        case fetching
+        case processing(completed: Int, total: Int)
+    }
+
+    private(set) var historySyncPhase: HistorySyncPhase?
     
     var imageSize = 512
     var steps = 20
@@ -116,6 +123,7 @@ class GenerationService {
     private(set) var modelTask: Task<Void, Never>?
     private(set) var comfyUIModelsTask: Task<Void, Never>?
     private(set) var embeddingMigrationTask: Task<Void, Never>?
+    private(set) var historySyncTask: Task<Void, Never>?
     
     private var storedPrompt: String?
     
@@ -123,6 +131,315 @@ class GenerationService {
     
     func loadHistory() {
         imageHistory = db.loadHistory()
+    }
+
+    func synchronizeComfyUIHistoryOnStartup() {
+        guard historySyncTask == nil else {
+            return
+        }
+
+        historySyncTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            historySyncPhase = .fetching
+            defer {
+                historySyncPhase = nil
+                historySyncTask = nil
+            }
+
+            do {
+                let serverHistory = try await comfyUIClient.typedHistory()
+                let candidates = serverHistory.values
+                    .compactMap { self.historyCandidate(from: $0) }
+                    .sorted { $0.start < $1.start }
+
+                historySyncPhase = .processing(completed: 0, total: candidates.count)
+                var completed = 0
+                let assetCache = HistoryAssetCache()
+
+                for candidate in candidates {
+                    do {
+                        try await synchronize(candidate: candidate, assetCache: assetCache)
+                    } catch {
+                        print("ComfyUI history sync failed for \(candidate.promptId): \(error)")
+                    }
+                    completed += 1
+                    historySyncPhase = .processing(completed: completed, total: candidates.count)
+                }
+            } catch {
+                print("ComfyUI history sync failed: \(error)")
+            }
+
+            historySyncPhase = nil
+            migrateHistoryEmbeddingsOnStartup()
+        }
+    }
+
+    private struct HistoryCandidate: Sendable {
+        let promptId: String
+        let prompt: String
+        let negativePrompt: String
+        let model: String
+        let sampler: String
+        let steps: Int
+        let seed: Int
+        let start: Date
+        let end: Date
+        let session: String
+        let inputReferences: [ImageReference]
+        let outputReference: ImageReference
+
+        struct ImageReference: Sendable {
+            let filename: String
+            let subfolder: String
+            let type: ComfyUIClient.ViewImageType
+        }
+    }
+
+    private final class HistoryAssetCache {
+        var paths = [String: String]()
+    }
+
+    private enum HistoryWorkflowDefinition {
+        case oneImage
+        case twoImages
+
+        var nodeTypes: [String: String] {
+            switch self {
+            case .oneImage:
+                return ["76": "LoadImage", "9": "SaveImage", "75:74": "CLIPTextEncode", "75:73": "RandomNoise", "75:62": "Flux2Scheduler", "75:61": "KSamplerSelect", "75:70": "UNETLoader"]
+            case .twoImages:
+                return ["76": "LoadImage", "81": "LoadImage", "94": "SaveImage", "92:109": "CLIPTextEncode", "92:106": "RandomNoise", "92:102": "Flux2Scheduler", "92:101": "KSamplerSelect", "92:107": "UNETLoader"]
+            }
+        }
+
+        var inputNodeIds: [String] {
+            switch self {
+            case .oneImage: return ["76"]
+            case .twoImages: return ["76", "81"]
+            }
+        }
+
+        var outputNodeId: String {
+            switch self {
+            case .oneImage: return "9"
+            case .twoImages: return "94"
+            }
+        }
+
+        var promptNodeId: String {
+            switch self {
+            case .oneImage: return "75:74"
+            case .twoImages: return "92:109"
+            }
+        }
+
+        var seedNodeId: String {
+            switch self {
+            case .oneImage: return "75:73"
+            case .twoImages: return "92:106"
+            }
+        }
+
+        var stepsNodeId: String {
+            switch self {
+            case .oneImage: return "75:62"
+            case .twoImages: return "92:102"
+            }
+        }
+
+        var samplerNodeId: String {
+            switch self {
+            case .oneImage: return "75:61"
+            case .twoImages: return "92:101"
+            }
+        }
+
+        var modelNodeId: String {
+            switch self {
+            case .oneImage: return "75:70"
+            case .twoImages: return "92:107"
+            }
+        }
+
+        var negativePrompt: String {
+            switch self {
+            case .oneImage: return "Flux2 Klein image edit"
+            case .twoImages: return "Flux2 Klein 2 image edit"
+            }
+        }
+    }
+
+    private func historyCandidate(from record: ComfyUIClient.HistoryRecord) -> HistoryCandidate? {
+        guard record.status.statusStr == "success",
+              record.status.completed else {
+            return nil
+        }
+
+        guard let definition = [HistoryWorkflowDefinition.oneImage, .twoImages].first(where: { definition in
+            definition.nodeTypes.allSatisfy { nodeId, classType in
+                record.prompt.workflow[nodeId]?.classType == classType
+            }
+        }) else {
+            return nil
+        }
+
+        func scalar(_ nodeId: String, _ key: String) -> ComfyUIClient.HistoryRecord.JSONValue? {
+            record.prompt.workflow[nodeId]?.inputs[key]
+        }
+
+        guard let prompt = scalar(definition.promptNodeId, "text")?.stringValue,
+              let model = scalar(definition.modelNodeId, "unet_name")?.stringValue,
+              let sampler = scalar(definition.samplerNodeId, "sampler_name")?.stringValue,
+              let steps = scalar(definition.stepsNodeId, "steps")?.int64Value,
+              let seed = scalar(definition.seedNodeId, "noise_seed")?.int64Value,
+              let createTime = record.prompt.createTime,
+              let output = record.outputs[definition.outputNodeId]?.images?.first,
+              let start = date(milliseconds: createTime) else {
+            return nil
+        }
+
+        let inputReferences = definition.inputNodeIds.compactMap { nodeId -> HistoryCandidate.ImageReference? in
+            guard let reference = scalar(nodeId, "image")?.stringValue else { return nil }
+            let components = reference.split(separator: "/", omittingEmptySubsequences: true)
+            guard let filename = components.last else { return nil }
+            return HistoryCandidate.ImageReference(
+                filename: String(filename),
+                subfolder: components.dropLast().joined(separator: "/"),
+                type: .input
+            )
+        }
+
+        guard inputReferences.count == definition.inputNodeIds.count,
+              let end = executionSuccessDate(record) ?? date(milliseconds: createTime) else {
+            return nil
+        }
+
+        return HistoryCandidate(
+            promptId: record.prompt.promptId.lowercased(),
+            prompt: prompt,
+            negativePrompt: definition.negativePrompt,
+            model: model,
+            sampler: sampler,
+            steps: Int(steps),
+            seed: Int(seed),
+            start: start,
+            end: end,
+            session: record.prompt.clientId ?? "comfyui-import",
+            inputReferences: inputReferences,
+            outputReference: HistoryCandidate.ImageReference(filename: output.filename, subfolder: output.subfolder, type: output.type)
+        )
+    }
+
+    private func executionSuccessDate(_ record: ComfyUIClient.HistoryRecord) -> Date? {
+        for message in record.status.messages {
+            guard message.count > 1,
+                  message[0].stringValue == "execution_success",
+                  case .object(let data) = message[1],
+                  data["timestamp"]?.int64Value != nil else {
+                continue
+            }
+            return date(milliseconds: data["timestamp"]!.int64Value!)
+        }
+        return nil
+    }
+
+    private func date(milliseconds: Int64) -> Date? {
+        guard milliseconds > 0 else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(milliseconds) / 1000)
+    }
+
+    private func synchronize(candidate: HistoryCandidate, assetCache: HistoryAssetCache) async throws {
+        var local = imageHistory.first { $0.promptId?.lowercased() == candidate.promptId }
+        var inputPaths = local?.inputFilePaths ?? []
+
+        for (index, reference) in candidate.inputReferences.enumerated() {
+            if inputPaths.indices.contains(index), fileService.imageExists(path: inputPaths[index]) {
+                continue
+            }
+            let path = try await downloadAndSave(reference: reference, cache: assetCache)
+            if inputPaths.indices.contains(index) {
+                inputPaths[index] = path
+            } else {
+                inputPaths.append(path)
+            }
+        }
+
+        var outputPath = local?.outputFilePath
+        if !fileService.imageExists(path: outputPath) {
+            outputPath = try await downloadAndSave(reference: candidate.outputReference, cache: assetCache)
+        }
+
+        if var local {
+            guard local.inputFilePaths != inputPaths || local.outputFilePath != outputPath else { return }
+            local.inputFilePaths = inputPaths
+            local.outputFilePath = outputPath
+            db.updateAssets(history: local)
+            replaceHistory(local)
+            return
+        }
+
+        guard let outputPath else { return }
+        let size = imageSize(path: inputPaths.first)
+        let promptEmbedding = try? await mlService.textEmbedding(for: candidate.prompt)
+        var inputEmbedding: [Float]? = nil
+        if let inputPath = inputPaths.first {
+            inputEmbedding = try? await mlService.imageEmbedding(for: fileService.loadImage(path: inputPath))
+        }
+        let outputEmbedding = try? await mlService.imageEmbedding(for: fileService.loadImage(path: outputPath))
+        let imported = ImageHistoryModel(
+            id: UUID().uuidString,
+            start: candidate.start,
+            end: candidate.end,
+            prompt: candidate.prompt,
+            promptId: candidate.promptId,
+            promptEmbedding: promptEmbedding,
+            negativePrompt: candidate.negativePrompt,
+            model: candidate.model,
+            sampler: candidate.sampler,
+            steps: candidate.steps,
+            size: size,
+            seed: candidate.seed,
+            inputFilePaths: inputPaths,
+            inputEmbedding: inputEmbedding,
+            outputFilePath: outputPath,
+            outputEmbedding: outputEmbedding,
+            session: candidate.session,
+            sequence: 0,
+            loras: []
+        )
+        db.save(history: imported)
+        imageHistory.append(imported)
+    }
+
+    private func downloadAndSave(reference: HistoryCandidate.ImageReference, cache: HistoryAssetCache) async throws -> String {
+        let key = "\(reference.type.rawValue)|\(reference.subfolder)|\(reference.filename)"
+        if let cached = cache.paths[key] {
+            return cached
+        }
+        let data = try await comfyUIClient.imageData(named: reference.filename, subfolder: reference.subfolder, type: reference.type)
+        guard let path = fileService.save(imageData: data) else {
+            throw APIError.requestError("unable to save ComfyUI image \(reference.filename)")
+        }
+        cache.paths[key] = path
+        return path
+    }
+
+    private func imageSize(path: String?) -> Int {
+        guard let path else { return 512 }
+        let image = fileService.loadImage(path: path)
+        if let cgImage = image.cgImage {
+            return max(cgImage.width, cgImage.height)
+        }
+        return max(Int(image.size.width), Int(image.size.height))
+    }
+
+    private func replaceHistory(_ history: ImageHistoryModel) {
+        if let index = imageHistory.firstIndex(where: { $0.id == history.id }) {
+            imageHistory[index] = history
+        }
+        if lastHistory?.id == history.id {
+            lastHistory = history
+        }
     }
     
     func migrateHistoryEmbeddingsOnStartup() {

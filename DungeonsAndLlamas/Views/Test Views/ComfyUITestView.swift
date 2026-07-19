@@ -575,6 +575,7 @@ private class ComfyUITestViewModel {
             id: historyId,
             start: Date.now,
             prompt: prompt,
+            promptId: promptId,
             negativePrompt: useTwoImageWorkflow ? "Flux2 Klein 2 image edit" : "Flux2 Klein image edit",
             model: "ComfyUI Flux2 Klein 4B",
             sampler: "euler",

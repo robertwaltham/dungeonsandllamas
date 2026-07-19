@@ -79,6 +79,32 @@ class FileService {
 
         return filename
     }
+
+    func save(imageData: Data) -> String? {
+        guard let image = UIImage(data: imageData) else {
+            return nil
+        }
+        let filename = NSUUID().uuidString + ".png"
+        let fileURL = imageDirectory().appending(component: filename)
+        do {
+            guard let pngData = image.pngData() else {
+                return nil
+            }
+            try pngData.write(to: fileURL)
+            return filename
+        } catch {
+            print(error.localizedDescription)
+            return nil
+        }
+    }
+
+    func imageExists(path: String?) -> Bool {
+        guard let path, !path.isEmpty else {
+            return false
+        }
+        let fileURL = imageDirectory().appending(path: path)
+        return FileManager.default.fileExists(atPath: fileURL.path) && UIImage(contentsOfFile: fileURL.path) != nil
+    }
     
     func loadImage(path: String) -> UIImage {
         do {

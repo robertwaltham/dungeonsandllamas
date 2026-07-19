@@ -144,6 +144,77 @@ actor ComfyUIClient {
         let outputs: [String: NodeOutput]
     }
 
+    struct HistoryRecord: Decodable, Sendable {
+        let prompt: PromptRecord
+        let outputs: [String: NodeOutput]
+        let status: HistoryStatus
+
+        struct PromptRecord: Decodable, Sendable {
+            let number: Int
+            let promptId: String
+            let workflow: [String: WorkflowNode]
+            let clientId: String?
+            let createTime: Int64?
+
+            init(from decoder: Decoder) throws {
+                var container = try decoder.unkeyedContainer()
+                number = try container.decode(Int.self)
+                promptId = try container.decode(String.self)
+                workflow = try container.decode([String: WorkflowNode].self)
+                let metadata = try container.decode([String: JSONValue].self)
+                clientId = metadata["client_id"]?.stringValue
+                createTime = metadata["create_time"]?.int64Value
+            }
+        }
+
+        struct WorkflowNode: Decodable, Sendable {
+            let classType: String
+            let inputs: [String: JSONValue]
+        }
+
+        struct HistoryStatus: Decodable, Sendable {
+            let statusStr: String
+            let completed: Bool
+            let messages: [[JSONValue]]
+        }
+
+        indirect enum JSONValue: Decodable, Sendable {
+            case string(String)
+            case number(Double)
+            case bool(Bool)
+            case object([String: JSONValue])
+            case array([JSONValue])
+            case null
+
+            init(from decoder: Decoder) throws {
+                let container = try decoder.singleValueContainer()
+                if container.decodeNil() {
+                    self = .null
+                } else if let value = try? container.decode(String.self) {
+                    self = .string(value)
+                } else if let value = try? container.decode(Bool.self) {
+                    self = .bool(value)
+                } else if let value = try? container.decode(Double.self) {
+                    self = .number(value)
+                } else if let value = try? container.decode([String: JSONValue].self) {
+                    self = .object(value)
+                } else {
+                    self = .array(try container.decode([JSONValue].self))
+                }
+            }
+
+            var stringValue: String? {
+                guard case .string(let value) = self else { return nil }
+                return value
+            }
+
+            var int64Value: Int64? {
+                guard case .number(let value) = self else { return nil }
+                return Int64(value)
+            }
+        }
+    }
+
     struct NodeOutput: Decodable, Sendable {
         let images: [ImageReference]?
     }
@@ -407,6 +478,23 @@ actor ComfyUIClient {
         try await get(.history)
     }
 
+    func typedHistory() async throws -> [String: HistoryRecord] {
+        let rawRecords = try await history()
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        var records = [String: HistoryRecord]()
+
+        for (key, rawRecord) in rawRecords {
+            guard let data = try? JSONEncoder().encode(rawRecord),
+                  let record = try? decoder.decode(HistoryRecord.self, from: data),
+                  key.lowercased() == record.prompt.promptId.lowercased() else {
+                continue
+            }
+            records[key] = record
+        }
+        return records
+    }
+
     func history(promptId: String) async throws -> [String: AnyCodable] {
         try await get(.historyItem(promptId))
     }
@@ -499,6 +587,23 @@ actor ComfyUIClient {
         }
 
         return try ComfyUIClient.saveTemporaryImage(data: data, filename: filename, contentType: contentType)
+    }
+
+    func imageData(named filename: String, subfolder: String = "", type: ViewImageType = .output) async throws -> Data {
+        let queryItems = [
+            URLQueryItem(name: "filename", value: filename),
+            URLQueryItem(name: "subfolder", value: subfolder),
+            URLQueryItem(name: "type", value: type.rawValue)
+        ]
+        let request = try ComfyUIClient.request(endpoint: .view, method: .get, queryItems: queryItems)
+        let (data, response) = try await self.data(for: request)
+        try ComfyUIClient.validate(response: response, data: data)
+        guard let httpResponse = response as? HTTPURLResponse,
+              let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type"),
+              contentType.lowercased().hasPrefix("image/") else {
+            throw APIError.requestError("expected image response")
+        }
+        return data
     }
 
     func metadata(folderName: String, filename: String) async throws -> [String: AnyCodable] {
