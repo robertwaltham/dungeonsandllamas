@@ -46,8 +46,6 @@ struct PencilCanvasView: UIViewRepresentable {
             let picker = PKToolPicker()
             picker.addObserver(context.coordinator)
             picker.addObserver(view)
-            picker.setVisible(true, forFirstResponder: view)
-            view.becomeFirstResponder()
             context.coordinator.picker = picker
         }
 
@@ -62,10 +60,9 @@ struct PencilCanvasView: UIViewRepresentable {
         }
                 
         if showTooltip.wrappedValue {
-            DispatchQueue.main.async {
-                uiView.becomeFirstResponder()
-            }
+            context.coordinator.scheduleToolPickerPresentation(for: uiView)
         } else {
+            context.coordinator.cancelToolPickerPresentation()
             uiView.resignFirstResponder()
         }
         
@@ -97,6 +94,40 @@ struct PencilCanvasView: UIViewRepresentable {
         var dataChanged: ((PKDrawing) -> Void)?
         var picker: PKToolPicker?
         var skipUpdate = true
+        private var toolPickerPresentationWorkItem: DispatchWorkItem?
+        private var hasPresentedToolPicker = false
+        private var toolPickerPresentationCancelled = false
+
+        func scheduleToolPickerPresentation(for canvasView: PKCanvasView) {
+            guard picker != nil, !hasPresentedToolPicker, toolPickerPresentationWorkItem == nil else {
+                return
+            }
+
+            toolPickerPresentationCancelled = false
+
+            // Let the navigation transition finish before PencilKit creates and animates
+            // its tool picker. Doing this during makeUIView makes the first push stutter.
+            let workItem = DispatchWorkItem { [weak self, weak canvasView] in
+                guard let self, !self.toolPickerPresentationCancelled,
+                      let canvasView, canvasView.window != nil else {
+                    self?.toolPickerPresentationWorkItem = nil
+                    return
+                }
+
+                self.picker?.setVisible(true, forFirstResponder: canvasView)
+                canvasView.becomeFirstResponder()
+                self.hasPresentedToolPicker = true
+                self.toolPickerPresentationWorkItem = nil
+            }
+            toolPickerPresentationWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
+        }
+
+        func cancelToolPickerPresentation() {
+            toolPickerPresentationCancelled = true
+            toolPickerPresentationWorkItem?.cancel()
+            toolPickerPresentationWorkItem = nil
+        }
 
         // TODO: figure out why this throws concurrency warnings
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
