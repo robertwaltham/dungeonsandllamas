@@ -3,7 +3,7 @@
 
 This is a project to explore the capabilties of modern LLM and Stable Diffusion AI as part of an iOS app using a "Bring your own cloud" approach. 
 
-<img width="600" alt="IMG_0206" src="https://github.com/user-attachments/assets/5f2d0d60-3a3a-4257-a08f-33380e649072" />
+<img width="400" alt="IMG_0206" src="https://github.com/user-attachments/assets/5f2d0d60-3a3a-4257-a08f-33380e649072" />
 <img width="300" alt="IMG_4454" src="https://github.com/user-attachments/assets/65e8ba40-2bc3-4960-8d5e-6c9856de3677" />
 
 ### App Architecture
