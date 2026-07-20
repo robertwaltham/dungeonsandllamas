@@ -36,7 +36,7 @@ struct SDHistoryView: View {
     }
     
     private var displayedHistory: [ImageHistoryModel] {
-        let history = searchResults ?? generationService.imageHistory.reversed()
+        let history = searchResults ?? generationService.imageHistory
         return history.filter { entry in
             var result = true
             if let filter {
@@ -130,11 +130,16 @@ struct SDHistoryView: View {
                     LazyVGrid(columns: columns) {
                         ForEach(displayedHistory) { history in
                             
-                            Image(uiImage: generationService.loadOutputImage(history: history))
+                            Image(uiImage: generationService.fileService.loadImage(path: history.outputFilePath ?? "", maxPixelSize: 256))
                                 .resizable()
                                 .scaledToFit()
                                 .onTapGesture {
                                     flowState.sheet(.sdHistoryDetail(history: history))
+                                }
+                                .onAppear {
+                                    if searchResults == nil && history.id == generationService.imageHistory.last?.id {
+                                        generationService.loadMoreHistory()
+                                    }
                                 }
                             
                         }

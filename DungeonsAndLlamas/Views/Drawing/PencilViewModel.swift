@@ -197,7 +197,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
         
         generationService.db.save(history: newHistory)
-        generationService.imageHistory.append(newHistory)
+        generationService.addHistory(newHistory)
         savedResults.append(bracket.id)
         pencilLogger.debug("Pencil result saved")
     }
@@ -223,7 +223,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
             newHistory.loras[i].id = NSUUID().uuidString
         }
         generationService.db.save(history: newHistory)
-        generationService.imageHistory.append(newHistory)
+        generationService.addHistory(newHistory)
         savedResults.append(stepResult.id)
         pencilLogger.debug("Pencil result saved")
     }

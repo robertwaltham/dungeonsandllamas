@@ -57,6 +57,9 @@ class DatabaseService {
             try ImageHistoryModel.createTable(db: db)
             try LoraHistoryModel.createTable(db: db)
             try PhotoIndexModel.createTable(db: db)
+            try ImageHistoryModel.createIndexes(db: db)
+            try LoraHistoryModel.createIndexes(db: db)
+            try PhotoIndexModel.createIndexes(db: db)
             try migrateDatabase()
         } catch {
             fatalError(error.localizedDescription)
@@ -97,6 +100,13 @@ class DatabaseService {
         if currentVersion < 5 {
             try migrateLegacyPhotoIndex()
             db.userVersion = 5
+        }
+
+        if currentVersion < 6 {
+            try ImageHistoryModel.createIndexes(db: db)
+            try LoraHistoryModel.createIndexes(db: db)
+            try PhotoIndexModel.createIndexes(db: db)
+            db.userVersion = 6
         }
     }
 
@@ -142,6 +152,56 @@ extension DatabaseService {
             return []
         }
     }
+
+    func loadHistoryPage(limit: Int, offset: Int = 0) -> [ImageHistoryModel] {
+        do {
+            return try ImageHistoryModel.loadPage(db: db, limit: limit, offset: offset)
+        } catch {
+            databaseLogger.error("History page load failed: \(String(describing: error), privacy: .private)")
+            return []
+        }
+    }
+
+    func loadHistoryEmbeddingBatch(limit: Int, offset: Int = 0) -> [ImageHistoryModel] {
+        do {
+            return try ImageHistoryModel.loadPage(db: db, limit: limit, offset: offset, includeEmbeddings: true)
+        } catch {
+            databaseLogger.error("History embedding batch load failed: \(String(describing: error), privacy: .private)")
+            return []
+        }
+    }
+
+    func historyCount() -> Int {
+        (try? db.scalar(ImageHistoryModel.table().count)) ?? 0
+    }
+
+    func historyEmbeddingScores(query: [Float], threshold: Float = 0.2) -> [(id: String, score: Float)] {
+        do {
+            return try ImageHistoryModel.embeddingScores(db: db, query: query, threshold: threshold)
+        } catch {
+            databaseLogger.error("History embedding search failed: \(String(describing: error), privacy: .private)")
+            return []
+        }
+    }
+
+    func loadHistory(ids: [String]) -> [ImageHistoryModel] {
+        guard !ids.isEmpty else { return [] }
+        do {
+            return try ImageHistoryModel.loadDisplay(db: db, ids: ids)
+        } catch {
+            databaseLogger.error("History result load failed: \(String(describing: error), privacy: .private)")
+            return []
+        }
+    }
+
+    func loadHistory(promptId: String) -> ImageHistoryModel? {
+        do {
+            return try ImageHistoryModel.load(db: db, promptId: promptId)
+        } catch {
+            databaseLogger.error("History lookup failed: \(String(describing: error), privacy: .private)")
+            return nil
+        }
+    }
     
     func save(history: ImageHistoryModel) {
         do {
@@ -172,6 +232,15 @@ extension DatabaseService {
             return try PhotoIndexModel.load(db: db)
         } catch {
             databaseLogger.error("Photo index load failed: \(String(describing: error), privacy: .private)")
+            return []
+        }
+    }
+
+    func loadPhotoIndexSummaries() -> [PhotoIndexModel] {
+        do {
+            return try PhotoIndexModel.loadSummaries(db: db)
+        } catch {
+            databaseLogger.error("Photo summary load failed: \(String(describing: error), privacy: .private)")
             return []
         }
     }
@@ -246,6 +315,10 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
         })
     }
 
+    fileprivate static func createIndexes(db: Connection) throws {
+        try db.run(table().createIndex(creationDateExp, ifNotExists: true))
+    }
+
     fileprivate func save(db: Connection) throws {
         try db.run(Self.table().insert(or: .replace,
             Self.idExp <- id,
@@ -261,6 +334,16 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
 
     fileprivate static func load(db: Connection) throws -> [PhotoIndexModel] {
         try db.prepare(table().order(creationDateExp.desc)).map(Self.model)
+    }
+
+    fileprivate static func loadSummaries(db: Connection) throws -> [PhotoIndexModel] {
+        try db.prepare(table().order(creationDateExp.desc)).map { row in
+            PhotoIndexModel(id: row[idExp], creationDate: row[creationDateExp],
+                            modificationDate: row[modificationDateExp], thumbnailPath: row[thumbnailPathExp],
+                            sourceState: row[sourceStateExp], embedding: nil,
+                            categories: decodedCategories(row[categoriesExp]),
+                            processingVersion: row[processingVersionExp])
+        }
     }
 
     fileprivate static func load(db: Connection, id: String) throws -> PhotoIndexModel? {
@@ -343,6 +426,10 @@ struct LoraHistoryModel: Codable, Identifiable, Hashable {
             }
         )
     }
+
+    fileprivate static func createIndexes(db: Connection) throws {
+        try db.run(table().createIndex(historyModelIdExp, ifNotExists: true))
+    }
     
     fileprivate func save(db: Connection) throws { // TODO: what about mutability
         try db.run(
@@ -363,6 +450,19 @@ struct LoraHistoryModel: Codable, Identifiable, Hashable {
                                            weight: entry[weightExp],
                                            historyModelId:
                                             entry[historyModelIdExp]))
+        }
+        return result
+    }
+
+    fileprivate static func load(db: Connection, parentIds: [String]) throws -> [String: [LoraHistoryModel]] {
+        guard !parentIds.isEmpty else { return [:] }
+        var result = [String: [LoraHistoryModel]]()
+        for entry in try db.prepare(table().filter(parentIds.contains(historyModelIdExp))) {
+            let model = LoraHistoryModel(id: entry[idExp],
+                                          name: entry[nameExp],
+                                          weight: entry[weightExp],
+                                          historyModelId: entry[historyModelIdExp])
+            result[model.historyModelId, default: []].append(model)
         }
         return result
     }
@@ -501,6 +601,105 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         }
         return result
     }
+
+    fileprivate static func loadPage(db: Connection, limit: Int, offset: Int, includeEmbeddings: Bool = false) throws -> [ImageHistoryModel] {
+        let boundedLimit = max(1, min(limit, 500))
+        let rows = Array(try db.prepare(table().order(startExp.desc).limit(boundedLimit, offset: max(0, offset))))
+        let ids = rows.map { $0[idExp] }
+        let lorasByParent = try LoraHistoryModel.load(db: db, parentIds: ids)
+        return rows.map { entry in
+            ImageHistoryModel(id: entry[idExp],
+                              start: entry[startExp],
+                              end: entry[endExp],
+                              prompt: entry[promptExp],
+                              promptId: entry[promptIdExp],
+                              promptEmbedding: includeEmbeddings ? decodedEmbedding(entry[promptEmbeddingExp]) : nil,
+                              negativePrompt: entry[negativePromptExp],
+                              model: entry[modelExp],
+                              sampler: entry[samplerExp],
+                              steps: entry[stepsExp],
+                              size: entry[sizeExp],
+                              seed: entry[seedExp],
+                              inputFilePaths: decodedInputFilePaths(entry[inputFilePathsExp]),
+                              inputEmbedding: includeEmbeddings ? decodedEmbedding(entry[inputEmbeddingExp]) : nil,
+                              outputFilePath: entry[outputFilePathExp],
+                              outputEmbedding: includeEmbeddings ? decodedEmbedding(entry[outputEmbeddingExp]) : nil,
+                              drawingFilePath: entry[drawingFilePathExp],
+                              depthFilePath: entry[depthFilePathExp],
+                              errorDescription: entry[errorDescriptionExp],
+                              session: entry[sessionExp],
+                              sequence: entry[sequenceExp],
+                              loras: lorasByParent[entry[idExp]] ?? [])
+        }
+    }
+
+    fileprivate static func load(db: Connection, promptId: String) throws -> ImageHistoryModel? {
+        guard let row = try db.prepare(table().filter(promptIdExp == promptId).limit(1)).map({ $0 }).first else {
+            return nil
+        }
+        let loras = try LoraHistoryModel.load(db: db, parentId: row[idExp])
+        return ImageHistoryModel(id: row[idExp],
+                                 start: row[startExp],
+                                 end: row[endExp],
+                                 prompt: row[promptExp],
+                                 promptId: row[promptIdExp],
+                                 promptEmbedding: nil,
+                                 negativePrompt: row[negativePromptExp],
+                                 model: row[modelExp],
+                                 sampler: row[samplerExp],
+                                 steps: row[stepsExp],
+                                 size: row[sizeExp],
+                                 seed: row[seedExp],
+                                 inputFilePaths: decodedInputFilePaths(row[inputFilePathsExp]),
+                                 inputEmbedding: nil,
+                                 outputFilePath: row[outputFilePathExp],
+                                 outputEmbedding: nil,
+                                 drawingFilePath: row[drawingFilePathExp],
+                                 depthFilePath: row[depthFilePathExp],
+                                 errorDescription: row[errorDescriptionExp],
+                                 session: row[sessionExp],
+                                 sequence: row[sequenceExp],
+                                 loras: loras)
+    }
+
+    fileprivate static func loadDisplay(db: Connection, ids: [String]) throws -> [ImageHistoryModel] {
+        let rows = try db.prepare(table().filter(ids.contains(idExp)))
+        let materialized = Array(rows)
+        let lorasByParent = try LoraHistoryModel.load(db: db, parentIds: materialized.map { $0[idExp] })
+        return materialized.map { entry in
+            ImageHistoryModel(id: entry[idExp], start: entry[startExp], end: entry[endExp],
+                              prompt: entry[promptExp], promptId: entry[promptIdExp], promptEmbedding: nil,
+                              negativePrompt: entry[negativePromptExp], model: entry[modelExp], sampler: entry[samplerExp],
+                              steps: entry[stepsExp], size: entry[sizeExp], seed: entry[seedExp],
+                              inputFilePaths: decodedInputFilePaths(entry[inputFilePathsExp]), inputEmbedding: nil,
+                              outputFilePath: entry[outputFilePathExp], outputEmbedding: nil,
+                              drawingFilePath: entry[drawingFilePathExp], depthFilePath: entry[depthFilePathExp],
+                              errorDescription: entry[errorDescriptionExp], session: entry[sessionExp],
+                              sequence: entry[sequenceExp], loras: lorasByParent[entry[idExp]] ?? [])
+        }
+    }
+
+    fileprivate static func embeddingScores(db: Connection, query: [Float], threshold: Float) throws -> [(id: String, score: Float)] {
+        guard !query.isEmpty else { return [] }
+        let qMagnitude = sqrt(query.reduce(Float.zero) { $0 + ($1 * $1) })
+        guard qMagnitude > 0 else { return [] }
+        var scores = [(id: String, score: Float)]()
+        for row in try db.prepare(table()) {
+            for data in [row[inputEmbeddingExp], row[outputEmbeddingExp]] {
+                guard let embedding = decodedEmbedding(data), embedding.count == query.count else { continue }
+                let dot = zip(query, embedding).reduce(Float.zero) { $0 + ($1.0 * $1.1) }
+                let eMagnitude = sqrt(embedding.reduce(Float.zero) { $0 + ($1 * $1) })
+                guard qMagnitude > 0, eMagnitude > 0 else { continue }
+                let score = dot / (qMagnitude * eMagnitude)
+                if score > threshold { scores.append((row[idExp], score)) }
+            }
+        }
+        var best = [String: Float]()
+        for score in scores where best[score.id, default: -Float.greatestFiniteMagnitude] < score.score {
+            best[score.id] = score.score
+        }
+        return best.map { ($0.key, $0.value) }.sorted { $0.score > $1.score }
+    }
     
     fileprivate static func createTable(db: Connection) throws {
         try db.run(
@@ -527,6 +726,10 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
                 t.column(sequenceExp)
             }
         )
+    }
+
+    fileprivate static func createIndexes(db: Connection) throws {
+        try db.run(table().createIndex(startExp, ifNotExists: true))
     }
     
     fileprivate static func table() -> Table {

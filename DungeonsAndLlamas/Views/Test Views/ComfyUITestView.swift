@@ -528,7 +528,7 @@ private class ComfyUITestViewModel {
             let embeddingInputImage = useTwoImageWorkflow ? selectedPhotoLibraryImage?.image ?? inputImage.image : inputImage.image
             history.inputEmbedding = try? await generationService.mlService.imageEmbedding(for: embeddingInputImage)
             generationService.db.save(history: history)
-            generationService.imageHistory.append(history)
+            generationService.addHistory(history)
             generationService.lastHistory = history
             randomizeSeed()
             progress = nil

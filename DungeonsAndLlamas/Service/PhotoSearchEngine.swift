@@ -21,7 +21,7 @@ enum PhotoSearchError: LocalizedError {
 }
 
 protocol PhotoDistanceEngine {
-    func distances(query: [Float], candidates: [[Float]]) throws -> [Float]
+    func distances(query: [Float], flattenedCandidates: [Float], candidateCount: Int) throws -> [Float]
 }
 
 final class MetalPhotoDistanceEngine: PhotoDistanceEngine {
@@ -41,16 +41,14 @@ final class MetalPhotoDistanceEngine: PhotoDistanceEngine {
         self.pipeline = pipeline
     }
 
-    func distances(query: [Float], candidates: [[Float]]) throws -> [Float] {
+    func distances(query: [Float], flattenedCandidates: [Float], candidateCount: Int) throws -> [Float] {
         guard let commandQueue, let pipeline else {
             throw PhotoSearchError.metalUnavailable
         }
-        guard !query.isEmpty, !candidates.isEmpty else { return [] }
+        guard !query.isEmpty, candidateCount > 0 else { return [] }
 
         let dimension = query.count
-        let flattened = candidates.flatMap { $0 }
-        guard flattened.count == dimension * candidates.count,
-              candidates.allSatisfy({ $0.count == dimension }) else {
+        guard flattenedCandidates.count == dimension * candidateCount else {
             throw PhotoSearchError.metalExecutionFailed("Search embeddings have incompatible dimensions.")
         }
 
@@ -60,26 +58,26 @@ final class MetalPhotoDistanceEngine: PhotoDistanceEngine {
         }
 
         guard let queryBuffer = deviceBuffer(commandQueue: commandQueue, values: query),
-              let candidateBuffer = deviceBuffer(commandQueue: commandQueue, values: flattened),
+              let candidateBuffer = deviceBuffer(commandQueue: commandQueue, values: flattenedCandidates),
               let outputBuffer = commandQueue.device.makeBuffer(
-                length: candidates.count * MemoryLayout<Float>.stride,
+                length: candidateCount * MemoryLayout<Float>.stride,
                 options: .storageModeShared
               ) else {
             throw PhotoSearchError.metalExecutionFailed("Unable to allocate Metal search buffers.")
         }
 
         var dimensionValue = UInt32(dimension)
-        var candidateCount = UInt32(candidates.count)
+        var candidateCountValue = UInt32(candidateCount)
         encoder.setComputePipelineState(pipeline)
         encoder.setBuffer(queryBuffer, offset: 0, index: 0)
         encoder.setBuffer(candidateBuffer, offset: 0, index: 1)
         encoder.setBuffer(outputBuffer, offset: 0, index: 2)
         encoder.setBytes(&dimensionValue, length: MemoryLayout<UInt32>.size, index: 3)
-        encoder.setBytes(&candidateCount, length: MemoryLayout<UInt32>.size, index: 4)
+        encoder.setBytes(&candidateCountValue, length: MemoryLayout<UInt32>.size, index: 4)
 
         let width = min(pipeline.threadExecutionWidth, pipeline.maxTotalThreadsPerThreadgroup)
         encoder.dispatchThreads(
-            MTLSize(width: candidates.count, height: 1, depth: 1),
+            MTLSize(width: candidateCount, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: max(1, width), height: 1, depth: 1)
         )
         encoder.endEncoding()
@@ -91,8 +89,8 @@ final class MetalPhotoDistanceEngine: PhotoDistanceEngine {
         }
 
         return outputBuffer.contents()
-            .bindMemory(to: Float.self, capacity: candidates.count)
-            .toArray(count: candidates.count)
+            .bindMemory(to: Float.self, capacity: candidateCount)
+            .toArray(count: candidateCount)
     }
 
     private func deviceBuffer(commandQueue: MTLCommandQueue, values: [Float]) -> MTLBuffer? {

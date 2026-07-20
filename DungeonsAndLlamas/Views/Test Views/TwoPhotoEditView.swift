@@ -330,7 +330,7 @@ private final class TwoPhotoEditViewModel {
             history.promptEmbedding = try? await generationService.mlService.textEmbedding(for: prompt)
             history.inputEmbedding = try? await generationService.mlService.combinedImageEmbedding(for: [firstImage.prepared.image, secondImage.prepared.image])
             generationService.db.save(history: history)
-            generationService.imageHistory.append(history)
+            generationService.addHistory(history)
             generationService.lastHistory = history
         }
     }

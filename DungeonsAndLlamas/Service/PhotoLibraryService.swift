@@ -161,6 +161,10 @@ final class PhotoLibraryService: NSObject {
         super.init()
     }
 
+    deinit {
+        indexingTask?.cancel()
+    }
+
     func requestAccessIfNeeded() async {
         let current = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         photoLibraryLogger.debug("Photo access check started: status=\(current.rawValue, privacy: .public)")
@@ -218,7 +222,7 @@ final class PhotoLibraryService: NSObject {
     }
 
     func categories() async -> [PhotoCategory] {
-        let records = database.loadPhotoIndex().map(IndexedPhoto.init)
+        let records = database.loadPhotoIndexSummaries().map(IndexedPhoto.init)
         let grouped = Dictionary(grouping: records.flatMap(\.categories), by: \.id)
         return grouped.values.compactMap { values in
             guard let first = values.first else { return nil }
@@ -227,7 +231,9 @@ final class PhotoLibraryService: NSObject {
     }
 
     func page(query: PhotoQuery, cursor: PhotoPageCursor? = nil) async throws -> PhotoPage {
-        var records = database.loadPhotoIndex().map(IndexedPhoto.init)
+        var records = query.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? database.loadPhotoIndexSummaries().map(IndexedPhoto.init)
+            : database.loadPhotoIndex().map(IndexedPhoto.init)
         let selected = query.categoryIDs
         if !selected.isEmpty {
             records = records.filter { photo in
@@ -242,9 +248,13 @@ final class PhotoLibraryService: NSObject {
                       photoEmbedding.count == embedding.count else { return nil }
                 return (photo, photoEmbedding)
             }
+            let flattenedCandidates = candidates.reduce(into: [Float]()) { result, candidate in
+                result.append(contentsOf: candidate.1)
+            }
             let distances = try searchEngine.distances(
                 query: embedding,
-                candidates: candidates.map(\.1)
+                flattenedCandidates: flattenedCandidates,
+                candidateCount: candidates.count
             )
             records = zip(candidates, distances)
                 .sorted { $0.1 < $1.1 }
@@ -305,7 +315,7 @@ final class PhotoLibraryService: NSObject {
 
     private func reconcileLibrary() async {
         let currentToken = PHPhotoLibrary.shared().currentChangeToken
-        let existingAtStart = database.loadPhotoIndex().map(IndexedPhoto.init)
+        let existingAtStart = database.loadPhotoIndexSummaries().map(IndexedPhoto.init)
         photoLibraryLogger.debug("Reconciling photo library: indexedAtStart=\(existingAtStart.count, privacy: .public)")
         if let storedToken = loadChangeToken(), storedToken.isEqual(currentToken), !existingAtStart.isEmpty {
             indexedCount = existingAtStart.count
@@ -378,7 +388,7 @@ final class PhotoLibraryService: NSObject {
                 pendingCount = max(result.count - indexedCount, 0)
                 photoLibraryLogger.debug("Photo change sync progress: indexed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
             }
-            indexedCount = database.loadPhotoIndex().count
+            indexedCount = database.loadPhotoIndexSummaries().count
             pendingCount = 0
             saveChangeToken(currentToken)
             return true

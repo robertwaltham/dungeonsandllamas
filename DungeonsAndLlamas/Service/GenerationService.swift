@@ -19,7 +19,7 @@ class GenerationService {
     var llmClient = LargeLangageModelClient()
     var stableDiffusionClient = StableDiffusionClient()
     var comfyUIClient = ComfyUIClient()
-    var mlService = MLService()
+    let mlService: MLService
     
     var fileService = FileService()
     var db: DatabaseService
@@ -30,8 +30,18 @@ class GenerationService {
     
     public init() {
         let database = DatabaseService()
+        let mlService = MLService()
         db = database
-        photos = PhotoLibraryService(database: database)
+        self.mlService = mlService
+        photos = PhotoLibraryService(database: database, ml: mlService)
+    }
+
+    deinit {
+        statusTask?.cancel()
+        modelTask?.cancel()
+        comfyUIModelsTask?.cancel()
+        embeddingMigrationTask?.cancel()
+        historySyncTask?.cancel()
     }
     
     var comfyUIClientId: String {
@@ -111,9 +121,12 @@ class GenerationService {
     var controlNetModels: [String] = []
     var controlNetModules: [String] = []
     
+    private static let maxLLMHistoryEntries = 100
     var LLMHistory = [LLMHistoryEntry]()
     var imageHistory = [ImageHistoryModel]()
     var lastHistory: ImageHistoryModel?
+    private static let historyPageSize = 60
+    private(set) var hasMoreHistory = false
 
     enum HistorySyncPhase: Equatable, Sendable {
         case fetching
@@ -125,18 +138,49 @@ class GenerationService {
     var imageSize = 512
     var steps = 20
     
-    private(set) var statusTask: Task<Void, Never>?
-    private(set) var modelTask: Task<Void, Never>?
-    private(set) var comfyUIModelsTask: Task<Void, Never>?
-    private(set) var embeddingMigrationTask: Task<Void, Never>?
-    private(set) var historySyncTask: Task<Void, Never>?
+    @ObservationIgnored
+    nonisolated(unsafe) private(set) var statusTask: Task<Void, Never>?
+    @ObservationIgnored
+    nonisolated(unsafe) private(set) var modelTask: Task<Void, Never>?
+    @ObservationIgnored
+    nonisolated(unsafe) private(set) var comfyUIModelsTask: Task<Void, Never>?
+    @ObservationIgnored
+    nonisolated(unsafe) private(set) var embeddingMigrationTask: Task<Void, Never>?
+    @ObservationIgnored
+    nonisolated(unsafe) private(set) var historySyncTask: Task<Void, Never>?
     
     private var storedPrompt: String?
     
     //MARK: - History
     
     func loadHistory() {
-        imageHistory = db.loadHistory()
+        imageHistory = db.loadHistoryPage(limit: Self.historyPageSize)
+        hasMoreHistory = imageHistory.count == Self.historyPageSize
+        lastHistory = imageHistory.first
+    }
+
+    func loadMoreHistory() {
+        guard hasMoreHistory else { return }
+        let page = db.loadHistoryPage(limit: Self.historyPageSize, offset: imageHistory.count)
+        imageHistory.append(contentsOf: page)
+        hasMoreHistory = page.count == Self.historyPageSize
+    }
+
+    private func insertHistory(_ history: ImageHistoryModel) {
+        var displayHistory = history
+        displayHistory.promptEmbedding = nil
+        displayHistory.inputEmbedding = nil
+        displayHistory.outputEmbedding = nil
+        imageHistory.insert(displayHistory, at: 0)
+        if imageHistory.count > Self.historyPageSize {
+            imageHistory.removeLast()
+        }
+        hasMoreHistory = true
+        lastHistory = displayHistory
+    }
+
+    func addHistory(_ history: ImageHistoryModel) {
+        insertHistory(history)
     }
 
     func logStartupSummary() {
@@ -365,6 +409,7 @@ class GenerationService {
 
     private func synchronize(candidate: HistoryCandidate, assetCache: HistoryAssetCache) async throws {
         let local = imageHistory.first { $0.promptId?.lowercased() == candidate.promptId }
+            ?? db.loadHistory(promptId: candidate.promptId)
         var inputPaths = local?.inputFilePaths ?? []
 
         for (index, reference) in candidate.inputReferences.enumerated() {
@@ -427,7 +472,7 @@ class GenerationService {
             loras: []
         )
         db.save(history: imported)
-        imageHistory.append(imported)
+        insertHistory(imported)
     }
 
     private func downloadAndSave(reference: HistoryCandidate.ImageReference, cache: HistoryAssetCache) async throws -> String {
@@ -480,42 +525,59 @@ class GenerationService {
     private func migrateHistoryEmbeddings() async {
         let combinedInputMigrationKey = "combined-two-photo-input-embedding-v1"
         let shouldMigrateCombinedInputs = !UserDefaults.standard.bool(forKey: combinedInputMigrationKey)
-        for index in imageHistory.indices {
-            var history = imageHistory[index]
-            var didUpdate = false
-            let forceUpdate = false
-            
-            if (history.promptEmbedding == nil || forceUpdate) {
-                history.promptEmbedding = try? await mlService.textEmbedding(for: history.prompt)
-                didUpdate = history.promptEmbedding != nil
-            }
-            
-            if (history.inputEmbedding == nil || forceUpdate || (shouldMigrateCombinedInputs && isTwoPhotoHistory(history))) {
-                if isTwoPhotoHistory(history) {
-                    let inputImages = history.inputFilePaths.map { fileService.loadImage(path: $0) }
-                    history.inputEmbedding = try? await mlService.combinedImageEmbedding(for: inputImages)
-                } else if let inputImage = embeddingInputImage(for: history) {
-                    history.inputEmbedding = try? await mlService.imageEmbedding(for: inputImage)
+        let total = db.historyCount()
+        var offset = 0
+        while offset < total {
+            let batch = db.loadHistoryEmbeddingBatch(limit: 25, offset: offset)
+            guard !batch.isEmpty else { break }
+            for history in batch {
+                var history = history
+                var didUpdate = false
+                let forceUpdate = false
+
+                if (history.promptEmbedding == nil || forceUpdate) {
+                    history.promptEmbedding = try? await mlService.textEmbedding(for: history.prompt)
+                    didUpdate = history.promptEmbedding != nil
                 }
-                didUpdate = didUpdate || history.inputEmbedding != nil
+
+                if (history.inputEmbedding == nil || forceUpdate || (shouldMigrateCombinedInputs && isTwoPhotoHistory(history))) {
+                    if isTwoPhotoHistory(history) {
+                        let inputImages = history.inputFilePaths.map { fileService.loadImage(path: $0) }
+                        history.inputEmbedding = try? await mlService.combinedImageEmbedding(for: inputImages)
+                    } else if let inputImage = embeddingInputImage(for: history) {
+                        history.inputEmbedding = try? await mlService.imageEmbedding(for: inputImage)
+                    }
+                    didUpdate = didUpdate || history.inputEmbedding != nil
+                }
+
+                if (history.outputEmbedding == nil || forceUpdate),
+                   let outputFilePath = history.outputFilePath {
+                    let outputImage = fileService.loadImage(path: outputFilePath)
+                    history.outputEmbedding = try? await mlService.imageEmbedding(for: outputImage)
+                    didUpdate = didUpdate || history.outputEmbedding != nil
+                }
+
+                guard didUpdate else {
+                    continue
+                }
+
+                db.updateEmbeddings(history: history)
+                if let index = imageHistory.firstIndex(where: { $0.id == history.id }) {
+                    var displayHistory = history
+                    displayHistory.promptEmbedding = nil
+                    displayHistory.inputEmbedding = nil
+                    displayHistory.outputEmbedding = nil
+                    imageHistory[index] = displayHistory
+                }
+                if lastHistory?.id == history.id {
+                    var displayHistory = history
+                    displayHistory.promptEmbedding = nil
+                    displayHistory.inputEmbedding = nil
+                    displayHistory.outputEmbedding = nil
+                    lastHistory = displayHistory
+                }
             }
-            
-            if (history.outputEmbedding == nil || forceUpdate),
-               let outputFilePath = history.outputFilePath {
-                let outputImage = fileService.loadImage(path: outputFilePath)
-                history.outputEmbedding = try? await mlService.imageEmbedding(for: outputImage)
-                didUpdate = didUpdate || history.outputEmbedding != nil
-            }
-            
-            guard didUpdate else {
-                continue
-            }
-            
-            db.updateEmbeddings(history: history)
-            imageHistory[index] = history
-            if lastHistory?.id == history.id {
-                lastHistory = history
-            }
+            offset += batch.count
         }
         UserDefaults.standard.set(true, forKey: "combined-two-photo-input-embedding-v1")
     }
@@ -547,28 +609,13 @@ class GenerationService {
         
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedQuery.isEmpty else {
-            return imageHistory.reversed()
+            return imageHistory
         }
         
         let queryEmbedding = try await mlService.textEmbedding(for: trimmedQuery)
-        let scores = imageHistory.compactMap { history -> (history: ImageHistoryModel, score: Float)? in
-            let embeddings = [/*history.promptEmbedding,*/ history.inputEmbedding, history.outputEmbedding].compactMap { $0 }
-            let score = embeddings.compactMap { embedding in
-                try? MLService.cosineSimilarity(queryEmbedding, embedding)
-            }.max()
-            guard let score else {
-                return nil
-            }
-            return (history, score)
-        }
-        .filter {
-            $0.score > 0.2
-        }
-        .sorted { lhs, rhs in
-            lhs.score > rhs.score
-        }
-        
-        return scores.map(\.history)
+        let scores = db.historyEmbeddingScores(query: queryEmbedding, threshold: 0.2)
+        let recordsByID = Dictionary(uniqueKeysWithValues: db.loadHistory(ids: scores.map { $0.id }).map { ($0.id, $0) })
+        return scores.compactMap { recordsByID[$0.id] }
     }
     
     func loadOutputImage(history: ImageHistoryModel) -> UIImage {
@@ -779,6 +826,9 @@ class GenerationService {
             history.end = Date.now
             loading.wrappedValue = false
             LLMHistory.append(history)
+            if LLMHistory.count > Self.maxLLMHistoryEntries {
+                LLMHistory.removeFirst(LLMHistory.count - Self.maxLLMHistoryEntries)
+            }
         }
     }
     
@@ -878,8 +928,7 @@ class GenerationService {
             loading.wrappedValue = false
 
             db.save(history: history)
-            imageHistory.append(history)
-            lastHistory = history
+            insertHistory(history)
         }
         
         Task.init {
@@ -986,8 +1035,7 @@ class GenerationService {
             }
             loading.wrappedValue = false
             db.save(history: history)
-            imageHistory.append(history)
-            lastHistory = history
+            insertHistory(history)
         }
         
         Task.init {

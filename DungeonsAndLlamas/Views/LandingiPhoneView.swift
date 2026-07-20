@@ -35,14 +35,15 @@ struct LandingiPhoneView: View {
                 .shuffled()
                 .prefix(21)
                 .map{ entry in
-                    return generationService.loadOutputImage(history: entry)
+                    return generationService.fileService.loadImage(path: entry.outputFilePath ?? "", maxPixelSize: 256)
                 }
             }
             .onReceive(timer) { input in
                 withAnimation(.linear(duration: 1.0)){
                     if history.count > 1 {
                         let random = Int.random(in: 0..<history.count - 2)
-                        let img = generationService.loadOutputImage(history: generationService.imageHistory.randomElement()!)
+                        let randomHistory = generationService.imageHistory.randomElement()!
+                        let img = generationService.fileService.loadImage(path: randomHistory.outputFilePath ?? "", maxPixelSize: 256)
                         if history.firstIndex(of: img) == nil {
                             history[random] = img
                         }

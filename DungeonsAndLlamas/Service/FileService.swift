@@ -8,6 +8,7 @@
 import Foundation
 import UIKit
 import PencilKit
+import ImageIO
 
 private let storageLogger = LoggingService.shared.storage
 
@@ -82,20 +83,27 @@ class FileService {
     }
 
     func save(imageData: Data) -> String? {
-        guard let image = UIImage(data: imageData) else {
+        guard let source = CGImageSourceCreateWithData(imageData as CFData, nil),
+              CGImageSourceGetCount(source) > 0 else {
             return nil
         }
-        let filename = NSUUID().uuidString + ".png"
+        let filename = NSUUID().uuidString + imageFileExtension(for: CGImageSourceGetType(source) as String?)
         let fileURL = imageDirectory().appending(component: filename)
         do {
-            guard let pngData = image.pngData() else {
-                return nil
-            }
-            try pngData.write(to: fileURL)
+            try imageData.write(to: fileURL, options: .atomic)
             return filename
         } catch {
             storageLogger.error("Image-data save failed: \(error.localizedDescription, privacy: .private)")
             return nil
+        }
+    }
+
+    private func imageFileExtension(for uti: String?) -> String {
+        switch uti {
+        case "public.jpeg": return ".jpg"
+        case "public.heic": return ".heic"
+        case "public.webp": return ".webp"
+        default: return ".png"
         }
     }
 
@@ -104,16 +112,28 @@ class FileService {
             return false
         }
         let fileURL = imageDirectory().appending(path: path)
-        return FileManager.default.fileExists(atPath: fileURL.path) && UIImage(contentsOfFile: fileURL.path) != nil
+        guard FileManager.default.fileExists(atPath: fileURL.path),
+              let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil) else {
+            return false
+        }
+        return CGImageSourceGetCount(source) > 0
     }
     
     func loadImage(path: String) -> UIImage {
-        do {
-            let data = try Data(contentsOf: imageDirectory().appending(path: path))
-            return UIImage(data: data) ?? UIImage(named: "lighthouse")!
-            
-        } catch {
-            storageLogger.error("Image load failed: \(error.localizedDescription, privacy: .private)")
+        let url = imageDirectory().appending(path: path)
+        return UIImage(contentsOfFile: url.path) ?? UIImage(named: "lighthouse")!
+    }
+
+    func loadImage(path: String, maxPixelSize: Int) -> UIImage {
+        let url = imageDirectory().appending(path: path)
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize
+        ]
+        if let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+           let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
+            return UIImage(cgImage: image)
         }
         return UIImage(named: "lighthouse")!
     }
