@@ -122,7 +122,7 @@ struct PhotoPickerView: View {
         ContentUnavailableView {
             Label("Photo Access Required", systemImage: "photo.badge.exclamationmark")
         } description: {
-            Text("Allow access to choose photos, depth maps, and indexed categories.")
+            Text("Allow access to choose photos and indexed categories.")
         } actions: {
             Button("Allow Photo Access") {
                 Task { await model.requestAccess() }
@@ -214,7 +214,6 @@ private final class PhotoPickerModel {
         accessDenied = !service.canAccess
         isLimited = service.status == .limited
         guard service.canAccess else { return }
-        service.startIndexing()
         await refresh()
         categories = await service.categories()
         isIndexing = service.isIndexing
@@ -228,9 +227,7 @@ private final class PhotoPickerModel {
         accessDenied = !service.canAccess
         isLimited = service.status == .limited
         if service.canAccess {
-            service.startIndexing()
             await refresh()
-            monitorIndexing()
         }
     }
 

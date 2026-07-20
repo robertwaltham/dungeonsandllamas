@@ -63,7 +63,7 @@ struct DepthListView: View {
                         .scaledToFill()
                         .frame(width: size, height: size)
 
-                    if let depth = img.depth {
+                    if let depth = img.estimatedDepth {
                         VStack {
                             Spacer()
                             HStack {

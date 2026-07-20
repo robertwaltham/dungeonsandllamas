@@ -7,15 +7,11 @@ import Foundation
 import Photos
 import PhotosUI
 import UIKit
-import CoreImage
-import CoreImage.CIFilterBuiltins
-import ImageIO
 
 private let photoLibraryLogger = LoggingService.shared.photoLibrary
 
 enum PhotoRepresentation: String, CaseIterable, Codable, Hashable, Identifiable {
     case source
-    case sensorDepth
     case estimatedDepth
 
     var id: String { rawValue }
@@ -23,7 +19,6 @@ enum PhotoRepresentation: String, CaseIterable, Codable, Hashable, Identifiable 
     var title: String {
         switch self {
         case .source: return "Source"
-        case .sensorDepth: return "Sensor Depth"
         case .estimatedDepth: return "Estimated Depth"
         }
     }
@@ -31,7 +26,6 @@ enum PhotoRepresentation: String, CaseIterable, Codable, Hashable, Identifiable 
     var systemImage: String {
         switch self {
         case .source: return "photo"
-        case .sensorDepth: return "sensor.tag.radiowaves.forward"
         case .estimatedDepth: return "square.3.layers.3d"
         }
     }
@@ -63,15 +57,13 @@ struct PhotoRecordSummary: Identifiable, Hashable, Sendable {
     let creationDate: Date?
     let modificationDate: Date?
     let thumbnailPath: String?
-    let sensorDepthPath: String?
     let estimatedDepthPath: String?
     let sourceState: PhotoProcessingState
-    let sensorDepthState: PhotoProcessingState
     let estimatedDepthState: PhotoProcessingState
     let categories: [PhotoCategory]
 
     var representationStates: [PhotoRepresentation: PhotoProcessingState] {
-        [.source: sourceState, .sensorDepth: sensorDepthState, .estimatedDepth: estimatedDepthState]
+        [.source: sourceState, .estimatedDepth: estimatedDepthState]
     }
 }
 
@@ -96,10 +88,8 @@ private struct IndexedPhoto: Sendable {
     let creationDate: Date?
     let modificationDate: Date?
     let thumbnailPath: String?
-    let sensorDepthPath: String?
     let estimatedDepthPath: String?
     let sourceState: PhotoProcessingState
-    let sensorDepthState: PhotoProcessingState
     let estimatedDepthState: PhotoProcessingState
     let embedding: [Float]?
     let categories: [PhotoCategory]
@@ -110,10 +100,8 @@ private struct IndexedPhoto: Sendable {
         creationDate: Date?,
         modificationDate: Date?,
         thumbnailPath: String?,
-        sensorDepthPath: String?,
         estimatedDepthPath: String?,
         sourceState: PhotoProcessingState,
-        sensorDepthState: PhotoProcessingState,
         estimatedDepthState: PhotoProcessingState,
         embedding: [Float]?,
         categories: [PhotoCategory],
@@ -123,10 +111,8 @@ private struct IndexedPhoto: Sendable {
         self.creationDate = creationDate
         self.modificationDate = modificationDate
         self.thumbnailPath = thumbnailPath
-        self.sensorDepthPath = sensorDepthPath
         self.estimatedDepthPath = estimatedDepthPath
         self.sourceState = sourceState
-        self.sensorDepthState = sensorDepthState
         self.estimatedDepthState = estimatedDepthState
         self.embedding = embedding
         self.categories = categories
@@ -138,10 +124,8 @@ private struct IndexedPhoto: Sendable {
         creationDate = photo.creationDate
         modificationDate = photo.modificationDate
         thumbnailPath = photo.thumbnailPath
-        sensorDepthPath = photo.sensorDepthPath
         estimatedDepthPath = photo.estimatedDepthPath
         sourceState = PhotoProcessingState(rawValue: photo.sourceState) ?? .failed
-        sensorDepthState = PhotoProcessingState(rawValue: photo.sensorDepthState) ?? .unavailable
         estimatedDepthState = PhotoProcessingState(rawValue: photo.estimatedDepthState) ?? .pending
         embedding = photo.embedding
         categories = photo.categories
@@ -154,10 +138,8 @@ private struct IndexedPhoto: Sendable {
             creationDate: creationDate,
             modificationDate: modificationDate,
             thumbnailPath: thumbnailPath,
-            sensorDepthPath: sensorDepthPath,
             estimatedDepthPath: estimatedDepthPath,
             sourceState: sourceState.rawValue,
-            sensorDepthState: sensorDepthState.rawValue,
             estimatedDepthState: estimatedDepthState.rawValue,
             embedding: embedding,
             categories: categories,
@@ -178,7 +160,6 @@ final class PhotoLibraryService: NSObject {
     private let fileManager = FileManager.default
     private let changeTokenDefaultsKey = "PhotoLibraryService.currentChangeToken"
     private var indexingTask: Task<Void, Never>?
-    private var observer: PhotoLibraryChangeObserver?
 
     var canAccess: Bool {
         status == .authorized || status == .limited
@@ -199,17 +180,15 @@ final class PhotoLibraryService: NSObject {
             status = current
         }
         photoLibraryLogger.info("Photo access check completed: status=\(self.status?.rawValue ?? -1, privacy: .public) canAccess=\(self.canAccess, privacy: .public)")
-        if canAccess { registerObserver() }
     }
 
     func startIfAuthorized() async {
-        status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        await requestAccessIfNeeded()
         guard canAccess else {
             photoLibraryLogger.info("Photo sync not started: Photos access is unavailable (status=\(self.status?.rawValue ?? -1, privacy: .public))")
             return
         }
         photoLibraryLogger.info("Starting photo sync on startup")
-        registerObserver()
         startIndexing()
     }
 
@@ -221,7 +200,7 @@ final class PhotoLibraryService: NSObject {
         PHPhotoLibrary.shared().presentLimitedLibraryPicker(from: controller)
     }
 
-    func startIndexing() {
+    private func startIndexing() {
         guard canAccess else {
             photoLibraryLogger.debug("Photo sync request ignored: Photos access is unavailable")
             return
@@ -290,9 +269,6 @@ final class PhotoLibraryService: NSObject {
             return image
         }
 
-        // A cached thumbnail can be missing after an app-data cleanup while the
-        // index still contains its old path. Fall back to PhotoKit so reopening
-        // the picker can recover without requiring a full re-index.
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [record.id], options: nil)
         guard let asset = assets.firstObject else { return nil }
         return await requestImage(
@@ -307,8 +283,7 @@ final class PhotoLibraryService: NSObject {
         if representation == .source {
             return await thumbnail(for: record)
         }
-        let path = representation == .sensorDepth ? record.sensorDepthPath : record.estimatedDepthPath
-        guard let path else { return nil }
+        guard let path = record.estimatedDepthPath else { return nil }
         return await loadImage(path: path)
     }
 
@@ -320,8 +295,8 @@ final class PhotoLibraryService: NSObject {
         guard let record = records.first(where: { $0.id == selection.assetIdentifier }) else {
             throw APIError.requestError("The selected photo is no longer indexed.")
         }
-        let path = selection.representation == .sensorDepth ? record.sensorDepthPath : record.estimatedDepthPath
-        guard let path, let image = await loadImage(path: path) else {
+        guard let path = record.estimatedDepthPath,
+              let image = await loadImage(path: path) else {
             throw APIError.requestError("That depth representation is not available yet.")
         }
         return image
@@ -425,31 +400,22 @@ final class PhotoLibraryService: NSObject {
     // Nonisolated async work runs on the cooperative executor rather than the
     // service's main actor. Only progress publication stays main-actor bound.
     private func indexAsset(_ asset: PHAsset) async {
-        let thumbnail = await requestImage(asset: asset, targetSize: CGSize(width: 220, height: 220), contentMode: .aspectFill, networkAllowed: false)
+        let thumbnail = await requestImage(asset: asset, targetSize: CGSize(width: 220, height: 220), contentMode: .aspectFill, networkAllowed: true)
         guard let thumbnail else {
             photoLibraryLogger.warning("Photo asset deferred: thumbnail is not locally available")
-            database.save(photo: IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, thumbnailPath: nil, sensorDepthPath: nil, estimatedDepthPath: nil, sourceState: .deferredForDownload, sensorDepthState: .deferredForDownload, estimatedDepthState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel)
+            database.save(photo: IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, thumbnailPath: nil, estimatedDepthPath: nil, sourceState: .deferredForDownload, estimatedDepthState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel)
             return
         }
         let thumbnailPath = await Self.save(image: thumbnail, identifier: asset.localIdentifier, suffix: "thumbnail")
         if thumbnailPath == nil {
             photoLibraryLogger.error("Photo thumbnail cache write failed")
         }
-        var sensorDepthPath: String?
-        var sensorDepthState: PhotoProcessingState = .unavailable
         var estimatedDepthPath: String?
         var estimatedDepthState: PhotoProcessingState = .pending
         var categories = [PhotoCategory]()
         var embedding: [Float]?
 
-        if let image = await requestImage(asset: asset, targetSize: CGSize(width: 1024, height: 1024), contentMode: .aspectFit, networkAllowed: false) {
-            if let depth = await sensorDepth(asset: asset) {
-                sensorDepthPath = await Self.save(image: depth, identifier: asset.localIdentifier, suffix: "sensor-depth")
-                sensorDepthState = .available
-                if sensorDepthPath == nil {
-                    photoLibraryLogger.error("Photo sensor-depth cache write failed")
-                }
-            }
+        if let image = await requestImage(asset: asset, targetSize: CGSize(width: 1024, height: 1024), contentMode: .aspectFit, networkAllowed: true) {
             do {
                 if let depth = try await ml.performDepthInference(image) {
                     estimatedDepthPath = await Self.save(image: depth, identifier: asset.localIdentifier, suffix: "estimated-depth")
@@ -478,10 +444,8 @@ final class PhotoLibraryService: NSObject {
             creationDate: asset.creationDate,
             modificationDate: asset.modificationDate,
             thumbnailPath: thumbnailPath,
-            sensorDepthPath: sensorDepthPath,
             estimatedDepthPath: estimatedDepthPath,
             sourceState: .available,
-            sensorDepthState: sensorDepthState,
             estimatedDepthState: estimatedDepthState,
             embedding: embedding,
             categories: categories,
@@ -489,17 +453,8 @@ final class PhotoLibraryService: NSObject {
         ).databaseModel)
     }
 
-    private func registerObserver() {
-        guard observer == nil else { return }
-        let observer = PhotoLibraryChangeObserver { [weak self] in
-            self?.startIndexing()
-        }
-        self.observer = observer
-        PHPhotoLibrary.shared().register(observer)
-    }
-
     private static func summary(_ photo: IndexedPhoto) -> PhotoRecordSummary {
-        PhotoRecordSummary(id: photo.id, creationDate: photo.creationDate, modificationDate: photo.modificationDate, thumbnailPath: photo.thumbnailPath, sensorDepthPath: photo.sensorDepthPath, estimatedDepthPath: photo.estimatedDepthPath, sourceState: photo.sourceState, sensorDepthState: photo.sensorDepthState, estimatedDepthState: photo.estimatedDepthState, categories: photo.categories)
+        PhotoRecordSummary(id: photo.id, creationDate: photo.creationDate, modificationDate: photo.modificationDate, thumbnailPath: photo.thumbnailPath, estimatedDepthPath: photo.estimatedDepthPath, sourceState: photo.sourceState, estimatedDepthState: photo.estimatedDepthState, categories: photo.categories)
     }
 
     private nonisolated func requestImage(asset: PHAsset, targetSize: CGSize, contentMode: PHImageContentMode, networkAllowed: Bool) async -> UIImage? {
@@ -515,22 +470,6 @@ final class PhotoLibraryService: NSObject {
                     return
                 }
                 if let degraded = info?[PHImageResultIsDegradedKey] as? Bool, degraded { return }
-                continuation.resume(returning: image)
-            }
-        }
-    }
-
-    private nonisolated func sensorDepth(asset: PHAsset) async -> UIImage? {
-        await withCheckedContinuation { continuation in
-            let options = PHImageRequestOptions()
-            options.isSynchronous = false
-            options.isNetworkAccessAllowed = false
-            options.version = .original
-            PHImageManager.default().requestImageDataAndOrientation(for: asset, options: options) { data, _, _, _ in
-                guard let data, let depth = Self.depth(imageData: data), let image = Self.image(depth: depth) else {
-                    continuation.resume(returning: nil)
-                    return
-                }
                 continuation.resume(returning: image)
             }
         }
@@ -574,7 +513,6 @@ final class PhotoLibraryService: NSObject {
     struct PhotoLibraryImage: Identifiable, Equatable, Hashable {
         var id: String
         var image: UIImage
-        var depth: UIImage? = nil
         var estimatedDepth: UIImage? = nil
         var canny: UIImage? = nil
     }
@@ -618,37 +556,4 @@ final class PhotoLibraryService: NSObject {
         (try? await ml.performClassifierInference(image)) ?? []
     }
 
-    private nonisolated static func depth(imageData: Data) -> AVDepthData? {
-        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
-        guard let source = CGImageSourceCreateWithData(imageData as CFData, sourceOptions) else { return nil }
-        let auxiliary = (CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeDepth) ??
-            CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeDisparity)) as? [AnyHashable: Any]
-        guard let auxiliary else { return nil }
-        var sanitized = auxiliary
-        if sanitized[kCGImageAuxiliaryDataInfoMetadata] is NSNull { sanitized[kCGImageAuxiliaryDataInfoMetadata] = [:] as CFDictionary }
-        sanitized = sanitized.filter { !($0.value is NSNull) }
-        return try? AVDepthData(fromDictionaryRepresentation: sanitized).converting(toDepthDataType: kCVPixelFormatType_DisparityFloat32)
-    }
-
-    private nonisolated static func image(depth: AVDepthData) -> UIImage? {
-        let buffer = depth.depthDataMap
-        let ciImage = CIImage(cvPixelBuffer: buffer)
-        let context = CIContext()
-        guard let image = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
-        return UIImage(cgImage: image)
-    }
-}
-
-private final class PhotoLibraryChangeObserver: NSObject, PHPhotoLibraryChangeObserver {
-    private let onChange: @MainActor @Sendable () -> Void
-
-    init(onChange: @escaping @MainActor @Sendable () -> Void) {
-        self.onChange = onChange
-    }
-
-    nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
-        Task { @MainActor [onChange] in
-            onChange()
-        }
-    }
 }

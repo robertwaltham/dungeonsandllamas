@@ -78,11 +78,8 @@ struct DepthGenerationView: View {
                                 Label("Reset Edits", systemImage: "arrow.uturn.backward")
                             }
                         } else {
-                            Toggle(isOn: $viewModel.useEstimate) {
-                                viewModel.useEstimate ? Text("Estimated Depth") : Text("Captured Depth")
-                            }
-                            .frame(width: 150)
-                            .disabled(viewModel.image?.depth == nil)
+                            Text("Estimated Depth")
+                                .frame(width: 150)
                         }
 
                         
@@ -196,10 +193,8 @@ struct DepthGenerationView: View {
         let image: UIImage
         if let editedImage = viewModel.editedImage {
             image = editedImage
-        } else if viewModel.useEstimate, let estimated = viewModel.image?.estimatedDepth {
+        } else if let estimated = viewModel.image?.estimatedDepth {
             image = estimated
-        } else if let depth = viewModel.image?.depth {
-            image = depth
         } else {
             image = UIImage(named: "lighthouse")! // should never happen
         }
@@ -249,7 +244,6 @@ class DepthGenerationViewModel: @unchecked Sendable {
     var result: UIImage?
     var prompt = ""
     var mode: StableDiffusionClient.ControlNetOptions.ControlMode = .balanced
-    var useEstimate = true
     var classifications = [MLService.PredictionResult]()
     var depthDrawing: PKDrawing?
     var editedImage: UIImage?
@@ -291,10 +285,7 @@ class DepthGenerationViewModel: @unchecked Sendable {
         }
         
         let input: UIImage
-        if useEstimate, let image = image?.estimatedDepth {
-            input = image
-            self.editedImage = image
-        } else if let image = image?.depth {
+        if let image = image?.estimatedDepth {
             input = image
             self.editedImage = image
         } else {
@@ -329,8 +320,6 @@ class DepthGenerationViewModel: @unchecked Sendable {
         let depth: UIImage
         if let editedImage {
             depth = editedImage
-        } else if let trueDepth = image.depth, !useEstimate {
-            depth = trueDepth
         } else if let estimatedDepth = image.estimatedDepth {
             depth = estimatedDepth
         } else {
@@ -360,7 +349,7 @@ class DepthGenerationViewModel: @unchecked Sendable {
     service.getModels()
     let id = NSUUID().uuidString
     let view = DepthGenerationView(flowState: flowState, generationService: service, localIdentifier: id)
-    let image = PhotoLibraryService.PhotoLibraryImage(id: id, image: UIImage(named: "lighthouse")!, depth: UIImage(named: "depth_preview")!, estimatedDepth: UIImage(named: "depth_preview")!, canny: UIImage(named: "depth_preview")!)
+    let image = PhotoLibraryService.PhotoLibraryImage(id: id, image: UIImage(named: "lighthouse")!, estimatedDepth: UIImage(named: "depth_preview")!, canny: UIImage(named: "depth_preview")!)
     view.viewModel.image = image
     view.viewModel.classifications = [
         MLService.PredictionResult(label: "Cat", probability: 0.6),
@@ -372,6 +361,5 @@ class DepthGenerationViewModel: @unchecked Sendable {
     }
     .environment(service)
 }
-
 
 

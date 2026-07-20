@@ -112,10 +112,8 @@ class DatabaseService {
         let creationDate = Expression<Double?>("creation_date")
         let modificationDate = Expression<Double?>("modification_date")
         let thumbnailPath = Expression<String?>("thumbnail_path")
-        let sensorDepthPath = Expression<String?>("sensor_depth_path")
         let estimatedDepthPath = Expression<String?>("estimated_depth_path")
         let sourceState = Expression<String>("source_state")
-        let sensorDepthState = Expression<String>("sensor_depth_state")
         let estimatedDepthState = Expression<String>("estimated_depth_state")
         let embedding = Expression<Data?>("embedding")
         let categories = Expression<Data?>("categories")
@@ -127,10 +125,8 @@ class DatabaseService {
                 creationDate: row[creationDate].map(Date.init(timeIntervalSince1970:)),
                 modificationDate: row[modificationDate].map(Date.init(timeIntervalSince1970:)),
                 thumbnailPath: row[thumbnailPath],
-                sensorDepthPath: row[sensorDepthPath],
                 estimatedDepthPath: row[estimatedDepthPath],
                 sourceState: row[sourceState],
-                sensorDepthState: row[sensorDepthState],
                 estimatedDepthState: row[estimatedDepthState],
                 embedding: PhotoIndexModel.decodedEmbeddingForMigration(row[embedding]),
                 categories: PhotoIndexModel.decodedCategoriesForMigration(row[categories]),
@@ -214,13 +210,9 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
     @SqlProperty
     var thumbnailPath: String?
     @SqlProperty
-    var sensorDepthPath: String?
-    @SqlProperty
     var estimatedDepthPath: String?
     @SqlProperty
     var sourceState: String
-    @SqlProperty
-    var sensorDepthState: String
     @SqlProperty
     var estimatedDepthState: String
     var embedding: [Float]?
@@ -246,10 +238,8 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
             t.column(creationDateExp)
             t.column(modificationDateExp)
             t.column(thumbnailPathExp)
-            t.column(sensorDepthPathExp)
             t.column(estimatedDepthPathExp)
             t.column(sourceStateExp)
-            t.column(sensorDepthStateExp)
             t.column(estimatedDepthStateExp)
             t.column(embeddingExp)
             t.column(categoriesExp)
@@ -263,10 +253,8 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
             Self.creationDateExp <- creationDate,
             Self.modificationDateExp <- modificationDate,
             Self.thumbnailPathExp <- thumbnailPath,
-            Self.sensorDepthPathExp <- sensorDepthPath,
             Self.estimatedDepthPathExp <- estimatedDepthPath,
             Self.sourceStateExp <- sourceState,
-            Self.sensorDepthStateExp <- sensorDepthState,
             Self.estimatedDepthStateExp <- estimatedDepthState,
             Self.embeddingExp <- Self.encodedEmbedding(embedding),
             Self.categoriesExp <- Self.encodedCategories(categories),
@@ -281,10 +269,8 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
                 creationDate: row[creationDateExp],
                 modificationDate: row[modificationDateExp],
                 thumbnailPath: row[thumbnailPathExp],
-                sensorDepthPath: row[sensorDepthPathExp],
                 estimatedDepthPath: row[estimatedDepthPathExp],
                 sourceState: row[sourceStateExp],
-                sensorDepthState: row[sensorDepthStateExp],
                 estimatedDepthState: row[estimatedDepthStateExp],
                 embedding: decodedEmbedding(row[embeddingExp]),
                 categories: decodedCategories(row[categoriesExp]),
@@ -299,7 +285,7 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
         for id in ids {
             try db.run(table().filter(idExp == id).delete())
         }
-        return records.flatMap { [$0.thumbnailPath, $0.sensorDepthPath, $0.estimatedDepthPath].compactMap { $0 } }
+        return records.flatMap { [$0.thumbnailPath, $0.estimatedDepthPath].compactMap { $0 } }
     }
 
     private static func encodedEmbedding(_ embedding: [Float]?) -> Data? {
