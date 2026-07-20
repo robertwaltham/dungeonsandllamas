@@ -112,9 +112,7 @@ class DatabaseService {
         let creationDate = Expression<Double?>("creation_date")
         let modificationDate = Expression<Double?>("modification_date")
         let thumbnailPath = Expression<String?>("thumbnail_path")
-        let estimatedDepthPath = Expression<String?>("estimated_depth_path")
         let sourceState = Expression<String>("source_state")
-        let estimatedDepthState = Expression<String>("estimated_depth_state")
         let embedding = Expression<Data?>("embedding")
         let categories = Expression<Data?>("categories")
         let processingVersion = Expression<Int>("processing_version")
@@ -125,9 +123,7 @@ class DatabaseService {
                 creationDate: row[creationDate].map(Date.init(timeIntervalSince1970:)),
                 modificationDate: row[modificationDate].map(Date.init(timeIntervalSince1970:)),
                 thumbnailPath: row[thumbnailPath],
-                estimatedDepthPath: row[estimatedDepthPath],
                 sourceState: row[sourceState],
-                estimatedDepthState: row[estimatedDepthState],
                 embedding: PhotoIndexModel.decodedEmbeddingForMigration(row[embedding]),
                 categories: PhotoIndexModel.decodedCategoriesForMigration(row[categories]),
                 processingVersion: row[processingVersion]
@@ -180,6 +176,15 @@ extension DatabaseService {
         }
     }
 
+    func loadPhoto(id: String) -> PhotoIndexModel? {
+        do {
+            return try PhotoIndexModel.load(db: db, id: id)
+        } catch {
+            databaseLogger.error("Photo record load failed: \(String(describing: error), privacy: .private)")
+            return nil
+        }
+    }
+
     func save(photo: PhotoIndexModel) {
         do {
             try photo.save(db: db)
@@ -210,11 +215,7 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
     @SqlProperty
     var thumbnailPath: String?
     @SqlProperty
-    var estimatedDepthPath: String?
-    @SqlProperty
     var sourceState: String
-    @SqlProperty
-    var estimatedDepthState: String
     var embedding: [Float]?
     var categories: [PhotoCategory]
     @SqlProperty
@@ -238,9 +239,7 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
             t.column(creationDateExp)
             t.column(modificationDateExp)
             t.column(thumbnailPathExp)
-            t.column(estimatedDepthPathExp)
             t.column(sourceStateExp)
-            t.column(estimatedDepthStateExp)
             t.column(embeddingExp)
             t.column(categoriesExp)
             t.column(processingVersionExp)
@@ -253,9 +252,7 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
             Self.creationDateExp <- creationDate,
             Self.modificationDateExp <- modificationDate,
             Self.thumbnailPathExp <- thumbnailPath,
-            Self.estimatedDepthPathExp <- estimatedDepthPath,
             Self.sourceStateExp <- sourceState,
-            Self.estimatedDepthStateExp <- estimatedDepthState,
             Self.embeddingExp <- Self.encodedEmbedding(embedding),
             Self.categoriesExp <- Self.encodedCategories(categories),
             Self.processingVersionExp <- processingVersion
@@ -263,29 +260,35 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
     }
 
     fileprivate static func load(db: Connection) throws -> [PhotoIndexModel] {
-        try db.prepare(table().order(creationDateExp.desc)).map { row in
-            PhotoIndexModel(
-                id: row[idExp],
-                creationDate: row[creationDateExp],
-                modificationDate: row[modificationDateExp],
-                thumbnailPath: row[thumbnailPathExp],
-                estimatedDepthPath: row[estimatedDepthPathExp],
-                sourceState: row[sourceStateExp],
-                estimatedDepthState: row[estimatedDepthStateExp],
-                embedding: decodedEmbedding(row[embeddingExp]),
-                categories: decodedCategories(row[categoriesExp]),
-                processingVersion: row[processingVersionExp]
-            )
-        }
+        try db.prepare(table().order(creationDateExp.desc)).map(Self.model)
+    }
+
+    fileprivate static func load(db: Connection, id: String) throws -> PhotoIndexModel? {
+        try db.prepare(table().filter(idExp == id).limit(1)).map(Self.model).first
+    }
+
+    private static func model(from row: Row) -> PhotoIndexModel {
+        PhotoIndexModel(
+            id: row[idExp],
+            creationDate: row[creationDateExp],
+            modificationDate: row[modificationDateExp],
+            thumbnailPath: row[thumbnailPathExp],
+            sourceState: row[sourceStateExp],
+            embedding: decodedEmbedding(row[embeddingExp]),
+            categories: decodedCategories(row[categoriesExp]),
+            processingVersion: row[processingVersionExp]
+        )
     }
 
     fileprivate static func remove(db: Connection, ids: [String]) throws -> [String] {
         guard !ids.isEmpty else { return [] }
-        let records = try load(db: db).filter { ids.contains($0.id) }
-        for id in ids {
-            try db.run(table().filter(idExp == id).delete())
+        let predicate = ids.dropFirst().reduce(idExp == ids[0]) { expression, id in
+            expression || idExp == id
         }
-        return records.flatMap { [$0.thumbnailPath, $0.estimatedDepthPath].compactMap { $0 } }
+        let query = table().filter(predicate)
+        let records = try db.prepare(query).map(Self.model)
+        try db.run(query.delete())
+        return records.compactMap(\.thumbnailPath)
     }
 
     private static func encodedEmbedding(_ embedding: [Float]?) -> Data? {

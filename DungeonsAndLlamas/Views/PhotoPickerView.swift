@@ -355,7 +355,7 @@ private struct PhotoPickerCell: View {
             }
         }
         .buttonStyle(.plain)
-        .disabled(state != .available && !(representation == .source && image != nil))
+        .disabled(isLoading || (representation == .estimatedDepth && image == nil) || (state != .available && !(representation == .source && image != nil)))
         .accessibilityLabel(isSelected ? "Selected photo" : "Photo")
         .task(id: "\(record.id)-\(representation.rawValue)") {
             isLoading = true
