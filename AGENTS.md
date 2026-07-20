@@ -49,19 +49,18 @@ Persistence is implemented with SQLite.swift in `DungeonsAndLlamas/Service/Datab
 
 ## Build and test
 
-Open `DungeonsAndLlamas.xcodeproj` in Xcode for normal app development. The project does not currently include a shared scheme, so select the `DungeonsAndLlamas` scheme and an installed iOS Simulator in Xcode, then build/run there.
+Use XcodeBuildMCP for iOS project discovery, simulator builds, launches, and tests. Configure the session with the project, scheme, simulator, and the repository-local DerivedData directory before building:
+
+- Project: `DungeonsAndLlamas.xcodeproj`
+- Scheme: `DungeonsAndLlamas`
+- DerivedData: `.derivedData/`
+
+Use `session_show_defaults` before the first build/test call, then `session_set_defaults` if the project, scheme, simulator, or DerivedData path is missing or incorrect. Use `build_sim` for compile-only verification and `build_run_sim` when launching the app. Do not invoke `xcodebuild` directly when XcodeBuildMCP is available. The project does not currently include a shared scheme, so use the `DungeonsAndLlamas` scheme and an installed iOS 27.0 Simulator.
 
 For the local macro package:
 
 ```sh
 swift test --package-path SQLPropertyMacros
-```
-
-For a command-line app build, first list available destinations, then substitute an installed simulator name or ID:
-
-```sh
-xcodebuild -project DungeonsAndLlamas.xcodeproj -scheme DungeonsAndLlamas -showdestinations
-xcodebuild -project DungeonsAndLlamas.xcodeproj -scheme DungeonsAndLlamas -destination 'platform=iOS Simulator,name=<installed simulator>' build
 ```
 
 Do not treat a build failure caused by missing local secrets, model files, a simulator runtime, or unavailable remote AI services as a code regression. State the missing local prerequisite clearly.

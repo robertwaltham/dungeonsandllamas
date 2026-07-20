@@ -11,6 +11,8 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import ImageIO
 
+private let photoLibraryLogger = LoggingService.shared.photoLibrary
+
 enum PhotoRepresentation: String, CaseIterable, Codable, Hashable, Identifiable {
     case source
     case sensorDepth
@@ -190,17 +192,23 @@ final class PhotoLibraryService: NSObject {
 
     func requestAccessIfNeeded() async {
         let current = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        photoLibraryLogger.debug("Photo access check started: status=\(current.rawValue, privacy: .public)")
         if current == .notDetermined {
             status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
         } else {
             status = current
         }
+        photoLibraryLogger.info("Photo access check completed: status=\(self.status?.rawValue ?? -1, privacy: .public) canAccess=\(self.canAccess, privacy: .public)")
         if canAccess { registerObserver() }
     }
 
     func startIfAuthorized() async {
         status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        guard canAccess else { return }
+        guard canAccess else {
+            photoLibraryLogger.info("Photo sync not started: Photos access is unavailable (status=\(self.status?.rawValue ?? -1, privacy: .public))")
+            return
+        }
+        photoLibraryLogger.info("Starting photo sync on startup")
         registerObserver()
         startIndexing()
     }
@@ -214,17 +222,27 @@ final class PhotoLibraryService: NSObject {
     }
 
     func startIndexing() {
-        guard canAccess, indexingTask == nil else { return }
+        guard canAccess else {
+            photoLibraryLogger.debug("Photo sync request ignored: Photos access is unavailable")
+            return
+        }
+        guard indexingTask == nil else {
+            photoLibraryLogger.debug("Photo sync request ignored: sync is already running")
+            return
+        }
+        photoLibraryLogger.info("Photo sync started")
         isIndexing = true
         indexingTask = Task { [weak self] in
             guard let self else { return }
             await self.reconcileLibrary()
+            photoLibraryLogger.info("Photo sync finished: indexed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
             self.isIndexing = false
             self.indexingTask = nil
         }
     }
 
     func stopIndexing() {
+        photoLibraryLogger.info("Photo sync stopped")
         indexingTask?.cancel()
         indexingTask = nil
         isIndexing = false
@@ -312,14 +330,17 @@ final class PhotoLibraryService: NSObject {
     private func reconcileLibrary() async {
         let currentToken = PHPhotoLibrary.shared().currentChangeToken
         let existingAtStart = database.loadPhotoIndex().map(IndexedPhoto.init)
+        photoLibraryLogger.debug("Reconciling photo library: indexedAtStart=\(existingAtStart.count, privacy: .public)")
         if let storedToken = loadChangeToken(), storedToken.isEqual(currentToken), !existingAtStart.isEmpty {
             indexedCount = existingAtStart.count
             pendingCount = 0
+            photoLibraryLogger.debug("Photo sync skipped: change token is current")
             return
         }
 
         if let storedToken = loadChangeToken(), !existingAtStart.isEmpty,
            await applyPersistentChanges(since: storedToken, currentToken: currentToken) {
+            photoLibraryLogger.info("Photo sync completed using persistent change history")
             return
         }
 
@@ -327,6 +348,7 @@ final class PhotoLibraryService: NSObject {
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         let assets = PHAsset.fetchAssets(with: .image, options: options)
         let existing = existingAtStart
+        photoLibraryLogger.info("Photo sync using full reconciliation: assets=\(assets.count, privacy: .public) existing=\(existing.count, privacy: .public)")
         let allowedIDs = Set((0..<assets.count).map { assets.object(at: $0).localIdentifier })
         let removedPaths = database.removePhotos(ids: existing.map(\.id).filter { !allowedIDs.contains($0) })
         removeDerivedFiles(at: removedPaths)
@@ -344,11 +366,13 @@ final class PhotoLibraryService: NSObject {
             if index % 8 == 0 {
                 indexedCount = index + 1
                 pendingCount = max(assets.count - indexedCount, 0)
+                photoLibraryLogger.debug("Photo sync progress: indexed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
             }
         }
         indexedCount = assets.count
         pendingCount = 0
         saveChangeToken(currentToken)
+        photoLibraryLogger.info("Full photo reconciliation complete: indexed=\(self.indexedCount, privacy: .public)")
     }
 
     /// Uses PhotoKit's durable change history between launches. A failed/expired
@@ -366,6 +390,7 @@ final class PhotoLibraryService: NSObject {
                 deletedIDs.formUnion(details.deletedLocalIdentifiers)
             }
             changedIDs.subtract(deletedIDs)
+            photoLibraryLogger.info("Photo change history fetched: changed=\(changedIDs.count, privacy: .public) deleted=\(deletedIDs.count, privacy: .public)")
             let removedPaths = database.removePhotos(ids: Array(deletedIDs))
             removeDerivedFiles(at: removedPaths)
 
@@ -375,12 +400,14 @@ final class PhotoLibraryService: NSObject {
                 await indexAsset(result.object(at: index))
                 indexedCount = index + 1
                 pendingCount = max(result.count - indexedCount, 0)
+                photoLibraryLogger.debug("Photo change sync progress: indexed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
             }
             indexedCount = database.loadPhotoIndex().count
             pendingCount = 0
             saveChangeToken(currentToken)
             return true
         } catch {
+            photoLibraryLogger.error("Photo change history reconciliation failed: \(String(describing: error), privacy: .private)")
             return false
         }
     }
@@ -400,10 +427,14 @@ final class PhotoLibraryService: NSObject {
     private func indexAsset(_ asset: PHAsset) async {
         let thumbnail = await requestImage(asset: asset, targetSize: CGSize(width: 220, height: 220), contentMode: .aspectFill, networkAllowed: false)
         guard let thumbnail else {
+            photoLibraryLogger.warning("Photo asset deferred: thumbnail is not locally available")
             database.save(photo: IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, thumbnailPath: nil, sensorDepthPath: nil, estimatedDepthPath: nil, sourceState: .deferredForDownload, sensorDepthState: .deferredForDownload, estimatedDepthState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel)
             return
         }
         let thumbnailPath = await Self.save(image: thumbnail, identifier: asset.localIdentifier, suffix: "thumbnail")
+        if thumbnailPath == nil {
+            photoLibraryLogger.error("Photo thumbnail cache write failed")
+        }
         var sensorDepthPath: String?
         var sensorDepthState: PhotoProcessingState = .unavailable
         var estimatedDepthPath: String?
@@ -415,11 +446,17 @@ final class PhotoLibraryService: NSObject {
             if let depth = await sensorDepth(asset: asset) {
                 sensorDepthPath = await Self.save(image: depth, identifier: asset.localIdentifier, suffix: "sensor-depth")
                 sensorDepthState = .available
+                if sensorDepthPath == nil {
+                    photoLibraryLogger.error("Photo sensor-depth cache write failed")
+                }
             }
             do {
                 if let depth = try await ml.performDepthInference(image) {
                     estimatedDepthPath = await Self.save(image: depth, identifier: asset.localIdentifier, suffix: "estimated-depth")
                     estimatedDepthState = .available
+                    if estimatedDepthPath == nil {
+                        photoLibraryLogger.error("Photo estimated-depth cache write failed")
+                    }
                 } else {
                     estimatedDepthState = .failed
                 }
@@ -428,9 +465,11 @@ final class PhotoLibraryService: NSObject {
                     .map { PhotoCategory(id: $0.label.lowercased(), name: $0.label, probability: $0.probability, count: 0) }
                 embedding = try await ml.imageEmbedding(for: image)
             } catch {
+                photoLibraryLogger.error("Photo ML processing failed: \(String(describing: error), privacy: .private)")
                 estimatedDepthState = .failed
             }
         } else {
+            photoLibraryLogger.warning("Photo asset deferred: full-resolution image is not locally available")
             estimatedDepthState = .deferredForDownload
         }
 

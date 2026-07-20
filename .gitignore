@@ -1,3 +1,4 @@
 *Secrets.swift
 *.mlpackage
 *.aimodel
+.derivedData/
