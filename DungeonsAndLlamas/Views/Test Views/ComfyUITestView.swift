@@ -150,44 +150,6 @@ struct ComfyUITestView: View {
         }
     }
 
-    private var photoLibraryPopover: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 8)], spacing: 8) {
-                ForEach(viewModel.photoLibraryImages) { photo in
-                    Button {
-                        viewModel.selectPhotoLibraryImage(photo, using: generationService)
-                        showingPhotoLibraryPopover = false
-                    } label: {
-                        if let image = viewModel.photoLibraryDisplayImage(for: photo) {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 72, height: 72)
-                                .clipped()
-                                .border(viewModel.selectedPhotoLibraryImageId == photo.id ? Color.accentColor : Color.secondary)
-                        } else {
-                            ProgressView()
-                                .frame(width: 72, height: 72)
-                                .border(.secondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(viewModel.loading || viewModel.photoLibraryDisplayImage(for: photo) == nil)
-                    .onAppear {
-                        viewModel.loadNextPhotoLibraryBatchIfNeeded(currentPhoto: photo, using: generationService.photos)
-                    }
-                }
-
-                if viewModel.isLoadingPhotoLibraryImages {
-                    ProgressView()
-                        .frame(width: 72, height: 72)
-                }
-            }
-            .padding()
-        }
-        .frame(width: 360, height: 360)
-    }
-
     private func canvasSection(canvasDimension: CGFloat) -> some View {
         let canvasSize = Int(canvasDimension.rounded())
 
@@ -230,13 +192,16 @@ struct ComfyUITestView: View {
 
     private func photoLibrarySelectionView() -> some View {
         Button("Pick Image") {
-            viewModel.loadPhotoLibraryImages(using: generationService.photos)
             showingPhotoLibraryPopover = true
         }
         .buttonStyle(.bordered)
         .disabled(viewModel.loading)
-        .popover(isPresented: $showingPhotoLibraryPopover) {
-            photoLibraryPopover
+        .sheet(isPresented: $showingPhotoLibraryPopover) {
+            PhotoPickerView(title: "Choose Image", service: generationService.photos, selectedID: viewModel.selectedPhotoLibraryImageId) { selection in
+                viewModel.selectPhotoLibrarySelection(selection, using: generationService)
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -312,7 +277,6 @@ private struct LoadingView: View {
 private class ComfyUITestViewModel {
     private static let oneImageDefaultPrompt = "make realistic"
     private static let twoImageDefaultPrompt = "stylize image 2 with the colors and theme of image 1"
-    private static let photoLibraryBatchSize = 40
 
     var prompt = oneImageDefaultPrompt
     var seed = randomSeed()
@@ -323,13 +287,10 @@ private class ComfyUITestViewModel {
     var loading = false
     var useTwoImageWorkflow = false
     var usePhotoLibraryDepthImage = false
-    var photoLibraryImages = [PhotoLibraryService.PhotoLibraryImage]()
-    var isLoadingPhotoLibraryImages = false
-    var canLoadMorePhotoLibraryImages = true
     var selectedPhotoLibraryImageId: String?
     var selectedPhotoLibraryDisplayImage: UIImage?
     private var selectedPhotoLibraryImage: PhotoLibraryService.PhotoLibraryImage?
-    private var photoLibraryDepthImagesById = [String: UIImage]()
+    private var selectedPhotoRepresentation: PhotoRepresentation = .source
     private var pickedPhotoInputImage: InputImage?
     var image: UIImage?
     var imagePaths = [String]()
@@ -396,130 +357,30 @@ private class ComfyUITestViewModel {
         }
     }
 
-    func loadPhotoLibraryImages(using photoLibraryService: PhotoLibraryService) {
-        guard photoLibraryImages.isEmpty else {
-            return
-        }
-
-        canLoadMorePhotoLibraryImages = true
-        loadNextPhotoLibraryImages(using: photoLibraryService)
-    }
-
-    func loadNextPhotoLibraryBatchIfNeeded(currentPhoto photo: PhotoLibraryService.PhotoLibraryImage, using photoLibraryService: PhotoLibraryService) {
-        guard photo.id == photoLibraryImages.last?.id else {
-            return
-        }
-
-        loadNextPhotoLibraryImages(using: photoLibraryService)
-    }
-
-    private func loadNextPhotoLibraryImages(using photoLibraryService: PhotoLibraryService) {
-        guard !isLoadingPhotoLibraryImages, canLoadMorePhotoLibraryImages else {
-            return
-        }
-
-        photoLibraryService.checkAuthStatus()
-        guard photoLibraryService.canAccess else {
-            error = "Photo library access is required to pick a second image."
-            return
-        }
-
-        isLoadingPhotoLibraryImages = true
-        let offset = photoLibraryImages.count
-
-        Task {
-            var loadedCount = 0
-            var loadedPhotoIds = Set(photoLibraryImages.map(\.id))
-
-            for await photo in photoLibraryService.getImages(limit: Self.photoLibraryBatchSize, offset: offset, size: CGSize(width: 512, height: 512)) {
-                guard !loadedPhotoIds.contains(photo.id) else {
-                    continue
-                }
-
-                loadedPhotoIds.insert(photo.id)
-                photoLibraryImages.append(photo)
-                loadedCount += 1
-
-                if usePhotoLibraryDepthImage {
-                    loadDepthImage(for: photo, using: photoLibraryService)
-                }
-            }
-
-            canLoadMorePhotoLibraryImages = loadedCount == Self.photoLibraryBatchSize
-            isLoadingPhotoLibraryImages = false
-        }
-    }
-
-    func setUsePhotoLibraryDepthImage(_ enabled: Bool, using generationService: GenerationService) {
-        usePhotoLibraryDepthImage = enabled
-        if enabled {
-            loadDepthImages(using: generationService.photos)
-        }
-        guard let selectedPhotoLibraryImage else {
-            selectedPhotoLibraryDisplayImage = nil
-            pickedPhotoInputImage = nil
-            return
-        }
-        selectPhotoLibraryImage(selectedPhotoLibraryImage, using: generationService)
-    }
-
-    func photoLibraryDisplayImage(for photo: PhotoLibraryService.PhotoLibraryImage) -> UIImage? {
-        if usePhotoLibraryDepthImage {
-            return photoLibraryDepthImagesById[photo.id]
-        }
-        return photo.image
-    }
-
-    func selectPhotoLibraryImage(_ photo: PhotoLibraryService.PhotoLibraryImage, using generationService: GenerationService) {
-        selectedPhotoLibraryImage = photo
-        selectedPhotoLibraryImageId = photo.id
+    func selectPhotoLibrarySelection(_ selection: PhotoPickerSelection, using generationService: GenerationService) {
+        selectedPhotoLibraryImageId = selection.assetIdentifier
+        selectedPhotoRepresentation = selection.representation
+        usePhotoLibraryDepthImage = selection.representation != .source
         error = nil
 
-        if let displayImage = photoLibraryDisplayImage(for: photo) {
-            prepareSelectedPhotoLibraryImage(displayImage)
-        } else if usePhotoLibraryDepthImage {
-            loadDepthImage(for: photo, using: generationService.photos, selectWhenLoaded: true)
-        } else {
-            selectedPhotoLibraryDisplayImage = nil
-            pickedPhotoInputImage = nil
-        }
-    }
-
-    private func loadDepthImages(using photoLibraryService: PhotoLibraryService) {
-        for photo in photoLibraryImages {
-            loadDepthImage(for: photo, using: photoLibraryService)
-        }
-    }
-
-    private func loadDepthImage(for photo: PhotoLibraryService.PhotoLibraryImage, using photoLibraryService: PhotoLibraryService, selectWhenLoaded: Bool = false) {
-        guard photoLibraryDepthImagesById[photo.id] == nil else {
-            if selectWhenLoaded, let depthImage = photoLibraryDepthImagesById[photo.id] {
-                prepareSelectedPhotoLibraryImage(depthImage)
-            }
-            return
-        }
-
         Task {
-            guard let imageWithDepth = await photoLibraryService.getDepth(identifier: photo.id),
-                  let depthImage = imageWithDepth.depth ?? imageWithDepth.estimatedDepth else {
-                if selectWhenLoaded {
-                    error = "The selected photo does not have a depth image."
-                    selectedPhotoLibraryDisplayImage = nil
-                    pickedPhotoInputImage = nil
-                }
-                return
-            }
-
-            photoLibraryDepthImagesById[photo.id] = depthImage
-            if selectWhenLoaded, selectedPhotoLibraryImageId == photo.id {
-                prepareSelectedPhotoLibraryImage(depthImage)
+            do {
+                let image = try await generationService.photos.representation(for: selection, targetSize: CGSize(width: 1600, height: 1600))
+                let selected = PhotoLibraryService.PhotoLibraryImage(id: selection.assetIdentifier, image: image)
+                selectedPhotoLibraryImage = selected
+                prepareSelectedPhotoLibraryImage(image)
+            } catch is CancellationError {
+            } catch {
+                self.error = error.localizedDescription
+                selectedPhotoLibraryDisplayImage = nil
+                pickedPhotoInputImage = nil
             }
         }
     }
 
     private func prepareSelectedPhotoLibraryImage(_ image: UIImage) {
         do {
-            let filenamePrefix = usePhotoLibraryDepthImage ? "comfy-depth" : "comfy-photo"
+            let filenamePrefix = selectedPhotoRepresentation == .source ? "comfy-photo" : "comfy-depth"
             pickedPhotoInputImage = try inputImage(from: image, filenamePrefix: filenamePrefix)
             selectedPhotoLibraryDisplayImage = image
         } catch {

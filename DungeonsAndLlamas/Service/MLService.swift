@@ -45,9 +45,6 @@ actor MLService {
     var clipModel: AIModel?
     var clipTextFunction: InferenceFunction?
     var clipImageFunction: InferenceFunction?
-    var isModelLoaded = false
-    var modelLoadError: Error?
-    var modelLoadContinuations = [CheckedContinuation<Void, Error>]()
     
     /// A pixel buffer used as input to the model.
     let inputDepthPixelBuffer: CVPixelBuffer
@@ -83,58 +80,36 @@ actor MLService {
         }
         inputClassifierPixelBuffer = buffer
         
-        Task.detached(priority: .userInitiated) {
-            do {
-                try await self.loadModel()
-                await self.completeModelLoad(.success(()))
-            } catch {
-                await self.completeModelLoad(.failure(error))
-                print(error)
-            }
-        }
     }
-    
-    func waitUntilLoaded() async throws {
-        if isModelLoaded {
-            return
-        }
-        if let modelLoadError {
-            throw modelLoadError
-        }
-        try await withCheckedThrowingContinuation { continuation in
-            modelLoadContinuations.append(continuation)
-        }
-    }
-    
-    private func completeModelLoad(_ result: Result<Void, Error>) {
-        switch result {
-        case .success:
-            isModelLoaded = true
-        case .failure(let error):
-            modelLoadError = error
-        }
-        
-        let continuations = modelLoadContinuations
-        modelLoadContinuations.removeAll()
-        for continuation in continuations {
-            continuation.resume(with: result)
-        }
-    }
-    
-    // TODO: this takes about 13s on an iPad Air M1 - convert depth model to .aimodel for faster loading
+
+    /// Explicit warm-up hook. Normal callers load only the model they need.
     func loadModel() async throws {
-//        print("Loading Depth model...")
-        
-        let clock = ContinuousClock()
-        let start = clock.now
-        
-//        depthModel = try DepthAnythingV2SmallF16()
-//        print("Loading Classifier model...")
-//        classifierModel = try FastViTT8F16()
-//        classifierModel = try FastViTMA36F16()
-        
+        try loadDepthModelIfNeeded()
+        try loadClassifierModelIfNeeded()
+        try await loadClipModelIfNeeded()
+    }
+
+    /// Compatibility warm-up for existing embedding migrations. It intentionally
+    /// initializes only CLIP, not the depth or classification models.
+    func waitUntilLoaded() async throws {
+        try await loadClipModelIfNeeded()
+    }
+
+    // TODO: this takes about 13s on an iPad Air M1 - convert depth model to .aimodel for faster loading
+    private func loadDepthModelIfNeeded() throws {
+        guard depthModel == nil else { return }
+        depthModel = try DepthAnythingV2SmallF16()
+    }
+
+    private func loadClassifierModelIfNeeded() throws {
+        guard classifierModel == nil else { return }
+        classifierModel = try FastViTMA36F16()
+    }
+
+    private func loadClipModelIfNeeded() async throws {
+        guard clipModel == nil else { return }
         guard let url = Bundle.main.url(forResource: "mobileclip2_s2", withExtension: "aimodel") else {
-            fatalError("can't find mobileclip2_s2")
+            throw EmbeddingError.modelNotLoaded
         }
         let clipModel = try await AIModel(contentsOf: url)
         self.clipModel = clipModel
@@ -147,17 +122,12 @@ actor MLService {
         }
         clipTextFunction = textFunction
         clipImageFunction = imageFunction
-
-        
-        let duration = clock.now - start
-        print("Model loaded (took \(duration.formatted(.units(allowed: [.seconds, .milliseconds]))))")
     }
     
     func performDepthInference(_ image: UIImage) async throws -> UIImage? {
         
-        guard let depthModel else {
-            return nil
-        }
+        try loadDepthModelIfNeeded()
+        guard let depthModel else { return nil }
         
         let clock = ContinuousClock()
         let start = clock.now
@@ -187,9 +157,8 @@ actor MLService {
     
     func performClassifierInference(_ image: UIImage) async throws -> [PredictionResult]? {
         
-        guard let classifierModel else {
-            return nil
-        }
+        try loadClassifierModelIfNeeded()
+        guard let classifierModel else { return nil }
         
         let clock = ContinuousClock()
         let start = clock.now
@@ -201,18 +170,18 @@ actor MLService {
         let inputImage = CIImage(cvPixelBuffer: pixelBuffer).resized(to: MLService.targetClassifierSize)
         context.render(inputImage, to: inputClassifierPixelBuffer)
         let result = try classifierModel.prediction(image: inputClassifierPixelBuffer)
-        let top3 = result.classLabel_probs.sorted { $0.value > $1.value }.prefix(3).map { (label, prob) in
+        let classifications = result.classLabel_probs.sorted { $0.value > $1.value }.map { (label, prob) in
             PredictionResult(label: label, probability: prob)
         }
         
         let duration = clock.now - start
         print("Inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])))")
         
-        return top3
+        return classifications
     }
     
     func textEmbedding(for text: String) async throws -> [Float] {
-        try await waitUntilLoaded()
+        try await loadClipModelIfNeeded()
         guard let clipTextFunction else {
             throw EmbeddingError.modelNotLoaded
         }
@@ -230,7 +199,7 @@ actor MLService {
     }
     
     func imageEmbedding(for image: UIImage) async throws -> [Float] {
-        try await waitUntilLoaded()
+        try await loadClipModelIfNeeded()
         guard let clipImageFunction else {
             throw EmbeddingError.modelNotLoaded
         }

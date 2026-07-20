@@ -36,7 +36,9 @@
     <key>NSCameraUsageDescription</key>
     <string>Take pictures and stuff</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Save generated images to your library</string>
+    <string>Choose photos for image generation, analyze them for depth and categories, and save generated images to your library.</string>
+    <key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+    <true/>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>

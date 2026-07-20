@@ -30,7 +30,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         generationService.synchronizeComfyUIHistoryOnStartup()
         generationService.getModels()
         generationService.getComfyUIModels()
-        generationService.photos.checkAuthStatus()
+        Task { @MainActor in
+            await generationService.photos.startIfAuthorized()
+        }
         return true
     }
     

@@ -62,22 +62,14 @@ struct TwoPhotoEditView: View {
             }
         }
         .navigationTitle("Flux2 Two-Photo Edit")
-        .task {
-            await viewModel.loadGallery(using: generationService.photos)
-        }
         .sheet(item: $activeSlot) { slot in
-            PhotoGalleryPicker(
+            PhotoPickerView(
                 title: "Choose \(slot.title)",
-                images: viewModel.photoLibraryImages,
-                isLoading: viewModel.isLoadingPhotoLibraryImages,
-                selectedID: viewModel.selectionID(for: slot),
-                onSelect: { photo in
-                    viewModel.select(photo, for: slot, using: generationService.photos)
-                },
-                onLoadMore: { photo in
-                    viewModel.loadNextPhotoLibraryBatchIfNeeded(currentPhoto: photo, using: generationService.photos)
-                }
-            )
+                service: generationService.photos,
+                selectedID: viewModel.selectionID(for: slot)
+            ) { selection in
+                viewModel.select(selection, for: slot, using: generationService.photos)
+            }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
@@ -161,66 +153,6 @@ struct TwoPhotoEditView: View {
     }
 }
 
-private struct PhotoGalleryPicker: View {
-    @Environment(\.dismiss) private var dismiss
-    let title: String
-    let images: [PhotoLibraryService.PhotoLibraryImage]
-    let isLoading: Bool
-    let selectedID: String?
-    let onSelect: (PhotoLibraryService.PhotoLibraryImage) -> Void
-    let onLoadMore: (PhotoLibraryService.PhotoLibraryImage) -> Void
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(title)
-                    .font(.headline)
-                    .padding(.horizontal)
-
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 8)], spacing: 8) {
-                    ForEach(images) { photo in
-                        Button {
-                            onSelect(photo)
-                            dismiss()
-                        } label: {
-                            Image(uiImage: photo.image)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 72, height: 72)
-                                .clipped()
-                                .overlay(alignment: .topTrailing) {
-                                    selectedBadge(isSelected: photo.id == selectedID)
-                                }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(photo.id == selectedID ? "Selected photo" : "Photo")
-                        .onAppear {
-                            onLoadMore(photo)
-                        }
-                    }
-
-                    if isLoading {
-                        ProgressView()
-                            .frame(width: 72, height: 72)
-                    }
-                }
-                .padding()
-            }
-        }
-        .frame(minHeight: 360)
-    }
-
-    @ViewBuilder
-    private func selectedBadge(isSelected: Bool) -> some View {
-        if isSelected {
-            Image(systemName: "checkmark.circle.fill")
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, Color.accentColor)
-                .padding(3)
-        }
-    }
-}
-
 @MainActor
 @Observable
 private final class TwoPhotoEditViewModel {
@@ -244,13 +176,9 @@ private final class TwoPhotoEditViewModel {
         let filename: String
     }
 
-    private static let batchSize = 40
     private static let defaultPrompt = "stylize image 2 with the colors and theme of image 1"
 
     var prompt: String
-    var photoLibraryImages = [PhotoLibraryService.PhotoLibraryImage]()
-    var isLoadingPhotoLibraryImages = false
-    var canLoadMorePhotoLibraryImages = true
     var loading = false
     var error: String?
     var output: UIImage?
@@ -297,56 +225,23 @@ private final class TwoPhotoEditViewModel {
         selectedIDs[slot]
     }
 
-    func loadGallery(using service: PhotoLibraryService) async {
-        guard photoLibraryImages.isEmpty else { return }
-        await service.requestAccessIfNeeded()
-        guard service.canAccess else {
-            error = "Photo library access is required to pick images."
-            return
-        }
-        loadNextPhotoLibraryImages(using: service)
-    }
-
-    func loadNextPhotoLibraryBatchIfNeeded(currentPhoto photo: PhotoLibraryService.PhotoLibraryImage, using service: PhotoLibraryService) {
-        guard photo.id == photoLibraryImages.last?.id else { return }
-        loadNextPhotoLibraryImages(using: service)
-    }
-
-    private func loadNextPhotoLibraryImages(using service: PhotoLibraryService) {
-        guard !isLoadingPhotoLibraryImages, canLoadMorePhotoLibraryImages else { return }
-        isLoadingPhotoLibraryImages = true
-        let offset = photoLibraryImages.count
-
-        Task {
-            var loadedCount = 0
-            var loadedIDs = Set(photoLibraryImages.map(\.id))
-            for await photo in service.getImages(limit: Self.batchSize, offset: offset, size: CGSize(width: 220, height: 220)) {
-                guard !loadedIDs.contains(photo.id) else { continue }
-                loadedIDs.insert(photo.id)
-                photoLibraryImages.append(photo)
-                loadedCount += 1
-            }
-            canLoadMorePhotoLibraryImages = loadedCount == Self.batchSize
-            isLoadingPhotoLibraryImages = false
-        }
-    }
-
-    func select(_ photo: PhotoLibraryService.PhotoLibraryImage, for slot: ImageSlot, using service: PhotoLibraryService) {
-        selectedIDs[slot] = photo.id
+    func select(_ selection: PhotoPickerSelection, for slot: ImageSlot, using service: PhotoLibraryService) {
+        selectedIDs[slot] = selection.assetIdentifier
         preparingSlots.insert(slot)
         error = nil
 
         Task {
             do {
-                let image = try await service.getImage(identifier: photo.id, targetSize: CGSize(width: 1600, height: 1600))
+                let image = try await service.representation(for: selection, targetSize: CGSize(width: 1600, height: 1600))
                 guard !Task.isCancelled else { return }
                 let prepared = try Self.prepare(image: image, prefix: slot == .one ? "comfy-photo-1" : "comfy-photo-2")
-                let selected = SelectedImage(id: photo.id, image: prepared.image, prepared: prepared)
+                let selected = SelectedImage(id: selection.assetIdentifier, image: prepared.image, prepared: prepared)
                 if slot == .one {
                     firstImage = selected
                 } else {
                     secondImage = selected
                 }
+            } catch is CancellationError {
             } catch {
                 self.error = error.localizedDescription
             }

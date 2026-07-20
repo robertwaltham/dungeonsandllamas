@@ -195,7 +195,6 @@ class DepthListViewModel: @unchecked Sendable {
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
-    service.photos.checkAuthStatus()
     service.getModels()
     return ContentFlowCoordinator(flowState: flowState) {
         DepthListView(flowState: flowState, generationService: service)
