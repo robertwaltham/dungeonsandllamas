@@ -21,11 +21,7 @@ struct LandingView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]) {
                 ForEach(history, id:\.self) { img in
                     
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                        .aspectRatio(1, contentMode: .fit)
-                        .clipped()
+                    LandingHistoryImage(image: img)
                 }
             }
             .onAppear {
@@ -124,6 +120,21 @@ struct LandingView: View {
                 }
             }
         }
+    }
+}
+
+struct LandingHistoryImage: View {
+    let image: UIImage
+
+    var body: some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            }
+            .clipped()
     }
 }
 

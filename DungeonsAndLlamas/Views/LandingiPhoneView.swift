@@ -21,11 +21,7 @@ struct LandingiPhoneView: View {
             LazyVGrid(columns: [ GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]) {
                 ForEach(history, id:\.self) { img in
                     
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                        .aspectRatio(1, contentMode: .fit)
-                        .clipped()
+                    LandingHistoryImage(image: img)
                 }
             }
             .onAppear {
