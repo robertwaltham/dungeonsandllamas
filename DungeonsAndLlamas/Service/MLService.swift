@@ -10,6 +10,8 @@ import CoreImage
 import CoreAI
 import UIKit
 
+private let mlLogger = LoggingService.shared.ml
+
 // adapted from https://github.com/huggingface/coreml-examples/tree/main/depth-anything-example
 actor MLService {
     
@@ -150,7 +152,7 @@ actor MLService {
         }
 
         let duration = clock.now - start
-        print("Inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])))")
+        mlLogger.debug("Depth inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
         
         return UIImage(cgImage: videoImage)
     }
@@ -175,7 +177,7 @@ actor MLService {
         }
         
         let duration = clock.now - start
-        print("Inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])))")
+        mlLogger.debug("Classification inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
         
         return classifications
     }
@@ -190,7 +192,7 @@ actor MLService {
         let start = clock.now
         defer {
             let duration = clock.now - start
-            print("Text Embedding (took \(duration.formatted(.units(allowed: [.seconds, .milliseconds]))))")
+            mlLogger.debug("Text embedding took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
         }
         
         let tokens = tokenizer.encode_full(text: text).map(Int32.init)
@@ -208,7 +210,7 @@ actor MLService {
         let start = clock.now
         defer {
             let duration = clock.now - start
-            print("Image Embedding (took \(duration.formatted(.units(allowed: [.seconds, .milliseconds]))))")
+            mlLogger.debug("Image embedding took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
         }
         
         let input = try clipImageArray(from: image)

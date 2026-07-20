@@ -28,6 +28,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         generationService.checkStatusIfNeeded()
         generationService.loadHistory()
         generationService.synchronizeComfyUIHistoryOnStartup()
+        generationService.logStartupSummary()
         generationService.getModels()
         generationService.getComfyUIModels()
         Task { @MainActor in

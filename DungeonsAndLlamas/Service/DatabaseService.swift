@@ -6,6 +6,8 @@
 //
 
 import SQLite
+
+private let databaseLogger = LoggingService.shared.database
 import SQLPropertyMacros
 import Foundation
 import UIKit
@@ -21,7 +23,7 @@ class DatabaseService {
         do {
             try ImageHistoryModel.generateHistoryForTesting(db: db, fileService: fileService)
         } catch {
-            print(error)
+            databaseLogger.error("Test history generation failed: \(String(describing: error), privacy: .private)")
         }
     }
     
@@ -98,7 +100,7 @@ extension DatabaseService {
         do {
             return try ImageHistoryModel.load(db: db)
         } catch {
-            print(error)
+            databaseLogger.error("History load failed: \(String(describing: error), privacy: .private)")
             return []
         }
     }
@@ -107,7 +109,7 @@ extension DatabaseService {
         do {
             try history.save(db: db)
         } catch {
-            print(error)
+            databaseLogger.error("History save failed: \(String(describing: error), privacy: .private)")
         }
     }
     
@@ -115,7 +117,7 @@ extension DatabaseService {
         do {
             try history.updateEmbeddings(db: db)
         } catch {
-            print(error)
+            databaseLogger.error("History embedding update failed: \(String(describing: error), privacy: .private)")
         }
     }
 
@@ -123,7 +125,7 @@ extension DatabaseService {
         do {
             try history.updateAssets(db: db)
         } catch {
-            print(error)
+            databaseLogger.error("History asset update failed: \(String(describing: error), privacy: .private)")
         }
     }
 }

@@ -8,6 +8,7 @@
 import SwiftUI
 import Observation
 
+private let depthListLogger = LoggingService.shared.ui
 
 struct DepthListView: View {
     var flowState: ContentFlowState
@@ -123,7 +124,7 @@ class DepthListViewModel: @unchecked Sendable {
     
     var images = (0..<imageCount).map { i in ImageContainer.none(i.description) }
     func getImages(service: GenerationService) {
-        print("start")
+        depthListLogger.debug("Loading indexed depth-list images")
         loading = true
         Task.init {
             var i = 0

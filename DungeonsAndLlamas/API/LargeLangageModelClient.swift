@@ -7,6 +7,8 @@
 
 import Foundation
 
+private let networkLogger = LoggingService.shared.network
+
 actor LargeLangageModelClient {
     
     private enum Endpoint: String {
@@ -165,7 +167,7 @@ actor LargeLangageModelClient {
                     }
                     guard httpResponse.statusCode == 200 else {
                         for try await line in bytes.lines {
-                            print(line)
+                            networkLogger.error("LLM error response: \(line, privacy: .private)")
                         }
                         
                         throw APIError.requestError("status code: \(httpResponse.statusCode)")
@@ -173,10 +175,10 @@ actor LargeLangageModelClient {
                     for try await line in bytes.lines {
                         do {
                             let obj = try await self.decoder.decode(Result.self, from: line.data(using: .utf8)!)
-                            print(obj.response)
+                            networkLogger.debug("LLM response chunk: \(obj.response, privacy: .private)")
                             continuation.yield(obj)
                         } catch {
-                            print(error)
+                            networkLogger.error("LLM response decoding failed: \(String(describing: error), privacy: .private)")
                         }
                     }
                     continuation.finish()
@@ -207,17 +209,17 @@ actor LargeLangageModelClient {
                     }
                     guard httpResponse.statusCode == 200 else {
                         for try await line in bytes.lines {
-                            print(line)
+                            networkLogger.error("LLM error response: \(line, privacy: .private)")
                         }
                         throw APIError.requestError("status code: \(httpResponse.statusCode)")
                     }
                     for try await line in bytes.lines {
                         do {
                             let obj = try decoder.decode(Result.self, from: line.data(using: .utf8)!)
-                            print(obj.response)
+                            networkLogger.debug("LLM response chunk: \(obj.response, privacy: .private)")
                             continuation.yield(obj)
                         } catch {
-                            print(error)
+                            networkLogger.error("LLM response decoding failed: \(String(describing: error), privacy: .private)")
                         }
                     }
                     continuation.finish()
@@ -228,4 +230,3 @@ actor LargeLangageModelClient {
         }
     }
 }
-

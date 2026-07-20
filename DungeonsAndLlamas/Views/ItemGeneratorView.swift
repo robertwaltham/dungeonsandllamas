@@ -8,6 +8,8 @@
 import SwiftUI
 import Observation
 
+private let itemGeneratorLogger = LoggingService.shared.ui
+
 struct ItemGeneratorView: View {
     let flowState: ContentFlowState
     @State var viewModel = ItemGeneratorViewModel()
@@ -111,7 +113,7 @@ class ItemGeneratorViewModel {
                 }
                 loading = false
             } catch {
-                print(error)
+                itemGeneratorLogger.error("Item generation failed: \(String(describing: error), privacy: .private)")
                 loading = false
             }
         }
@@ -134,7 +136,7 @@ class ItemGeneratorViewModel {
                     }
                 }
             } catch {
-                print(error)
+                itemGeneratorLogger.error("Item generation request failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
         } 

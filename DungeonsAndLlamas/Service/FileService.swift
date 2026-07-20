@@ -9,6 +9,7 @@ import Foundation
 import UIKit
 import PencilKit
 
+private let storageLogger = LoggingService.shared.storage
 
 class FileService {
     
@@ -36,7 +37,7 @@ class FileService {
                 do {
                     try manager.createDirectory(at: url, withIntermediateDirectories: true)
                 } catch {
-                    print(error.localizedDescription)
+                    storageLogger.error("Directory creation failed: \(error.localizedDescription, privacy: .private)")
                 }
             }
         }
@@ -71,10 +72,10 @@ class FileService {
             do {
                 try data.write(to: fileURL)
             } catch {
-                print(error.localizedDescription)
+                storageLogger.error("Image write failed: \(error.localizedDescription, privacy: .private)")
             }
         } else {
-            print("error getting png data")
+            storageLogger.error("Could not encode image as PNG")
         }
 
         return filename
@@ -93,7 +94,7 @@ class FileService {
             try pngData.write(to: fileURL)
             return filename
         } catch {
-            print(error.localizedDescription)
+            storageLogger.error("Image-data save failed: \(error.localizedDescription, privacy: .private)")
             return nil
         }
     }
@@ -112,7 +113,7 @@ class FileService {
             return UIImage(data: data) ?? UIImage(named: "lighthouse")!
             
         } catch {
-            print(error.localizedDescription)
+            storageLogger.error("Image load failed: \(error.localizedDescription, privacy: .private)")
         }
         return UIImage(named: "lighthouse")!
     }
@@ -124,7 +125,7 @@ class FileService {
         do {
             try data.write(to: fileURL)
         } catch {
-            print(error.localizedDescription)
+            storageLogger.error("Drawing write failed: \(error.localizedDescription, privacy: .private)")
         }
 
         return filename
@@ -136,7 +137,7 @@ class FileService {
             return try PKDrawing(data: data)
             
         } catch {
-            print(error.localizedDescription)
+            storageLogger.error("Drawing load failed: \(error.localizedDescription, privacy: .private)")
         }
         return PKDrawing()
     }
@@ -149,10 +150,10 @@ class FileService {
             do {
                 try data.write(to: fileURL)
             } catch {
-                print(error.localizedDescription)
+                storageLogger.error("Cached image write failed: \(error.localizedDescription, privacy: .private)")
             }
         } else {
-            print("error getting png data")
+            storageLogger.error("Could not encode cached image as PNG")
         }
     }
     
@@ -169,8 +170,23 @@ class FileService {
             let data = try Data(contentsOf: filepath)
             return UIImage(data: data)
         } catch {
-            print(error.localizedDescription)
+            storageLogger.error("Cached image load failed: \(error.localizedDescription, privacy: .private)")
         }
         return nil
+    }
+
+    func imageCacheFileCount() -> Int {
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: imageCacheDirectory(),
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return 0
+        }
+        return entries.reduce(into: 0) { count, url in
+            if (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
+                count += 1
+            }
+        }
     }
 }

@@ -8,6 +8,8 @@
 import Foundation
 import AnyCodable
 
+private let comfyLogger = LoggingService.shared.network
+
 actor ComfyUIClient {
     private enum Endpoint {
         case embeddings
@@ -387,22 +389,32 @@ actor ComfyUIClient {
         let clientId = clientId.lowercased()
         let promptId = promptId.lowercased()
         let messageStream = try messages(clientId: clientId)
-        _ = try await submitImageFlux2KleinImageEdit(
-            prompt: prompt,
-            seed: seed,
-            imageFilename: imageFilename,
-            clientId: clientId,
-            promptId: promptId
-        )
+        let promptStart = ContinuousClock.now
 
-        for try await message in messageStream {
-            guard case .event(let event) = message, event.isExecutionComplete(for: promptId) else {
-                continue
+        do {
+            _ = try await submitImageFlux2KleinImageEdit(
+                prompt: prompt,
+                seed: seed,
+                imageFilename: imageFilename,
+                clientId: clientId,
+                promptId: promptId
+            )
+
+            for try await message in messageStream {
+                guard case .event(let event) = message, event.isExecutionComplete(for: promptId) else {
+                    continue
+                }
+                let elapsed = promptStart.duration(to: .now)
+                comfyLogger.info("ComfyUI prompt completed in \(elapsed.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public) promptId=\(promptId, privacy: .private(mask: .hash))")
+                break
             }
-            break
-        }
 
-        return try await imageOutputPaths(promptId: promptId)
+            return try await imageOutputPaths(promptId: promptId)
+        } catch {
+            let elapsed = promptStart.duration(to: .now)
+            comfyLogger.error("ComfyUI prompt failed after \(elapsed.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public) promptId=\(promptId, privacy: .private(mask: .hash)) error=\(String(describing: error), privacy: .private)")
+            throw error
+        }
     }
 
     func submitImageFlux2KleinImageEdit(prompt: String, seed: Int64, imageFilename: String, clientId: String, promptId: String) async throws -> PromptResponse {
@@ -463,7 +475,8 @@ actor ComfyUIClient {
     }
 
     func submitPrompt(_ submission: PromptSubmission) async throws -> PromptResponse {
-        try await post(.prompt, body: submission)
+        comfyLogger.info("Sending ComfyUI prompt promptId=\(submission.promptId ?? "none", privacy: .private(mask: .hash)) nodes=\(submission.prompt.count, privacy: .public)")
+        return try await post(.prompt, body: submission)
     }
 
     func objectInfo() async throws -> [String: AnyCodable] {
@@ -614,28 +627,39 @@ actor ComfyUIClient {
         let request = try ComfyUIClient.webSocketRequest(endpoint: .webSocket(clientId: clientId))
         let socket = session.webSocketTask(with: request)
         let decoder = decoder
+        comfyLogger.info("ComfyUI WebSocket connecting clientId=\(clientId ?? "none", privacy: .private(mask: .hash))")
         socket.resume()
 
         return AsyncThrowingStream<WebSocketMessage, Error> { continuation in
             let task = Task {
+                var didLogConnected = false
                 do {
                     while !Task.isCancelled {
                         let message = try await socket.receive()
+                        if !didLogConnected {
+                            didLogConnected = true
+                            comfyLogger.info("ComfyUI WebSocket connected clientId=\(clientId ?? "none", privacy: .private(mask: .hash))")
+                        }
                         switch message {
                         case .data(let data):
+                            comfyLogger.debug("Received ComfyUI WebSocket message type=data bytes=\(data.count, privacy: .public)")
                             continuation.yield(.data(data))
                         case .string(let string):
                             if let data = string.data(using: .utf8), let event = try? decoder.decode(WebSocketEvent.self, from: data) {
+                                comfyLogger.debug("Received ComfyUI WebSocket message type=\(event.type, privacy: .public)")
                                 continuation.yield(.event(event))
                             } else {
+                                comfyLogger.debug("Received ComfyUI WebSocket message type=text payload=\(string, privacy: .private)")
                                 continuation.yield(.text(string))
                             }
                         @unknown default:
                             throw APIError.requestError("unsupported websocket message")
                         }
                     }
+                    comfyLogger.info("ComfyUI WebSocket disconnected clientId=\(clientId ?? "none", privacy: .private(mask: .hash)) reason=completed")
                     continuation.finish()
                 } catch {
+                    comfyLogger.error("ComfyUI WebSocket disconnected clientId=\(clientId ?? "none", privacy: .private(mask: .hash)) error=\(String(describing: error), privacy: .private)")
                     continuation.finish(throwing: error)
                 }
             }
@@ -643,6 +667,7 @@ actor ComfyUIClient {
             continuation.onTermination = { _ in
                 task.cancel()
                 socket.cancel(with: .goingAway, reason: nil)
+                comfyLogger.debug("ComfyUI WebSocket disconnected clientId=\(clientId ?? "none", privacy: .private(mask: .hash)) reason=terminated")
             }
         }
     }

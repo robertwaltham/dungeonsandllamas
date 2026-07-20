@@ -10,6 +10,8 @@ import UIKit
 import PencilKit
 import SwiftUI
 
+private let pencilLogger = LoggingService.shared.ui
+
 @Observable
 class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making the observation tracking sendable
     
@@ -87,7 +89,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     func load(history: ImageHistoryModel) {
         
         guard loadedHistory?.id != history.id else { // TODO: fix code crimes
-            print("already loaded")
+            pencilLogger.debug("Pencil history already loaded")
             return
         }
         
@@ -197,7 +199,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         generationService.db.save(history: newHistory)
         generationService.imageHistory.append(newHistory)
         savedResults.append(bracket.id)
-        print("saved")
+        pencilLogger.debug("Pencil result saved")
     }
     
     @MainActor
@@ -223,7 +225,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         generationService.db.save(history: newHistory)
         generationService.imageHistory.append(newHistory)
         savedResults.append(stepResult.id)
-        print("saved")
+        pencilLogger.debug("Pencil result saved")
     }
     
     @MainActor
@@ -233,12 +235,12 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                        iterateSamplers: Bool) {
         
         guard let input else {
-            print("no input")
+            pencilLogger.warning("Pencil generation requested without input")
             return
         }
         
         guard let loadedHistory else {
-            print("no history")
+            pencilLogger.warning("Pencil generation requested without history")
             return
         }
         
@@ -246,7 +248,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
 //            return
 //        }
         stepResult = []
-        print("generating")
+        pencilLogger.debug("Pencil generation started")
         loading.wrappedValue = true
         cancel.wrappedValue = false
         
@@ -260,7 +262,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
             } catch {
-                print(error)
+                pencilLogger.error("Pencil generation failed: \(String(describing: error), privacy: .private)")
             }
         }
         
@@ -278,11 +280,11 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                     stepResult.append(obj)
                 }
             } catch {
-                print(error)
+                pencilLogger.error("Pencil generation request failed: \(String(describing: error), privacy: .private)")
             }
             loading.wrappedValue = false
             cancel.wrappedValue = true
-            print("finished")
+            pencilLogger.debug("Pencil generation finished")
         }
         
     }
@@ -300,7 +302,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
         
         bracketResult = []
-        print("generating")
+        pencilLogger.debug("Bracket generation started")
         loading.wrappedValue = true
         cancel.wrappedValue = false
         
@@ -314,7 +316,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
             } catch {
-                print(error)
+                pencilLogger.error("Bracket generation failed: \(String(describing: error), privacy: .private)")
             }
         }
 
@@ -333,13 +335,12 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                     bracketResult.append(obj)
                 }
             } catch {
-                print(error)
+                pencilLogger.error("Bracket generation request failed: \(String(describing: error), privacy: .private)")
             }
             loading.wrappedValue = false
             cancel.wrappedValue = true
 
-            print("finished")
+            pencilLogger.debug("Bracket generation finished")
         }
     }
 }
-

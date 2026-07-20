@@ -9,6 +9,8 @@ import Foundation
 import UIKit
 import AnyCodable
 
+private let networkLogger = LoggingService.shared.network
+
 actor StableDiffusionClient {
     
     private enum Endpoint: String {
@@ -363,7 +365,7 @@ actor StableDiffusionClient {
             throw APIError.requestError("status code: \(httpResponse.statusCode)")
         }
         
-        print(String(data: data, encoding: .utf8) ?? "no data")
+        networkLogger.debug("Stable Diffusion response: \(String(data: data, encoding: .utf8) ?? "no data", privacy: .private)")
     }
     
     func generateBase64EncodedImages(_ options: GenerationOptions) async throws -> [String] {
@@ -561,7 +563,7 @@ actor StableDiffusionClient {
         
         do {
           let (responseData, response) = try await  URLSession.shared.data(for: request)
-          print((response as! HTTPURLResponse).statusCode)
+          networkLogger.debug("Stable Diffusion options status: \((response as? HTTPURLResponse)?.statusCode ?? -1, privacy: .public)")
           return String(data: responseData, encoding: .utf8)!
         } catch {
           print ("Error")
@@ -577,7 +579,7 @@ actor StableDiffusionClient {
 
         let (responseData, response) = try await  URLSession.shared.data(for: request)
         guard (response as! HTTPURLResponse).statusCode == 200 else {
-            print(String(data: responseData, encoding: .utf8)!)
+            networkLogger.error("Stable Diffusion model response: \(String(data: responseData, encoding: .utf8) ?? "no data", privacy: .private)")
 
             return nil
         }
@@ -604,12 +606,12 @@ actor StableDiffusionClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         let data = try encoder.encode(DepthParameters(prompt: prompt, inputFileName: inputFileName, depthFileName: depthFileName, loraWeight: loraWeight, seed: seed))
-        print(String(data: data, encoding: .utf8)!)
+        networkLogger.debug("Stable Diffusion depth request: \(String(data: data, encoding: .utf8) ?? "no data", privacy: .private)")
         request.httpBody = data
         
         let (responseData, response) = try await  URLSession.shared.data(for: request)
         guard (response as! HTTPURLResponse).statusCode == 200 else {
-            print(String(data: responseData, encoding: .utf8)!)
+            networkLogger.error("Stable Diffusion depth response: \(String(data: responseData, encoding: .utf8) ?? "no data", privacy: .private)")
 
             return nil
         }

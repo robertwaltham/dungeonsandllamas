@@ -9,13 +9,15 @@
 
 import Foundation
 
+private let tokenizerLogger = LoggingService.shared.tokenizer
+
 struct Utils {
     /// Time a block in ms
     static func time<T>(label: String, _ block: () -> T) -> T {
         let startTime = CFAbsoluteTimeGetCurrent()
         let result = block()
         let diff = (CFAbsoluteTimeGetCurrent() - startTime) * 1_000
-        print("[\(label)] \(diff)ms")
+        tokenizerLogger.debug("[\(label, privacy: .private)] took \(diff, privacy: .public)ms")
         return result
     }
 

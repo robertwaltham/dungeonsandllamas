@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+private let bindingStreamLogger = LoggingService.shared.ui
+
 struct BindingStreamTestView: View {
     @State var viewModel = BindingStreamTestViewModel()
     let flowState: ContentFlowState
@@ -39,7 +41,7 @@ struct BindingStreamTestView: View {
 
             Text(viewModel.result)
             .onChange(of: viewModel.result) { oldValue, newValue in
-                print(newValue)
+                bindingStreamLogger.debug("Binding stream value changed: \(newValue, privacy: .private)")
             }
             .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
             .frame(maxWidth: .infinity, minHeight: 75)

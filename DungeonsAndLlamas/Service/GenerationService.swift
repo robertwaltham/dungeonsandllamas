@@ -10,6 +10,8 @@ import Observation
 import SwiftUI
 import PencilKit
 
+private let generationLogger = LoggingService.shared.generation
+
 @MainActor
 @Observable
 class GenerationService {
@@ -133,6 +135,13 @@ class GenerationService {
         imageHistory = db.loadHistory()
     }
 
+    func logStartupSummary() {
+        let inputFileCount = imageHistory.reduce(0) { $0 + $1.inputFilePaths.count }
+        let outputFileCount = imageHistory.reduce(0) { $0 + ($1.outputFilePath == nil ? 0 : 1) }
+        let progress = historySyncTask == nil ? "idle" : "scheduled"
+        generationLogger.info("Startup summary historyRecords=\(self.imageHistory.count, privacy: .public) cachedImages=\(self.fileService.imageCacheFileCount(), privacy: .public) progress=\(progress, privacy: .public) inputFiles=\(inputFileCount, privacy: .public) outputFiles=\(outputFileCount, privacy: .public)")
+    }
+
     func synchronizeComfyUIHistoryOnStartup() {
         guard historySyncTask == nil else {
             return
@@ -153,6 +162,7 @@ class GenerationService {
                     .sorted { $0.start < $1.start }
 
                 historySyncPhase = .processing(completed: 0, total: candidates.count)
+                generationLogger.debug("ComfyUI history sync progress 0/\(candidates.count, privacy: .public)")
                 var completed = 0
                 let assetCache = HistoryAssetCache()
 
@@ -160,13 +170,14 @@ class GenerationService {
                     do {
                         try await synchronize(candidate: candidate, assetCache: assetCache)
                     } catch {
-                        print("ComfyUI history sync failed for \(candidate.promptId): \(error)")
+                        generationLogger.error("ComfyUI history sync failed for \(candidate.promptId, privacy: .private(mask: .hash)): \(String(describing: error), privacy: .private)")
                     }
                     completed += 1
                     historySyncPhase = .processing(completed: completed, total: candidates.count)
+                    generationLogger.debug("ComfyUI history sync progress \(completed, privacy: .public)/\(candidates.count, privacy: .public)")
                 }
             } catch {
-                print("ComfyUI history sync failed: \(error)")
+                generationLogger.error("ComfyUI history sync failed: \(String(describing: error), privacy: .private)")
             }
 
             historySyncPhase = nil
@@ -456,7 +467,7 @@ class GenerationService {
                 try await mlService.waitUntilLoaded()
                 await migrateHistoryEmbeddings()
             } catch {
-                print(error)
+                generationLogger.error("History embedding migration failed: \(String(describing: error), privacy: .private)")
             }
             embeddingMigrationTask = nil
         }
@@ -527,7 +538,7 @@ class GenerationService {
         let start = clock.now
         defer {
             let duration = clock.now - start
-            print("Search (took \(duration.formatted(.units(allowed: [.seconds, .milliseconds]))))")
+            generationLogger.debug("Search took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
         }
         
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -674,7 +685,7 @@ class GenerationService {
                 
                 comfyUIModels = modelsByType
             } catch {
-                print(error)
+                generationLogger.error("Model refresh failed: \(String(describing: error), privacy: .private)")
             }
             
             comfyUIModelsTask = nil
@@ -723,7 +734,7 @@ class GenerationService {
         }
         
         guard let selectedSDModel = selectedSDModel else {
-            print("no model selected")
+            generationLogger.warning("No image-generation model selected")
             return
         }
         
@@ -731,7 +742,7 @@ class GenerationService {
             do {
                 try await stableDiffusionClient.setImageGenerationModel(model: selectedSDModel)
             } catch {
-                print(error)
+                generationLogger.error("Image-generation model selection failed: \(String(describing: error), privacy: .private)")
             }
             
             modelTask = nil
@@ -759,7 +770,7 @@ class GenerationService {
                 }
             } catch {
                 history.errorDescription = error.localizedDescription
-                print(error)
+                generationLogger.error("Generation failed: \(String(describing: error), privacy: .private)")
             }
             history.end = Date.now
             loading.wrappedValue = false
@@ -858,7 +869,7 @@ class GenerationService {
                 }
             } catch {
                 history.errorDescription = error.localizedDescription
-                print(error)
+                generationLogger.error("Generation request failed: \(String(describing: error), privacy: .private)")
             }
             loading.wrappedValue = false
 
@@ -876,7 +887,7 @@ class GenerationService {
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
             } catch {
-                print(error)
+                generationLogger.error("Generation history update failed: \(String(describing: error), privacy: .private)")
             }
         }
     }
@@ -966,7 +977,7 @@ class GenerationService {
                     history.outputFilePath = fileService.save(image: image)
                 }
             } catch {
-                print(error)
+                generationLogger.error("Generation history save failed: \(String(describing: error), privacy: .private)")
                 history.errorDescription = error.localizedDescription
             }
             loading.wrappedValue = false
@@ -984,7 +995,7 @@ class GenerationService {
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
             } catch {
-                print(error)
+                generationLogger.error("Generation preparation failed: \(String(describing: error), privacy: .private)")
             }
         }
         
@@ -1085,7 +1096,7 @@ class GenerationService {
                 }
             } catch {
 //                history.errorDescription = error.localizedDescription
-                print(error)
+                generationLogger.error("Image-generation response processing failed: \(String(describing: error), privacy: .private)")
             }
             loading.wrappedValue = false
 
@@ -1103,7 +1114,7 @@ class GenerationService {
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
             } catch {
-                print(error)
+                generationLogger.error("Image-generation progress request failed: \(String(describing: error), privacy: .private)")
             }
         }
         
@@ -1188,7 +1199,7 @@ class GenerationService {
                             }
                             
                             if cancel.wrappedValue {
-                                print("cancelled")
+                                generationLogger.debug("Generation stream cancelled")
                                 continuation.finish()
                                 return
                             }
@@ -1210,7 +1221,7 @@ class GenerationService {
                         }
                         
                         if cancel.wrappedValue {
-                            print("cancelled")
+                            generationLogger.debug("Generation stream cancelled")
                             continuation.finish()
                             return
                         }
@@ -1292,7 +1303,7 @@ class GenerationService {
                                         continuation.finish()
                                     }
                                     if cancel.wrappedValue {
-                                        print("cancelled")
+                                        generationLogger.debug("Generation stream cancelled")
                                         continuation.finish()
                                         return
                                     }
@@ -1320,14 +1331,14 @@ class GenerationService {
                                     continuation.finish()
                                 }
                                 if cancel.wrappedValue {
-                                    print("cancelled")
+                                    generationLogger.debug("Generation stream cancelled")
                                     continuation.finish()
                                     return
                                 }
                             }
 
                         } catch {
-                            print(error)
+                            generationLogger.error("Generation stream failed: \(String(describing: error), privacy: .private)")
                             continuation.finish(throwing: error)
                         }
                     }
@@ -1345,7 +1356,7 @@ class GenerationService {
     func interrogate(image: UIImage, output: Binding<String?>) {
         
         guard let base64Image = image.pngData()?.base64EncodedString() else {
-            print("failed to generate image data")
+            generationLogger.error("Failed to generate image data")
             return
         }
         
@@ -1353,7 +1364,7 @@ class GenerationService {
             do {
                 output.wrappedValue = try await stableDiffusionClient.interrogate(base64EncodedImage: base64Image)
             } catch {
-                print(error)
+                generationLogger.error("Image interrogation failed: \(String(describing: error), privacy: .private)")
                 output.wrappedValue = nil
             }    
         }

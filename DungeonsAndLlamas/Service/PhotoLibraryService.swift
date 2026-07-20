@@ -134,9 +134,21 @@ private actor PhotoIndexStore {
                 processing_version INTEGER NOT NULL DEFAULT 1
             )
             """)
-        try? db.execute("ALTER TABLE photo_asset ADD COLUMN modification_date DOUBLE")
-        try? db.execute("ALTER TABLE photo_asset ADD COLUMN processing_version INTEGER NOT NULL DEFAULT 1")
+        Self.migratePhotoAssetSchemaIfNeeded(db)
         try? db.execute("CREATE INDEX IF NOT EXISTS photo_asset_creation ON photo_asset(creation_date DESC)")
+    }
+
+    private nonisolated static func migratePhotoAssetSchemaIfNeeded(_ db: Connection) {
+        let existingColumns = Set((try? db.prepare("PRAGMA table_info(photo_asset)"))?.compactMap { row in
+            row[1] as? String
+        } ?? [])
+
+        if !existingColumns.contains("modification_date") {
+            try? db.execute("ALTER TABLE photo_asset ADD COLUMN modification_date DOUBLE")
+        }
+        if !existingColumns.contains("processing_version") {
+            try? db.execute("ALTER TABLE photo_asset ADD COLUMN processing_version INTEGER NOT NULL DEFAULT 1")
+        }
     }
 
     func all() -> [IndexedPhoto] {

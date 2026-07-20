@@ -8,6 +8,8 @@
 import SwiftUI
 import Observation
 
+private let websocketLogger = LoggingService.shared.network
+
 struct WebsocketTestView: View {
     var viewModel = WebsocketTestViewModel()
     
@@ -48,7 +50,7 @@ class WebsocketTestViewModel {
     var message: String?
     
     func connect() {
-        print("connecting")
+        websocketLogger.debug("Opening WebSocket connection")
         error = nil
         guard let url = URL(string: "ws://192.168.1.71:8000/ws") else {
             error = "no url"
@@ -88,26 +90,26 @@ class WebsocketTestViewModel {
 
             } catch {
                 self.error = error.localizedDescription
-                print(error)
+                websocketLogger.error("WebSocket receive failed: \(String(describing: error), privacy: .private)")
             }
         }
     }
     
     func send() {
         guard let socket else {
-            print("no socket")
+            websocketLogger.warning("WebSocket send requested without an active socket")
             error = "no socket"
             return
         }
         
-        print("sent")
+        websocketLogger.debug("WebSocket message sent")
         
         Task.init {
             do {
                 try await socket.send(.string("a cat in a fancy hat \(Float.random(in: 0..<1))"))
             } catch {
                 self.error = error.localizedDescription
-                print(error)
+                websocketLogger.error("WebSocket send failed: \(String(describing: error), privacy: .private)")
             }
         }
         

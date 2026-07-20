@@ -8,6 +8,8 @@
 import SwiftUI
 import Observation
 
+private let apiTestLogger = LoggingService.shared.network
+
 struct APITestView: View {
     @State var viewModel: APITestViewModel = APITestViewModel()
     let flowState: ContentFlowState
@@ -231,7 +233,7 @@ class APITestViewModel {
                     }
                 }
             } catch {
-                print(error)
+                apiTestLogger.error("Image generation test failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
         }
@@ -242,9 +244,9 @@ class APITestViewModel {
         Task.init {
             do {
                 let options = try await sdClient.imageGenerationOptions()
-                print(options)
+                apiTestLogger.debug("Image-generation options loaded: \(String(describing: options), privacy: .private)")
             } catch {
-                print(error)
+                apiTestLogger.error("Image-generation options request failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
         }
@@ -256,7 +258,7 @@ class APITestViewModel {
             do {
                 models = try await sdClient.imageGenerationModels()
             } catch {
-                print(error)
+                apiTestLogger.error("Image-generation models request failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
         }
@@ -271,7 +273,7 @@ class APITestViewModel {
                     llmModel = first
                 }
             } catch {
-                print(error)
+                apiTestLogger.error("Image-generation model request failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
         }
@@ -283,7 +285,7 @@ class APITestViewModel {
             do {
                 try await sdClient.setImageGenerationModel(model: selectedModel)
             } catch {
-                print(error)
+                apiTestLogger.error("Image-generation model selection failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
         }
@@ -313,7 +315,7 @@ class APITestViewModel {
                     }
                 }
             } catch {
-                print(error)
+                apiTestLogger.error("Image-generation test failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
         }
@@ -337,7 +339,7 @@ class APITestViewModel {
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
             } catch {
-                print(error)
+                apiTestLogger.error("Image-generation test failed: \(String(describing: error), privacy: .private)")
             }
         }
     }
@@ -372,7 +374,7 @@ class APITestViewModel {
                     }
                 }
             } catch {
-                print(error)
+                apiTestLogger.error("Image-generation test failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
         }
@@ -396,7 +398,7 @@ class APITestViewModel {
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
             } catch {
-                print(error)
+                apiTestLogger.error("Image-generation test failed: \(String(describing: error), privacy: .private)")
             }
         }
     }
@@ -418,7 +420,7 @@ class APITestViewModel {
                     }
                 }
             } catch {
-                print(error)
+                apiTestLogger.error("LLM stream test failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
         }
