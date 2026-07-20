@@ -10,7 +10,6 @@ import UIKit
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import ImageIO
-import SQLite
 
 enum PhotoRepresentation: String, CaseIterable, Codable, Hashable, Identifiable {
     case source
@@ -103,155 +102,65 @@ private struct IndexedPhoto: Sendable {
     let embedding: [Float]?
     let categories: [PhotoCategory]
     let processingVersion: Int
-}
 
-private actor PhotoIndexStore {
-    private let db: Connection
-    private var cachedPhotos: [String: IndexedPhoto]?
-
-    init() {
-        let manager = FileManager.default
-        let root = manager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("PhotoLibrary", isDirectory: true)
-        try? manager.createDirectory(at: root, withIntermediateDirectories: true)
-        let url = root.appendingPathComponent("photo-index.sqlite3")
-        db = try! Connection(url.path)
-        try? db.execute("PRAGMA journal_mode = WAL")
-        try? db.execute("PRAGMA busy_timeout = 5000")
-        try? db.execute("""
-            CREATE TABLE IF NOT EXISTS photo_asset (
-                id TEXT PRIMARY KEY NOT NULL,
-                creation_date DOUBLE,
-                modification_date DOUBLE,
-                thumbnail_path TEXT,
-                sensor_depth_path TEXT,
-                estimated_depth_path TEXT,
-                source_state TEXT NOT NULL,
-                sensor_depth_state TEXT NOT NULL,
-                estimated_depth_state TEXT NOT NULL,
-                embedding BLOB,
-                categories BLOB,
-                processing_version INTEGER NOT NULL DEFAULT 1
-            )
-            """)
-        Self.migratePhotoAssetSchemaIfNeeded(db)
-        try? db.execute("CREATE INDEX IF NOT EXISTS photo_asset_creation ON photo_asset(creation_date DESC)")
+    init(
+        id: String,
+        creationDate: Date?,
+        modificationDate: Date?,
+        thumbnailPath: String?,
+        sensorDepthPath: String?,
+        estimatedDepthPath: String?,
+        sourceState: PhotoProcessingState,
+        sensorDepthState: PhotoProcessingState,
+        estimatedDepthState: PhotoProcessingState,
+        embedding: [Float]?,
+        categories: [PhotoCategory],
+        processingVersion: Int
+    ) {
+        self.id = id
+        self.creationDate = creationDate
+        self.modificationDate = modificationDate
+        self.thumbnailPath = thumbnailPath
+        self.sensorDepthPath = sensorDepthPath
+        self.estimatedDepthPath = estimatedDepthPath
+        self.sourceState = sourceState
+        self.sensorDepthState = sensorDepthState
+        self.estimatedDepthState = estimatedDepthState
+        self.embedding = embedding
+        self.categories = categories
+        self.processingVersion = processingVersion
     }
 
-    private nonisolated static func migratePhotoAssetSchemaIfNeeded(_ db: Connection) {
-        let existingColumns = Set((try? db.prepare("PRAGMA table_info(photo_asset)"))?.compactMap { row in
-            row[1] as? String
-        } ?? [])
-
-        if !existingColumns.contains("modification_date") {
-            try? db.execute("ALTER TABLE photo_asset ADD COLUMN modification_date DOUBLE")
-        }
-        if !existingColumns.contains("processing_version") {
-            try? db.execute("ALTER TABLE photo_asset ADD COLUMN processing_version INTEGER NOT NULL DEFAULT 1")
-        }
+    init(_ photo: PhotoIndexModel) {
+        id = photo.id
+        creationDate = photo.creationDate
+        modificationDate = photo.modificationDate
+        thumbnailPath = photo.thumbnailPath
+        sensorDepthPath = photo.sensorDepthPath
+        estimatedDepthPath = photo.estimatedDepthPath
+        sourceState = PhotoProcessingState(rawValue: photo.sourceState) ?? .failed
+        sensorDepthState = PhotoProcessingState(rawValue: photo.sensorDepthState) ?? .unavailable
+        estimatedDepthState = PhotoProcessingState(rawValue: photo.estimatedDepthState) ?? .pending
+        embedding = photo.embedding
+        categories = photo.categories
+        processingVersion = photo.processingVersion
     }
 
-    func all() -> [IndexedPhoto] {
-        if let cachedPhotos {
-            return cachedPhotos.values.sorted { ($0.creationDate ?? .distantPast) > ($1.creationDate ?? .distantPast) }
-        }
-        let table = Table("photo_asset")
-        let id = Expression<String>("id")
-        let creationDate = Expression<Double?>("creation_date")
-        let modificationDate = Expression<Double?>("modification_date")
-        let thumbnailPath = Expression<String?>("thumbnail_path")
-        let sensorDepthPath = Expression<String?>("sensor_depth_path")
-        let estimatedDepthPath = Expression<String?>("estimated_depth_path")
-        let sourceState = Expression<String>("source_state")
-        let sensorDepthState = Expression<String>("sensor_depth_state")
-        let estimatedDepthState = Expression<String>("estimated_depth_state")
-        let embedding = Expression<Data?>("embedding")
-        let categories = Expression<Data?>("categories")
-        let processingVersion = Expression<Int>("processing_version")
-
-        let photos: [IndexedPhoto] = (try? db.prepare(table.order(creationDate.desc)))?.compactMap { row in
-            let decodedCategories = row[categories].flatMap { try? JSONDecoder().decode([PhotoCategory].self, from: $0) } ?? []
-            return IndexedPhoto(
-                id: row[id],
-                creationDate: row[creationDate].map(Date.init(timeIntervalSince1970:)),
-                modificationDate: row[modificationDate].map(Date.init(timeIntervalSince1970:)),
-                thumbnailPath: row[thumbnailPath],
-                sensorDepthPath: row[sensorDepthPath],
-                estimatedDepthPath: row[estimatedDepthPath],
-                sourceState: PhotoProcessingState(rawValue: row[sourceState]) ?? .failed,
-                sensorDepthState: PhotoProcessingState(rawValue: row[sensorDepthState]) ?? .unavailable,
-                estimatedDepthState: PhotoProcessingState(rawValue: row[estimatedDepthState]) ?? .pending,
-                embedding: row[embedding].flatMap(Self.decodeEmbedding),
-                categories: decodedCategories,
-                processingVersion: row[processingVersion]
-            )
-        } ?? []
-        cachedPhotos = Dictionary(uniqueKeysWithValues: photos.map { ($0.id, $0) })
-        return photos
-    }
-
-    func upsert(_ photo: IndexedPhoto) {
-        let table = Table("photo_asset")
-        let id = Expression<String>("id")
-        let creationDate = Expression<Double?>("creation_date")
-        let modificationDate = Expression<Double?>("modification_date")
-        let thumbnailPath = Expression<String?>("thumbnail_path")
-        let sensorDepthPath = Expression<String?>("sensor_depth_path")
-        let estimatedDepthPath = Expression<String?>("estimated_depth_path")
-        let sourceState = Expression<String>("source_state")
-        let sensorDepthState = Expression<String>("sensor_depth_state")
-        let estimatedDepthState = Expression<String>("estimated_depth_state")
-        let embedding = Expression<Data?>("embedding")
-        let categories = Expression<Data?>("categories")
-        let processingVersion = Expression<Int>("processing_version")
-        let encodedCategories = try? JSONEncoder().encode(photo.categories)
-
-        let values: [Setter] = [
-            id <- photo.id,
-            creationDate <- photo.creationDate?.timeIntervalSince1970,
-            modificationDate <- photo.modificationDate?.timeIntervalSince1970,
-            thumbnailPath <- photo.thumbnailPath,
-            sensorDepthPath <- photo.sensorDepthPath,
-            estimatedDepthPath <- photo.estimatedDepthPath,
-            sourceState <- photo.sourceState.rawValue,
-            sensorDepthState <- photo.sensorDepthState.rawValue,
-            estimatedDepthState <- photo.estimatedDepthState.rawValue,
-            embedding <- Self.encodeEmbedding(photo.embedding),
-            categories <- encodedCategories,
-            processingVersion <- photo.processingVersion
-        ]
-        _ = try? db.run(table.insert(or: .replace, values))
-        cachedPhotos?[photo.id] = photo
-    }
-
-    func remove(ids: [String]) -> [String] {
-        guard !ids.isEmpty else { return [] }
-        let deletedPaths = ids.flatMap { identifier -> [String] in
-            guard let photo = cachedPhotos?[identifier] else { return [] }
-            return [photo.thumbnailPath, photo.sensorDepthPath, photo.estimatedDepthPath].compactMap { $0 }
-        }
-        let table = Table("photo_asset")
-        let id = Expression<String>("id")
-        for identifier in ids {
-            _ = try? db.run(table.filter(id == identifier).delete())
-            cachedPhotos?.removeValue(forKey: identifier)
-        }
-        return deletedPaths
-    }
-
-    func photo(id: String) -> IndexedPhoto? {
-        if cachedPhotos == nil { _ = all() }
-        return cachedPhotos?[id]
-    }
-
-    private static func encodeEmbedding(_ embedding: [Float]?) -> Data? {
-        guard let embedding else { return nil }
-        return embedding.withUnsafeBufferPointer { Data(buffer: $0) }
-    }
-
-    private static func decodeEmbedding(_ data: Data) -> [Float]? {
-        guard data.count.isMultiple(of: MemoryLayout<Float>.stride) else { return nil }
-        return data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+    var databaseModel: PhotoIndexModel {
+        PhotoIndexModel(
+            id: id,
+            creationDate: creationDate,
+            modificationDate: modificationDate,
+            thumbnailPath: thumbnailPath,
+            sensorDepthPath: sensorDepthPath,
+            estimatedDepthPath: estimatedDepthPath,
+            sourceState: sourceState.rawValue,
+            sensorDepthState: sensorDepthState.rawValue,
+            estimatedDepthState: estimatedDepthState.rawValue,
+            embedding: embedding,
+            categories: categories,
+            processingVersion: processingVersion
+        )
     }
 }
 
@@ -263,7 +172,7 @@ final class PhotoLibraryService: NSObject {
     private(set) var pendingCount = 0
 
     let ml: MLService
-    private let store = PhotoIndexStore()
+    private let database: DatabaseService
     private let fileManager = FileManager.default
     private let changeTokenDefaultsKey = "PhotoLibraryService.currentChangeToken"
     private var indexingTask: Task<Void, Never>?
@@ -273,7 +182,8 @@ final class PhotoLibraryService: NSObject {
         status == .authorized || status == .limited
     }
 
-    init(ml: MLService = MLService()) {
+    init(database: DatabaseService, ml: MLService = MLService()) {
+        self.database = database
         self.ml = ml
         super.init()
     }
@@ -321,7 +231,7 @@ final class PhotoLibraryService: NSObject {
     }
 
     func categories() async -> [PhotoCategory] {
-        let records = await store.all()
+        let records = database.loadPhotoIndex().map(IndexedPhoto.init)
         let grouped = Dictionary(grouping: records.flatMap(\.categories), by: \.id)
         return grouped.values.compactMap { values in
             guard let first = values.first else { return nil }
@@ -330,7 +240,7 @@ final class PhotoLibraryService: NSObject {
     }
 
     func page(query: PhotoQuery, cursor: PhotoPageCursor? = nil) async throws -> PhotoPage {
-        var records = await store.all()
+        var records = database.loadPhotoIndex().map(IndexedPhoto.init)
         let selected = query.categoryIDs
         if !selected.isEmpty {
             records = records.filter { photo in
@@ -357,8 +267,22 @@ final class PhotoLibraryService: NSObject {
     }
 
     func thumbnail(for record: PhotoRecordSummary) async -> UIImage? {
-        guard let path = record.thumbnailPath else { return nil }
-        return await loadImage(path: path)
+        if let path = record.thumbnailPath,
+           let image = await loadImage(path: path) {
+            return image
+        }
+
+        // A cached thumbnail can be missing after an app-data cleanup while the
+        // index still contains its old path. Fall back to PhotoKit so reopening
+        // the picker can recover without requiring a full re-index.
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [record.id], options: nil)
+        guard let asset = assets.firstObject else { return nil }
+        return await requestImage(
+            asset: asset,
+            targetSize: CGSize(width: 220, height: 220),
+            contentMode: .aspectFill,
+            networkAllowed: true
+        )
     }
 
     func thumbnail(for record: PhotoRecordSummary, representation: PhotoRepresentation) async -> UIImage? {
@@ -374,7 +298,7 @@ final class PhotoLibraryService: NSObject {
         if selection.representation == .source {
             return try await getImage(identifier: selection.assetIdentifier, targetSize: targetSize)
         }
-        let records = await store.all()
+        let records = database.loadPhotoIndex().map(IndexedPhoto.init)
         guard let record = records.first(where: { $0.id == selection.assetIdentifier }) else {
             throw APIError.requestError("The selected photo is no longer indexed.")
         }
@@ -387,7 +311,7 @@ final class PhotoLibraryService: NSObject {
 
     private func reconcileLibrary() async {
         let currentToken = PHPhotoLibrary.shared().currentChangeToken
-        let existingAtStart = await store.all()
+        let existingAtStart = database.loadPhotoIndex().map(IndexedPhoto.init)
         if let storedToken = loadChangeToken(), storedToken.isEqual(currentToken), !existingAtStart.isEmpty {
             indexedCount = existingAtStart.count
             pendingCount = 0
@@ -404,7 +328,7 @@ final class PhotoLibraryService: NSObject {
         let assets = PHAsset.fetchAssets(with: .image, options: options)
         let existing = existingAtStart
         let allowedIDs = Set((0..<assets.count).map { assets.object(at: $0).localIdentifier })
-        let removedPaths = await store.remove(ids: existing.map(\.id).filter { !allowedIDs.contains($0) })
+        let removedPaths = database.removePhotos(ids: existing.map(\.id).filter { !allowedIDs.contains($0) })
         removeDerivedFiles(at: removedPaths)
         let existingByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
 
@@ -442,7 +366,7 @@ final class PhotoLibraryService: NSObject {
                 deletedIDs.formUnion(details.deletedLocalIdentifiers)
             }
             changedIDs.subtract(deletedIDs)
-            let removedPaths = await store.remove(ids: Array(deletedIDs))
+            let removedPaths = database.removePhotos(ids: Array(deletedIDs))
             removeDerivedFiles(at: removedPaths)
 
             let result = PHAsset.fetchAssets(withLocalIdentifiers: Array(changedIDs), options: nil)
@@ -452,7 +376,7 @@ final class PhotoLibraryService: NSObject {
                 indexedCount = index + 1
                 pendingCount = max(result.count - indexedCount, 0)
             }
-            indexedCount = await store.all().count
+            indexedCount = database.loadPhotoIndex().count
             pendingCount = 0
             saveChangeToken(currentToken)
             return true
@@ -473,10 +397,10 @@ final class PhotoLibraryService: NSObject {
 
     // Nonisolated async work runs on the cooperative executor rather than the
     // service's main actor. Only progress publication stays main-actor bound.
-    private nonisolated func indexAsset(_ asset: PHAsset) async {
+    private func indexAsset(_ asset: PHAsset) async {
         let thumbnail = await requestImage(asset: asset, targetSize: CGSize(width: 220, height: 220), contentMode: .aspectFill, networkAllowed: false)
         guard let thumbnail else {
-            await store.upsert(IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, thumbnailPath: nil, sensorDepthPath: nil, estimatedDepthPath: nil, sourceState: .deferredForDownload, sensorDepthState: .deferredForDownload, estimatedDepthState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion))
+            database.save(photo: IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, thumbnailPath: nil, sensorDepthPath: nil, estimatedDepthPath: nil, sourceState: .deferredForDownload, sensorDepthState: .deferredForDownload, estimatedDepthState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel)
             return
         }
         let thumbnailPath = await Self.save(image: thumbnail, identifier: asset.localIdentifier, suffix: "thumbnail")
@@ -510,7 +434,7 @@ final class PhotoLibraryService: NSObject {
             estimatedDepthState = .deferredForDownload
         }
 
-        await store.upsert(IndexedPhoto(
+        database.save(photo: IndexedPhoto(
             id: asset.localIdentifier,
             creationDate: asset.creationDate,
             modificationDate: asset.modificationDate,
@@ -523,7 +447,7 @@ final class PhotoLibraryService: NSObject {
             embedding: embedding,
             categories: categories,
             processingVersion: IndexedPhoto.processingVersion
-        ))
+        ).databaseModel)
     }
 
     private func registerObserver() {
@@ -547,6 +471,10 @@ final class PhotoLibraryService: NSObject {
             options.deliveryMode = .highQualityFormat
             options.resizeMode = .fast
             PHImageManager.default().requestImage(for: asset, targetSize: targetSize, contentMode: contentMode, options: options) { image, info in
+                if info?[PHImageCancelledKey] as? Bool == true || info?[PHImageErrorKey] != nil {
+                    continuation.resume(returning: nil)
+                    return
+                }
                 if let degraded = info?[PHImageResultIsDegradedKey] as? Bool, degraded { return }
                 continuation.resume(returning: image)
             }

@@ -23,7 +23,9 @@ struct LandingiPhoneView: View {
                     
                     Image(uiImage: img)
                         .resizable()
-                        .scaledToFit()
+                        .scaledToFill()
+                        .aspectRatio(1, contentMode: .fit)
+                        .clipped()
                 }
             }
             .onAppear {

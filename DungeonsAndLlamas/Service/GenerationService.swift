@@ -22,13 +22,17 @@ class GenerationService {
     var mlService = MLService()
     
     var fileService = FileService()
-    var db = DatabaseService()
-    var photos = PhotoLibraryService()
+    var db: DatabaseService
+    var photos: PhotoLibraryService
     
     static let statusCheckInterval = 2.0
     private static let comfyUIClientIdKey = "comfyUIClientId"
     
-    public init() {}
+    public init() {
+        let database = DatabaseService()
+        db = database
+        photos = PhotoLibraryService(database: database)
+    }
     
     var comfyUIClientId: String {
         get {

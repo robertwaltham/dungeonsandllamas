@@ -108,7 +108,7 @@ struct PhotoPickerView: View {
         HStack(spacing: 8) {
             ProgressView()
                 .controlSize(.small)
-            Text(model.pendingCount > 0 ? "Indexing photos… (model.pendingCount) remaining" : "Preparing photo index…")
+            Text(model.pendingCount > 0 ? "Indexing photos… \(model.pendingCount) remaining" : "Preparing photo index…")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -322,6 +322,7 @@ private struct PhotoPickerCell: View {
     let service: PhotoLibraryService
     let onSelect: () -> Void
     @State private var image: UIImage?
+    @State private var isLoading = false
 
     private var state: PhotoProcessingState {
         record.representationStates[representation] ?? .unavailable
@@ -360,6 +361,8 @@ private struct PhotoPickerCell: View {
         .disabled(state != .available && !(representation == .source && image != nil))
         .accessibilityLabel(isSelected ? "Selected photo" : "Photo")
         .task(id: "\(record.id)-\(representation.rawValue)") {
+            isLoading = true
+            defer { isLoading = false }
             image = nil
             image = await service.thumbnail(for: record, representation: representation)
         }
@@ -384,7 +387,12 @@ private struct PhotoPickerCell: View {
             Image(systemName: "exclamationmark.triangle")
                 .foregroundStyle(.orange)
         case .available:
-            ProgressView()
+            if isLoading {
+                ProgressView()
+            } else {
+                Image(systemName: "photo")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

@@ -56,6 +56,7 @@ class DatabaseService {
         do {
             try ImageHistoryModel.createTable(db: db)
             try LoraHistoryModel.createTable(db: db)
+            try PhotoIndexModel.createTable(db: db)
             try migrateDatabase()
         } catch {
             fatalError(error.localizedDescription)
@@ -92,6 +93,51 @@ class DatabaseService {
             }
             db.userVersion = 4
         }
+
+        if currentVersion < 5 {
+            try migrateLegacyPhotoIndex()
+            db.userVersion = 5
+        }
+    }
+
+    private func migrateLegacyPhotoIndex() throws {
+        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("PhotoLibrary", isDirectory: true)
+        let legacyURL = root.appendingPathComponent("photo-index.sqlite3")
+        guard FileManager.default.fileExists(atPath: legacyURL.path) else { return }
+
+        let legacyDB = try Connection(legacyURL.path)
+        let legacyTable = Table("photo_asset")
+        let id = Expression<String>("id")
+        let creationDate = Expression<Double?>("creation_date")
+        let modificationDate = Expression<Double?>("modification_date")
+        let thumbnailPath = Expression<String?>("thumbnail_path")
+        let sensorDepthPath = Expression<String?>("sensor_depth_path")
+        let estimatedDepthPath = Expression<String?>("estimated_depth_path")
+        let sourceState = Expression<String>("source_state")
+        let sensorDepthState = Expression<String>("sensor_depth_state")
+        let estimatedDepthState = Expression<String>("estimated_depth_state")
+        let embedding = Expression<Data?>("embedding")
+        let categories = Expression<Data?>("categories")
+        let processingVersion = Expression<Int>("processing_version")
+
+        for row in try legacyDB.prepare(legacyTable) {
+            let photo = PhotoIndexModel(
+                id: row[id],
+                creationDate: row[creationDate].map(Date.init(timeIntervalSince1970:)),
+                modificationDate: row[modificationDate].map(Date.init(timeIntervalSince1970:)),
+                thumbnailPath: row[thumbnailPath],
+                sensorDepthPath: row[sensorDepthPath],
+                estimatedDepthPath: row[estimatedDepthPath],
+                sourceState: row[sourceState],
+                sensorDepthState: row[sensorDepthState],
+                estimatedDepthState: row[estimatedDepthState],
+                embedding: PhotoIndexModel.decodedEmbeddingForMigration(row[embedding]),
+                categories: PhotoIndexModel.decodedCategoriesForMigration(row[categories]),
+                processingVersion: row[processingVersion]
+            )
+            try photo.save(db: db)
+        }
     }
 }
 
@@ -127,6 +173,160 @@ extension DatabaseService {
         } catch {
             databaseLogger.error("History asset update failed: \(String(describing: error), privacy: .private)")
         }
+    }
+
+    func loadPhotoIndex() -> [PhotoIndexModel] {
+        do {
+            return try PhotoIndexModel.load(db: db)
+        } catch {
+            databaseLogger.error("Photo index load failed: \(String(describing: error), privacy: .private)")
+            return []
+        }
+    }
+
+    func save(photo: PhotoIndexModel) {
+        do {
+            try photo.save(db: db)
+        } catch {
+            databaseLogger.error("Photo index save failed: \(String(describing: error), privacy: .private)")
+        }
+    }
+
+    func removePhotos(ids: [String]) -> [String] {
+        do {
+            return try PhotoIndexModel.remove(db: db, ids: ids)
+        } catch {
+            databaseLogger.error("Photo index removal failed: \(String(describing: error), privacy: .private)")
+            return []
+        }
+    }
+}
+
+struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
+    static let processingVersion = 2
+
+    @SqlProperty
+    var id: String
+    @SqlProperty
+    var creationDate: Date?
+    @SqlProperty
+    var modificationDate: Date?
+    @SqlProperty
+    var thumbnailPath: String?
+    @SqlProperty
+    var sensorDepthPath: String?
+    @SqlProperty
+    var estimatedDepthPath: String?
+    @SqlProperty
+    var sourceState: String
+    @SqlProperty
+    var sensorDepthState: String
+    @SqlProperty
+    var estimatedDepthState: String
+    var embedding: [Float]?
+    var categories: [PhotoCategory]
+    @SqlProperty
+    var processingVersion: Int
+
+    fileprivate static var embeddingExp: SQLite.Expression<Data?> {
+        Expression<Data?>("embedding")
+    }
+
+    fileprivate static var categoriesExp: SQLite.Expression<Data?> {
+        Expression<Data?>("categories")
+    }
+
+    fileprivate static func table() -> Table {
+        Table("photo_asset")
+    }
+
+    fileprivate static func createTable(db: Connection) throws {
+        try db.run(table().create(ifNotExists: true) { t in
+            t.column(idExp, primaryKey: true)
+            t.column(creationDateExp)
+            t.column(modificationDateExp)
+            t.column(thumbnailPathExp)
+            t.column(sensorDepthPathExp)
+            t.column(estimatedDepthPathExp)
+            t.column(sourceStateExp)
+            t.column(sensorDepthStateExp)
+            t.column(estimatedDepthStateExp)
+            t.column(embeddingExp)
+            t.column(categoriesExp)
+            t.column(processingVersionExp)
+        })
+    }
+
+    fileprivate func save(db: Connection) throws {
+        try db.run(Self.table().insert(or: .replace,
+            Self.idExp <- id,
+            Self.creationDateExp <- creationDate,
+            Self.modificationDateExp <- modificationDate,
+            Self.thumbnailPathExp <- thumbnailPath,
+            Self.sensorDepthPathExp <- sensorDepthPath,
+            Self.estimatedDepthPathExp <- estimatedDepthPath,
+            Self.sourceStateExp <- sourceState,
+            Self.sensorDepthStateExp <- sensorDepthState,
+            Self.estimatedDepthStateExp <- estimatedDepthState,
+            Self.embeddingExp <- Self.encodedEmbedding(embedding),
+            Self.categoriesExp <- Self.encodedCategories(categories),
+            Self.processingVersionExp <- processingVersion
+        ))
+    }
+
+    fileprivate static func load(db: Connection) throws -> [PhotoIndexModel] {
+        try db.prepare(table().order(creationDateExp.desc)).map { row in
+            PhotoIndexModel(
+                id: row[idExp],
+                creationDate: row[creationDateExp],
+                modificationDate: row[modificationDateExp],
+                thumbnailPath: row[thumbnailPathExp],
+                sensorDepthPath: row[sensorDepthPathExp],
+                estimatedDepthPath: row[estimatedDepthPathExp],
+                sourceState: row[sourceStateExp],
+                sensorDepthState: row[sensorDepthStateExp],
+                estimatedDepthState: row[estimatedDepthStateExp],
+                embedding: decodedEmbedding(row[embeddingExp]),
+                categories: decodedCategories(row[categoriesExp]),
+                processingVersion: row[processingVersionExp]
+            )
+        }
+    }
+
+    fileprivate static func remove(db: Connection, ids: [String]) throws -> [String] {
+        guard !ids.isEmpty else { return [] }
+        let records = try load(db: db).filter { ids.contains($0.id) }
+        for id in ids {
+            try db.run(table().filter(idExp == id).delete())
+        }
+        return records.flatMap { [$0.thumbnailPath, $0.sensorDepthPath, $0.estimatedDepthPath].compactMap { $0 } }
+    }
+
+    private static func encodedEmbedding(_ embedding: [Float]?) -> Data? {
+        guard let embedding else { return nil }
+        return embedding.withUnsafeBufferPointer { Data(buffer: $0) }
+    }
+
+    private static func decodedEmbedding(_ data: Data?) -> [Float]? {
+        guard let data, data.count.isMultiple(of: MemoryLayout<Float>.stride) else { return nil }
+        return data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+    }
+
+    private static func encodedCategories(_ categories: [PhotoCategory]) -> Data? {
+        try? JSONEncoder().encode(categories)
+    }
+
+    private static func decodedCategories(_ data: Data?) -> [PhotoCategory] {
+        guard let data else { return [] }
+        return (try? JSONDecoder().decode([PhotoCategory].self, from: data)) ?? []
+    }
+
+    fileprivate static func decodedEmbeddingForMigration(_ data: Data?) -> [Float]? {
+        decodedEmbedding(data)
+    }
+
+    fileprivate static func decodedCategoriesForMigration(_ data: Data?) -> [PhotoCategory] {
+        decodedCategories(data)
     }
 }
 
