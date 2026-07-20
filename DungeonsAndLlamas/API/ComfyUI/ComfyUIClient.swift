@@ -317,6 +317,27 @@ actor ComfyUIClient {
             }
             return true
         }
+
+        func progress(for promptId: String) -> Float? {
+            guard knownType == .progress,
+                  let data = data?.value as? [String: Any],
+                  data["prompt_id"] as? String == promptId.lowercased(),
+                  let max = numericValue(data["max"]), max > 0,
+                  let value = numericValue(data["value"]) else {
+                return nil
+            }
+            return Swift.min(Swift.max(Float(value / max), 0), 1)
+        }
+        
+        private func numericValue(_ value: Any?) -> Double? {
+            switch value {
+            case let value as NSNumber: return value.doubleValue
+            case let value as Double: return value
+            case let value as Float: return Double(value)
+            case let value as Int: return Double(value)
+            default: return nil
+            }
+        }
     }
 
     enum KnownWebSocketEventType: String {

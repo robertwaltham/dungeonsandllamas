@@ -132,21 +132,20 @@ struct TwoPhotoEditView: View {
             Text(viewModel.hasPreviousOutput ? "Result" : "Generated Result")
                 .font(.headline)
 
-            if let output = viewModel.output {
-                Image(uiImage: output)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity)
-                    .overlay {
-                        if viewModel.loading {
-                            ProgressView("Generating…")
-                                .padding()
-                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-                        }
-                    }
-            } else {
-                ContentUnavailableView("No result yet", systemImage: "sparkles", description: Text("Your generated image will appear here."))
-                    .frame(maxWidth: .infinity, minHeight: 180)
+            ZStack {
+                if let output = viewModel.output {
+                    Image(uiImage: output)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    ContentUnavailableView("No result yet", systemImage: "sparkles", description: Text("Your generated image will appear here."))
+                        .frame(maxWidth: .infinity, minHeight: 180)
+                }
+
+                if viewModel.loading {
+                    ComfyGenerationProgressView(progress: viewModel.progress, title: "Generating…")
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -182,6 +181,7 @@ private final class TwoPhotoEditViewModel {
     var loading = false
     var error: String?
     var output: UIImage?
+    var progress: Float?
 
     private var firstImage: SelectedImage?
     private var secondImage: SelectedImage?
@@ -255,6 +255,7 @@ private final class TwoPhotoEditViewModel {
         generationTask?.cancel()
         loading = true
         error = nil
+        progress = nil
         let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         let seed = seed
         let clientID = generationService.comfyUIClientId
@@ -281,6 +282,7 @@ private final class TwoPhotoEditViewModel {
 
         generationTask = Task { @MainActor in
             defer {
+                progress = nil
                 loading = false
                 self.seed = Self.randomSeed()
             }
@@ -299,7 +301,11 @@ private final class TwoPhotoEditViewModel {
                 )
 
                 for try await message in messages {
-                    guard case .event(let event) = message, event.isExecutionComplete(for: promptID) else { continue }
+                    guard case .event(let event) = message else { continue }
+                    if let progress = event.progress(for: promptID) {
+                        self.progress = progress
+                    }
+                    guard event.isExecutionComplete(for: promptID) else { continue }
                     break
                 }
 

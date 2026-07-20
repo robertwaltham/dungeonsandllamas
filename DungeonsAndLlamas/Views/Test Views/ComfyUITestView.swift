@@ -174,7 +174,7 @@ struct ComfyUITestView: View {
                 )
                 
                 if viewModel.loading {
-                    LoadingView()
+                    ComfyGenerationProgressView(progress: viewModel.progress, title: "Generating…")
                         .frame(maxWidth: .infinity, minHeight: 120)
                 }
             }
@@ -257,18 +257,25 @@ struct ComfyUITestView: View {
     }
 }
 
-private struct LoadingView: View {
+struct ComfyGenerationProgressView: View {
+    let progress: Float?
+    let title: String
+
     var body: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text("Generating...")
-                .foregroundStyle(.secondary)
+        VStack(spacing: 8) {
+            if let progress {
+                ProgressView(value: Double(progress))
+                    .frame(width: 150)
+                Text("\(title) \(Int((progress * 100).rounded()))%")
+            } else {
+                ProgressView()
+                Text(title)
+            }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 15)
-                .fill(.white)
-        )
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(progress.map { "\(title) \(Int(($0 * 100).rounded())) percent" } ?? title)
     }
 }
 
@@ -298,6 +305,7 @@ private class ComfyUITestViewModel {
     var inputImagePath: String?
     var uploadedInputFilename: String?
     var error: String?
+    var progress: Float?
 
     init(workflow: ComfyUITestWorkflow = .one, history: ImageHistoryModel? = nil, generationService: GenerationService? = nil) {
         guard let history, let generationService else {
@@ -403,6 +411,7 @@ private class ComfyUITestViewModel {
         }
 
         loading = true
+        progress = nil
         image = nil
         imagePaths = []
         inputImagePath = nil
@@ -522,15 +531,18 @@ private class ComfyUITestViewModel {
             generationService.imageHistory.append(history)
             generationService.lastHistory = history
             randomizeSeed()
+            progress = nil
             loading = false
         }
     }
 
     private func waitForImageEditCompletion(promptId: String, messages: AsyncThrowingStream<ComfyUIClient.WebSocketMessage, Error>) async throws {
         for try await message in messages {
-            guard case .event(let event) = message, event.isExecutionComplete(for: promptId) else {
-                continue
+            guard case .event(let event) = message else { continue }
+            if let progress = event.progress(for: promptId) {
+                self.progress = progress
             }
+            guard event.isExecutionComplete(for: promptId) else { continue }
             return
         }
     }
