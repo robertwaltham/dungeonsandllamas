@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D1020985301338B000B271FA /* mobileclip2_s2.h13g.aimodelc in Resources */ = {isa = PBXBuildFile; fileRef = D1020982301338B000B271FA /* mobileclip2_s2.h13g.aimodelc */; };
 		D10589C32DC2D8A400E0F3BE /* .gitkeep in Resources */ = {isa = PBXBuildFile; fileRef = D10589BF2DC2D8A400E0F3BE /* .gitkeep */; };
 		D10589C52DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D10589C02DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage */; };
 		D10D1DD52DA6EDD900746F53 /* inpaint.drawing in Resources */ = {isa = PBXBuildFile; fileRef = D10D1DD42DA6EDD900746F53 /* inpaint.drawing */; };
@@ -14,7 +15,6 @@
 		D121A54B2DC19517000CE87D /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = D121A54A2DC19517000CE87D /* AnyCodable */; };
 		D13024772DC969F5006EA67C /* FastViTMA36F16.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D13024762DC969F5006EA67C /* FastViTMA36F16.mlpackage */; };
 		D130247B2DC97011006EA67C /* FastViTT8F16.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D130247A2DC97011006EA67C /* FastViTT8F16.mlpackage */; };
-		D1433E4D300D25D600FB7E8C /* mobileclip2_s2.aimodel in Sources */ = {isa = PBXBuildFile; fileRef = D1433E4C300D25D600FB7E8C /* mobileclip2_s2.aimodel */; };
 		D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16CAE482BB3724000ECA710 /* DungeonsAndLlamasApp.swift */; };
 		D16CAE4F2BB3724100ECA710 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D16CAE4E2BB3724100ECA710 /* Assets.xcassets */; };
 		D16CAE522BB3724100ECA710 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D16CAE512BB3724100ECA710 /* Preview Assets.xcassets */; };
@@ -23,6 +23,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D1020982301338B000B271FA /* mobileclip2_s2.h13g.aimodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = mobileclip2_s2.h13g.aimodelc; sourceTree = "<group>"; };
+		D1020983301338B000B271FA /* mobileclip2_s2.h14p.aimodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = mobileclip2_s2.h14p.aimodelc; sourceTree = "<group>"; };
 		D10589BF2DC2D8A400E0F3BE /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		D10589C02DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = DepthAnythingV2SmallF16.mlpackage; sourceTree = "<group>"; };
 		D10D1DD42DA6EDD900746F53 /* inpaint.drawing */ = {isa = PBXFileReference; lastKnownFileType = file; path = inpaint.drawing; sourceTree = "<group>"; };
@@ -64,6 +66,8 @@
 				D130247A2DC97011006EA67C /* FastViTT8F16.mlpackage */,
 				D13024762DC969F5006EA67C /* FastViTMA36F16.mlpackage */,
 				D10589BF2DC2D8A400E0F3BE /* .gitkeep */,
+				D1020982301338B000B271FA /* mobileclip2_s2.h13g.aimodelc */,
+				D1020983301338B000B271FA /* mobileclip2_s2.h14p.aimodelc */,
 				D10589C02DC2D8A400E0F3BE /* DepthAnythingV2SmallF16.mlpackage */,
 			);
 			path = Models;
@@ -188,6 +192,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D16CAE522BB3724100ECA710 /* Preview Assets.xcassets in Resources */,
+				D1020985301338B000B271FA /* mobileclip2_s2.h13g.aimodelc in Resources */,
 				D16CAE4F2BB3724100ECA710 /* Assets.xcassets in Resources */,
 				D10589C32DC2D8A400E0F3BE /* .gitkeep in Resources */,
 				D10D1DD52DA6EDD900746F53 /* inpaint.drawing in Resources */,
@@ -206,7 +211,6 @@
 				D130247B2DC97011006EA67C /* FastViTT8F16.mlpackage in Sources */,
 				D16CAE492BB3724000ECA710 /* DungeonsAndLlamasApp.swift in Sources */,
 				D13024772DC969F5006EA67C /* FastViTMA36F16.mlpackage in Sources */,
-				D1433E4D300D25D600FB7E8C /* mobileclip2_s2.aimodel in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -266,7 +270,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -324,7 +328,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;

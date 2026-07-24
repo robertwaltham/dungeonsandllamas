@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import CoreAI
 
 @main
 struct DungeonsAndLlamasApp: App {
@@ -31,6 +32,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         generationService.logStartupSummary()
         generationService.getModels()
         generationService.getComfyUIModels()
+        print(AIModel.deviceArchitectureName)
         return true
     }
     

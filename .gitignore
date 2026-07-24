@@ -1,4 +1,3 @@
 *Secrets.swift
-*.mlpackage
-*.aimodel
 .derivedData/
+/DungeonsAndLlamas/Models/*

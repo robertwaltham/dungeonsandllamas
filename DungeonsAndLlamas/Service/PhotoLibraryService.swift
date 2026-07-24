@@ -142,6 +142,7 @@ final class PhotoLibraryService: NSObject {
     private let changeTokenDefaultsKey = "PhotoLibraryService.currentChangeToken"
     private var indexingTask: Task<Void, Never>?
     private let searchEngine: any PhotoDistanceEngine
+    private let embeddingCache = PhotoEmbeddingBufferCache()
 
     var canAccess: Bool {
         status == .authorized || status == .limited
@@ -195,6 +196,7 @@ final class PhotoLibraryService: NSObject {
             photoLibraryLogger.debug("Photo sync request ignored: sync is already running")
             return
         }
+        embeddingCache.invalidate()
         photoLibraryLogger.info("Photo sync started")
         isIndexing = true
         indexingTask = Task { [weak self] in
@@ -211,6 +213,7 @@ final class PhotoLibraryService: NSObject {
         indexingTask?.cancel()
         indexingTask = nil
         isIndexing = false
+        embeddingCache.invalidate()
     }
 
     func categories() async -> [PhotoCategory] {
@@ -223,9 +226,35 @@ final class PhotoLibraryService: NSObject {
     }
 
     func page(query: PhotoQuery, cursor: PhotoPageCursor? = nil) async throws -> PhotoPage {
-        var records = query.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? database.loadPhotoIndexSummaries().map(IndexedPhoto.init)
-            : database.loadPhotoIndex().map(IndexedPhoto.init)
+        let offset = cursor?.offset ?? 0
+        let pageSize = query.pageSize
+        let hasSearchText = !query.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        var records: [IndexedPhoto]
+
+        if !hasSearchText && query.categoryIDs.isEmpty {
+            let page = database.loadPhotoIndexSummaryPage(limit: pageSize + 1, offset: offset)
+                .map(IndexedPhoto.init)
+            let hasNextPage = page.count > pageSize
+            records = Array(page.prefix(pageSize))
+            return PhotoPage(
+                records: records.map(Self.summary),
+                nextCursor: hasNextPage ? PhotoPageCursor(offset: offset + pageSize) : nil
+            )
+        }
+
+        if hasSearchText, embeddingCache.isReady {
+            records = database.loadPhotoIndexSummaries().map(IndexedPhoto.init)
+        } else {
+            records = hasSearchText
+                ? database.loadPhotoIndex().map(IndexedPhoto.init)
+                : database.loadPhotoIndexSummaries().map(IndexedPhoto.init)
+        }
+        if hasSearchText, !embeddingCache.isReady {
+            embeddingCache.replace(with: records.compactMap { photo in
+                guard let embedding = photo.embedding else { return nil }
+                return (id: photo.id, embedding: embedding)
+            })
+        }
         let selected = query.categoryIDs
         if !selected.isEmpty {
             records = records.filter { photo in
@@ -235,25 +264,48 @@ final class PhotoLibraryService: NSObject {
 
         if !query.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let embedding = try await ml.textEmbedding(for: query.text)
-            let candidates = records.compactMap { photo -> (IndexedPhoto, [Float])? in
-                guard let photoEmbedding = photo.embedding,
-                      photoEmbedding.count == embedding.count else { return nil }
-                return (photo, photoEmbedding)
+            let candidateRecords: [IndexedPhoto]
+            let distances: [Float]
+            if embeddingCache.isReady {
+                candidateRecords = records.filter { embeddingCache.contains($0.id) }
+                guard !candidateRecords.isEmpty else {
+                    records = []
+                    return PhotoPage(records: [], nextCursor: nil)
+                }
+                guard let candidateBuffer = embeddingCache.candidateBuffer(for: candidateRecords.map(\.id)) else {
+                    throw PhotoSearchError.metalExecutionFailed("Unable to allocate cached search buffers.")
+                }
+                distances = try searchEngine.distances(
+                    query: embedding,
+                    candidateBuffer: candidateBuffer,
+                    dimension: embeddingCache.dimension,
+                    candidateCount: candidateRecords.count
+                )
+            } else {
+                let candidates = records.compactMap { photo -> (IndexedPhoto, [Float])? in
+                    guard let photoEmbedding = photo.embedding,
+                          photoEmbedding.count == embedding.count else { return nil }
+                    return (photo, photoEmbedding)
+                }
+                let flattenedCandidates = candidates.reduce(into: [Float]()) { result, candidate in
+                    result.append(contentsOf: candidate.1)
+                }
+                candidateRecords = candidates.map(\.0)
+                guard !candidateRecords.isEmpty else {
+                    records = []
+                    return PhotoPage(records: [], nextCursor: nil)
+                }
+                distances = try searchEngine.distances(
+                    query: embedding,
+                    flattenedCandidates: flattenedCandidates,
+                    candidateCount: candidateRecords.count
+                )
             }
-            let flattenedCandidates = candidates.reduce(into: [Float]()) { result, candidate in
-                result.append(contentsOf: candidate.1)
-            }
-            let distances = try searchEngine.distances(
-                query: embedding,
-                flattenedCandidates: flattenedCandidates,
-                candidateCount: candidates.count
-            )
-            records = zip(candidates, distances)
+            records = zip(candidateRecords, distances)
                 .sorted { $0.1 < $1.1 }
-                .map { $0.0.0 }
+                .map(\.0)
         }
 
-        let offset = cursor?.offset ?? 0
         let end = min(offset + query.pageSize, records.count)
         let pageRecords = offset < end ? records[offset..<end] : []
         let summaries = pageRecords.map(Self.summary)
@@ -398,6 +450,7 @@ final class PhotoLibraryService: NSObject {
     private func indexAsset(_ asset: PHAsset) async {
         guard let image = await requestImage(asset: asset, targetSize: CGSize(width: 1024, height: 1024), contentMode: .aspectFit, networkAllowed: true) else {
             photoLibraryLogger.warning("Photo asset deferred: source image is not locally available")
+            embeddingCache.invalidate()
             database.save(photo: IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, sourceState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel)
             return
         }
@@ -413,6 +466,7 @@ final class PhotoLibraryService: NSObject {
             photoLibraryLogger.error("Photo ML processing failed: \(String(describing: error), privacy: .private)")
         }
 
+        embeddingCache.invalidate()
         database.save(photo: IndexedPhoto(
             id: asset.localIdentifier,
             creationDate: asset.creationDate,

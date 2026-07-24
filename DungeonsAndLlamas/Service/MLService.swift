@@ -110,7 +110,9 @@ actor MLService {
 
     private func loadClipModelIfNeeded() async throws {
         guard clipModel == nil else { return }
-        guard let url = Bundle.main.url(forResource: "mobileclip2_s2", withExtension: "aimodel") else {
+        let compiledURL = Bundle.main.url(forResource: "mobileclip2_s2.h13g", withExtension: "aimodelc")
+        let sourceURL = Bundle.main.url(forResource: "mobileclip2_s2", withExtension: "aimodel")
+        guard let url = compiledURL ?? sourceURL else {
             throw EmbeddingError.modelNotLoaded
         }
         let clipModel = try await AIModel(contentsOf: url)

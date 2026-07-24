@@ -243,6 +243,15 @@ extension DatabaseService {
         }
     }
 
+    func loadPhotoIndexSummaryPage(limit: Int, offset: Int) -> [PhotoIndexModel] {
+        do {
+            return try PhotoIndexModel.loadSummaries(db: db, limit: limit, offset: offset)
+        } catch {
+            databaseLogger.error("Photo summary page load failed: \(String(describing: error), privacy: .private)")
+            return []
+        }
+    }
+
     func loadPhoto(id: String) -> PhotoIndexModel? {
         do {
             return try PhotoIndexModel.load(db: db, id: id)
@@ -330,7 +339,15 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
     }
 
     fileprivate static func loadSummaries(db: Connection) throws -> [PhotoIndexModel] {
-        try db.prepare(table().order(creationDateExp.desc)).map { row in
+        try loadSummaries(db: db, limit: nil, offset: 0)
+    }
+
+    fileprivate static func loadSummaries(db: Connection, limit: Int?, offset: Int) throws -> [PhotoIndexModel] {
+        var query = table().order(creationDateExp.desc)
+        if let limit {
+            query = query.limit(limit, offset: offset)
+        }
+        return try db.prepare(query).map { row in
             PhotoIndexModel(id: row[idExp], creationDate: row[creationDateExp],
                             modificationDate: row[modificationDateExp],
                             sourceState: row[sourceStateExp], embedding: nil,
