@@ -31,9 +31,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         generationService.logStartupSummary()
         generationService.getModels()
         generationService.getComfyUIModels()
-        Task { @MainActor in
-            await generationService.photos.startIfAuthorized()
-        }
         return true
     }
     

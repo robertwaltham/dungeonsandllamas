@@ -26,9 +26,7 @@ struct PhotoPickerView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if model.isIndexing || model.pendingCount > 0 {
-                    indexingStatus
-                }
+                indexingControls
 
                 if model.accessDenied {
                     accessState
@@ -104,14 +102,31 @@ struct PhotoPickerView: View {
         }
     }
 
-    private var indexingStatus: some View {
+    private var indexingControls: some View {
         HStack(spacing: 8) {
-            ProgressView()
-                .controlSize(.small)
-            Text(model.pendingCount > 0 ? "Indexing photos… \(model.pendingCount) remaining" : "Preparing photo index…")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if model.isIndexing {
+                ProgressView()
+                    .controlSize(.small)
+                Text(model.pendingCount > 0 ? "Indexing photos… \(model.pendingCount) remaining" : "Indexing photos…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Photo indexing is paused")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
+            Button(model.isIndexing ? "Pause" : "Start") {
+                Task {
+                    if model.isIndexing {
+                        model.pauseIndexing()
+                    } else {
+                        await model.startIndexing()
+                    }
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -219,7 +234,9 @@ private final class PhotoPickerModel {
         isIndexing = service.isIndexing
         pendingCount = service.pendingCount
         hasLoaded = true
-        monitorIndexing()
+        if isIndexing {
+            monitorIndexing()
+        }
     }
 
     func requestAccess() async {
@@ -229,6 +246,22 @@ private final class PhotoPickerModel {
         if service.canAccess {
             await refresh()
         }
+    }
+
+    func startIndexing() async {
+        await service.startIndexing()
+        isIndexing = service.isIndexing
+        pendingCount = service.pendingCount
+        if isIndexing {
+            monitorIndexing()
+        }
+    }
+
+    func pauseIndexing() {
+        indexingMonitorTask?.cancel()
+        service.stopIndexing()
+        isIndexing = false
+        pendingCount = service.pendingCount
     }
 
     private func monitorIndexing() {

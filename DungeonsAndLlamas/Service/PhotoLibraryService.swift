@@ -56,7 +56,6 @@ struct PhotoRecordSummary: Identifiable, Hashable, Sendable {
     let id: String
     let creationDate: Date?
     let modificationDate: Date?
-    let thumbnailPath: String?
     let sourceState: PhotoProcessingState
     let categories: [PhotoCategory]
 
@@ -81,11 +80,10 @@ struct PhotoQuery: Hashable, Sendable {
 }
 
 private struct IndexedPhoto: Sendable {
-    static let processingVersion = 2
+    static let processingVersion = 3
     let id: String
     let creationDate: Date?
     let modificationDate: Date?
-    let thumbnailPath: String?
     let sourceState: PhotoProcessingState
     let embedding: [Float]?
     let categories: [PhotoCategory]
@@ -95,7 +93,6 @@ private struct IndexedPhoto: Sendable {
         id: String,
         creationDate: Date?,
         modificationDate: Date?,
-        thumbnailPath: String?,
         sourceState: PhotoProcessingState,
         embedding: [Float]?,
         categories: [PhotoCategory],
@@ -104,7 +101,6 @@ private struct IndexedPhoto: Sendable {
         self.id = id
         self.creationDate = creationDate
         self.modificationDate = modificationDate
-        self.thumbnailPath = thumbnailPath
         self.sourceState = sourceState
         self.embedding = embedding
         self.categories = categories
@@ -115,7 +111,6 @@ private struct IndexedPhoto: Sendable {
         id = photo.id
         creationDate = photo.creationDate
         modificationDate = photo.modificationDate
-        thumbnailPath = photo.thumbnailPath
         sourceState = PhotoProcessingState(rawValue: photo.sourceState) ?? .failed
         embedding = photo.embedding
         categories = photo.categories
@@ -127,7 +122,6 @@ private struct IndexedPhoto: Sendable {
             id: id,
             creationDate: creationDate,
             modificationDate: modificationDate,
-            thumbnailPath: thumbnailPath,
             sourceState: sourceState.rawValue,
             embedding: embedding,
             categories: categories,
@@ -145,7 +139,6 @@ final class PhotoLibraryService: NSObject {
 
     let ml: MLService
     private let database: DatabaseService
-    private let fileManager = FileManager.default
     private let changeTokenDefaultsKey = "PhotoLibraryService.currentChangeToken"
     private var indexingTask: Task<Void, Never>?
     private let searchEngine: any PhotoDistanceEngine
@@ -176,14 +169,13 @@ final class PhotoLibraryService: NSObject {
         photoLibraryLogger.info("Photo access check completed: status=\(self.status?.rawValue ?? -1, privacy: .public) canAccess=\(self.canAccess, privacy: .public)")
     }
 
-    func startIfAuthorized() async {
+    func startIndexing() async {
         await requestAccessIfNeeded()
         guard canAccess else {
             photoLibraryLogger.info("Photo sync not started: Photos access is unavailable (status=\(self.status?.rawValue ?? -1, privacy: .public))")
             return
         }
-        photoLibraryLogger.info("Starting photo sync on startup")
-        startIndexing()
+        startIndexingTask()
     }
 
     func presentLimitedLibraryManagement() {
@@ -194,7 +186,7 @@ final class PhotoLibraryService: NSObject {
         PHPhotoLibrary.shared().presentLimitedLibraryPicker(from: controller)
     }
 
-    private func startIndexing() {
+    private func startIndexingTask() {
         guard canAccess else {
             photoLibraryLogger.debug("Photo sync request ignored: Photos access is unavailable")
             return
@@ -270,11 +262,6 @@ final class PhotoLibraryService: NSObject {
     }
 
     func thumbnail(for record: PhotoRecordSummary) async -> UIImage? {
-        if let path = record.thumbnailPath,
-           let image = await loadImage(path: path) {
-            return image
-        }
-
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [record.id], options: nil)
         guard let asset = assets.firstObject else { return nil }
         return await requestImage(
@@ -336,8 +323,7 @@ final class PhotoLibraryService: NSObject {
         let existing = existingAtStart
         photoLibraryLogger.info("Photo sync using full reconciliation: assets=\(assets.count, privacy: .public) existing=\(existing.count, privacy: .public)")
         let allowedIDs = Set((0..<assets.count).map { assets.object(at: $0).localIdentifier })
-        let removedPaths = database.removePhotos(ids: existing.map(\.id).filter { !allowedIDs.contains($0) })
-        removeDerivedFiles(at: removedPaths)
+        database.removePhotos(ids: existing.map(\.id).filter { !allowedIDs.contains($0) })
         let existingByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
 
         for index in 0..<assets.count {
@@ -377,8 +363,7 @@ final class PhotoLibraryService: NSObject {
             }
             changedIDs.subtract(deletedIDs)
             photoLibraryLogger.info("Photo change history fetched: changed=\(changedIDs.count, privacy: .public) deleted=\(deletedIDs.count, privacy: .public)")
-            let removedPaths = database.removePhotos(ids: Array(deletedIDs))
-            removeDerivedFiles(at: removedPaths)
+            database.removePhotos(ids: Array(deletedIDs))
 
             let result = PHAsset.fetchAssets(withLocalIdentifiers: Array(changedIDs), options: nil)
             for index in 0..<result.count {
@@ -411,37 +396,27 @@ final class PhotoLibraryService: NSObject {
     // Nonisolated async work runs on the cooperative executor rather than the
     // service's main actor. Only progress publication stays main-actor bound.
     private func indexAsset(_ asset: PHAsset) async {
-        let thumbnail = await requestImage(asset: asset, targetSize: CGSize(width: 220, height: 220), contentMode: .aspectFill, networkAllowed: true)
-        guard let thumbnail else {
-            photoLibraryLogger.warning("Photo asset deferred: thumbnail is not locally available")
-            database.save(photo: IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, thumbnailPath: nil, sourceState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel)
+        guard let image = await requestImage(asset: asset, targetSize: CGSize(width: 1024, height: 1024), contentMode: .aspectFit, networkAllowed: true) else {
+            photoLibraryLogger.warning("Photo asset deferred: source image is not locally available")
+            database.save(photo: IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, sourceState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel)
             return
-        }
-        let thumbnailPath = await Self.save(image: thumbnail, identifier: asset.localIdentifier, suffix: "thumbnail")
-        if thumbnailPath == nil {
-            photoLibraryLogger.error("Photo thumbnail cache write failed")
         }
         var categories = [PhotoCategory]()
         var embedding: [Float]?
 
-        if let image = await requestImage(asset: asset, targetSize: CGSize(width: 1024, height: 1024), contentMode: .aspectFit, networkAllowed: true) {
-            do {
-                categories = (try await ml.performClassifierInference(image) ?? [])
-                    .filter { $0.probability >= 0.20 }
-                    .map { PhotoCategory(id: $0.label.lowercased(), name: $0.label, probability: $0.probability, count: 0) }
-                embedding = try await ml.imageEmbedding(for: image)
-            } catch {
-                photoLibraryLogger.error("Photo ML processing failed: \(String(describing: error), privacy: .private)")
-            }
-        } else {
-            photoLibraryLogger.warning("Photo asset deferred: full-resolution image is not locally available")
+        do {
+            categories = (try await ml.performClassifierInference(image) ?? [])
+                .filter { $0.probability >= 0.20 }
+                .map { PhotoCategory(id: $0.label.lowercased(), name: $0.label, probability: $0.probability, count: 0) }
+            embedding = try await ml.imageEmbedding(for: image)
+        } catch {
+            photoLibraryLogger.error("Photo ML processing failed: \(String(describing: error), privacy: .private)")
         }
 
         database.save(photo: IndexedPhoto(
             id: asset.localIdentifier,
             creationDate: asset.creationDate,
             modificationDate: asset.modificationDate,
-            thumbnailPath: thumbnailPath,
             sourceState: .available,
             embedding: embedding,
             categories: categories,
@@ -450,7 +425,7 @@ final class PhotoLibraryService: NSObject {
     }
 
     private static func summary(_ photo: IndexedPhoto) -> PhotoRecordSummary {
-        PhotoRecordSummary(id: photo.id, creationDate: photo.creationDate, modificationDate: photo.modificationDate, thumbnailPath: photo.thumbnailPath, sourceState: photo.sourceState, categories: photo.categories)
+        PhotoRecordSummary(id: photo.id, creationDate: photo.creationDate, modificationDate: photo.modificationDate, sourceState: photo.sourceState, categories: photo.categories)
     }
 
     private nonisolated func requestImage(asset: PHAsset, targetSize: CGSize, contentMode: PHImageContentMode, networkAllowed: Bool) async -> UIImage? {
@@ -469,39 +444,6 @@ final class PhotoLibraryService: NSObject {
                 continuation.resume(returning: image)
             }
         }
-    }
-
-    private nonisolated static func save(image: UIImage, identifier: String, suffix: String) async -> String? {
-        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("PhotoLibrary", isDirectory: true)
-        let safeID = identifier.replacingOccurrences(of: "/", with: "_")
-        var url = root.appendingPathComponent("\(safeID)-\(suffix).png")
-        return await Task.detached(priority: .utility) {
-            guard let data = image.pngData() else { return nil }
-            do {
-                try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-                try data.write(to: url, options: .atomic)
-                var values = URLResourceValues()
-                values.isExcludedFromBackup = true
-                try? url.setResourceValues(values)
-                return url.path
-            } catch {
-                return nil
-            }
-        }.value
-    }
-
-    private func removeDerivedFiles(at paths: [String]) {
-        for path in paths {
-            try? fileManager.removeItem(at: URL(fileURLWithPath: path))
-        }
-    }
-
-    private nonisolated func loadImage(path: String) async -> UIImage? {
-        await Task.detached(priority: .utility) {
-            guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
-            return UIImage(data: data)
-        }.value
     }
 
     // Compatibility helpers used by legacy depth screens. These intentionally read the

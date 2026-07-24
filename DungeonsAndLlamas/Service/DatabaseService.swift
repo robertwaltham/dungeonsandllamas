@@ -121,7 +121,6 @@ class DatabaseService {
         let id = Expression<String>("id")
         let creationDate = Expression<Double?>("creation_date")
         let modificationDate = Expression<Double?>("modification_date")
-        let thumbnailPath = Expression<String?>("thumbnail_path")
         let sourceState = Expression<String>("source_state")
         let embedding = Expression<Data?>("embedding")
         let categories = Expression<Data?>("categories")
@@ -132,7 +131,6 @@ class DatabaseService {
                 id: row[id],
                 creationDate: row[creationDate].map(Date.init(timeIntervalSince1970:)),
                 modificationDate: row[modificationDate].map(Date.init(timeIntervalSince1970:)),
-                thumbnailPath: row[thumbnailPath],
                 sourceState: row[sourceState],
                 embedding: PhotoIndexModel.decodedEmbeddingForMigration(row[embedding]),
                 categories: PhotoIndexModel.decodedCategoriesForMigration(row[categories]),
@@ -262,18 +260,17 @@ extension DatabaseService {
         }
     }
 
-    func removePhotos(ids: [String]) -> [String] {
+    func removePhotos(ids: [String]) {
         do {
-            return try PhotoIndexModel.remove(db: db, ids: ids)
+            try PhotoIndexModel.remove(db: db, ids: ids)
         } catch {
             databaseLogger.error("Photo index removal failed: \(String(describing: error), privacy: .private)")
-            return []
         }
     }
 }
 
 struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
-    static let processingVersion = 2
+    static let processingVersion = 3
 
     @SqlProperty
     var id: String
@@ -281,8 +278,6 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
     var creationDate: Date?
     @SqlProperty
     var modificationDate: Date?
-    @SqlProperty
-    var thumbnailPath: String?
     @SqlProperty
     var sourceState: String
     var embedding: [Float]?
@@ -307,7 +302,6 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
             t.column(idExp, primaryKey: true)
             t.column(creationDateExp)
             t.column(modificationDateExp)
-            t.column(thumbnailPathExp)
             t.column(sourceStateExp)
             t.column(embeddingExp)
             t.column(categoriesExp)
@@ -324,7 +318,6 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
             Self.idExp <- id,
             Self.creationDateExp <- creationDate,
             Self.modificationDateExp <- modificationDate,
-            Self.thumbnailPathExp <- thumbnailPath,
             Self.sourceStateExp <- sourceState,
             Self.embeddingExp <- Self.encodedEmbedding(embedding),
             Self.categoriesExp <- Self.encodedCategories(categories),
@@ -339,7 +332,7 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
     fileprivate static func loadSummaries(db: Connection) throws -> [PhotoIndexModel] {
         try db.prepare(table().order(creationDateExp.desc)).map { row in
             PhotoIndexModel(id: row[idExp], creationDate: row[creationDateExp],
-                            modificationDate: row[modificationDateExp], thumbnailPath: row[thumbnailPathExp],
+                            modificationDate: row[modificationDateExp],
                             sourceState: row[sourceStateExp], embedding: nil,
                             categories: decodedCategories(row[categoriesExp]),
                             processingVersion: row[processingVersionExp])
@@ -355,7 +348,6 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
             id: row[idExp],
             creationDate: row[creationDateExp],
             modificationDate: row[modificationDateExp],
-            thumbnailPath: row[thumbnailPathExp],
             sourceState: row[sourceStateExp],
             embedding: decodedEmbedding(row[embeddingExp]),
             categories: decodedCategories(row[categoriesExp]),
@@ -363,15 +355,13 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
         )
     }
 
-    fileprivate static func remove(db: Connection, ids: [String]) throws -> [String] {
-        guard !ids.isEmpty else { return [] }
+    fileprivate static func remove(db: Connection, ids: [String]) throws {
+        guard !ids.isEmpty else { return }
         let predicate = ids.dropFirst().reduce(idExp == ids[0]) { expression, id in
             expression || idExp == id
         }
         let query = table().filter(predicate)
-        let records = try db.prepare(query).map(Self.model)
         try db.run(query.delete())
-        return records.compactMap(\.thumbnailPath)
     }
 
     private static func encodedEmbedding(_ embedding: [Float]?) -> Data? {
