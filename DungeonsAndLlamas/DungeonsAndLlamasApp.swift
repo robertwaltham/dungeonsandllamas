@@ -26,6 +26,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         generationService.db.setup()
+        generationService.photos.prepareCategoryCache()
         generationService.checkStatusIfNeeded()
         generationService.loadHistory()
         generationService.synchronizeComfyUIHistoryOnStartup()

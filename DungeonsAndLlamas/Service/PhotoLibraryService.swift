@@ -143,6 +143,8 @@ final class PhotoLibraryService: NSObject {
     private var indexingTask: Task<Void, Never>?
     private let searchEngine: any PhotoDistanceEngine
     private let embeddingCache = PhotoEmbeddingBufferCache()
+    private var categoryCache = [PhotoCategory]()
+    private var categoryCacheIsPrepared = false
 
     var canAccess: Bool {
         status == .authorized || status == .limited
@@ -197,32 +199,69 @@ final class PhotoLibraryService: NSObject {
             return
         }
         embeddingCache.invalidate()
+        indexedCount = 0
+        pendingCount = 0
         photoLibraryLogger.info("Photo sync started")
         isIndexing = true
         indexingTask = Task { [weak self] in
             guard let self else { return }
             await self.reconcileLibrary()
-            photoLibraryLogger.info("Photo sync finished: indexed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
+            self.rebuildCategoryCache(reason: "sync completion")
+            if Task.isCancelled {
+                photoLibraryLogger.info("Photo sync cancelled: processed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
+            } else {
+                photoLibraryLogger.info("Photo sync finished: processed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
+            }
             self.isIndexing = false
             self.indexingTask = nil
         }
     }
 
-    func stopIndexing() {
+    func stopIndexing() async {
         photoLibraryLogger.info("Photo sync stopped")
-        indexingTask?.cancel()
-        indexingTask = nil
+        let task = indexingTask
+        task?.cancel()
+        await task?.value
         isIndexing = false
         embeddingCache.invalidate()
     }
 
+    func prepareCategoryCache() {
+        rebuildCategoryCache(reason: "application launch")
+    }
+
     func categories() async -> [PhotoCategory] {
+        if !categoryCacheIsPrepared {
+            rebuildCategoryCache(reason: "lazy initialization")
+        }
+        return categoryCache
+    }
+
+    private func rebuildCategoryCache(reason: String) {
+        let clock = ContinuousClock()
+        let start = clock.now
         let records = database.loadPhotoIndexSummaries().map(IndexedPhoto.init)
-        let grouped = Dictionary(grouping: records.flatMap(\.categories), by: \.id)
-        return grouped.values.compactMap { values in
-            guard let first = values.first else { return nil }
-            return PhotoCategory(id: first.id, name: first.name, probability: first.probability, count: values.count)
+        var categoriesByID = [String: (category: PhotoCategory, count: Int)]()
+        for record in records {
+            for category in record.categories {
+                if let existing = categoriesByID[category.id] {
+                    categoriesByID[category.id] = (existing.category, existing.count + 1)
+                } else {
+                    categoriesByID[category.id] = (category, 1)
+                }
+            }
+        }
+        categoryCache = categoriesByID.values.map { value in
+            PhotoCategory(
+                id: value.category.id,
+                name: value.category.name,
+                probability: value.category.probability,
+                count: value.count
+            )
         }.sorted { $0.count > $1.count }
+        categoryCacheIsPrepared = true
+        let duration = clock.now - start
+        photoLibraryLogger.debug("Photo category cache rebuilt after \(reason, privacy: .public): categories=\(self.categoryCache.count, privacy: .public) photos=\(records.count, privacy: .public) duration=\(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
     }
 
     func page(query: PhotoQuery, cursor: PhotoPageCursor? = nil) async throws -> PhotoPage {
@@ -353,129 +392,240 @@ final class PhotoLibraryService: NSObject {
     }
 
     private func reconcileLibrary() async {
-        let currentToken = PHPhotoLibrary.shared().currentChangeToken
-        let existingAtStart = database.loadPhotoIndexSummaries().map(IndexedPhoto.init)
-        photoLibraryLogger.debug("Reconciling photo library: indexedAtStart=\(existingAtStart.count, privacy: .public)")
-        if let storedToken = loadChangeToken(), storedToken.isEqual(currentToken), !existingAtStart.isEmpty {
-            indexedCount = existingAtStart.count
+        do {
+            try Task.checkCancellation()
+            let currentToken = PHPhotoLibrary.shared().currentChangeToken
+            let existing = database.loadPhotoIndexSummaries().map(IndexedPhoto.init)
+            let maintenanceIDs = try database.photoIDsNeedingProcessing(
+                processingVersion: IndexedPhoto.processingVersion
+            )
+            let storedToken = try loadChangeToken()
+            photoLibraryLogger.debug("Reconciling photo library: indexedAtStart=\(existing.count, privacy: .public) maintenance=\(maintenanceIDs.count, privacy: .public)")
+
+            if let storedToken,
+               storedToken.isEqual(currentToken),
+               !existing.isEmpty,
+               maintenanceIDs.isEmpty {
+                indexedCount = 0
+                pendingCount = 0
+                photoLibraryLogger.debug("Photo sync skipped: change token and index are current")
+                return
+            }
+
+            if let storedToken, !existing.isEmpty, maintenanceIDs.isEmpty {
+                let existingByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+                if try await applyPersistentChanges(
+                    since: storedToken,
+                    currentToken: currentToken,
+                    existingByID: existingByID
+                ) {
+                    photoLibraryLogger.info("Photo sync completed using persistent change history: processed=\(self.indexedCount, privacy: .public)")
+                    return
+                }
+            }
+
+            try Task.checkCancellation()
+            try await applyFullReconciliation(
+                currentToken: currentToken,
+                existing: existing,
+                maintenanceIDs: maintenanceIDs
+            )
+        } catch is CancellationError {
             pendingCount = 0
-            photoLibraryLogger.debug("Photo sync skipped: change token is current")
-            return
+        } catch {
+            pendingCount = 0
+            photoLibraryLogger.error("Photo library reconciliation failed: \(String(describing: error), privacy: .private)")
         }
-
-        if let storedToken = loadChangeToken(), !existingAtStart.isEmpty,
-           await applyPersistentChanges(since: storedToken, currentToken: currentToken) {
-            photoLibraryLogger.info("Photo sync completed using persistent change history")
-            return
-        }
-
-        let options = PHFetchOptions()
-        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        let assets = PHAsset.fetchAssets(with: .image, options: options)
-        let existing = existingAtStart
-        photoLibraryLogger.info("Photo sync using full reconciliation: assets=\(assets.count, privacy: .public) existing=\(existing.count, privacy: .public)")
-        let allowedIDs = Set((0..<assets.count).map { assets.object(at: $0).localIdentifier })
-        database.removePhotos(ids: existing.map(\.id).filter { !allowedIDs.contains($0) })
-        let existingByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
-
-        for index in 0..<assets.count {
-            if Task.isCancelled { return }
-            let asset = assets.object(at: index)
-            if let existing = existingByID[asset.localIdentifier],
-               existing.modificationDate == asset.modificationDate,
-               existing.processingVersion == IndexedPhoto.processingVersion {
-                continue
-            }
-            await indexAsset(asset)
-            if index % 8 == 0 {
-                indexedCount = index + 1
-                pendingCount = max(assets.count - indexedCount, 0)
-                photoLibraryLogger.debug("Photo sync progress: indexed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
-            }
-        }
-        indexedCount = assets.count
-        pendingCount = 0
-        saveChangeToken(currentToken)
-        photoLibraryLogger.info("Full photo reconciliation complete: indexed=\(self.indexedCount, privacy: .public)")
     }
 
     /// Uses PhotoKit's durable change history between launches. A failed/expired
     /// token deliberately falls through to the full reconciliation above.
-    private func applyPersistentChanges(since token: PHPersistentChangeToken, currentToken: PHPersistentChangeToken) async -> Bool {
+    private func applyPersistentChanges(
+        since token: PHPersistentChangeToken,
+        currentToken: PHPersistentChangeToken,
+        existingByID: [String: IndexedPhoto]
+    ) async throws -> Bool {
         guard #available(iOS 16, *) else { return false }
         do {
+            try Task.checkCancellation()
             let changes = try PHPhotoLibrary.shared().fetchPersistentChanges(since: token)
-            var changedIDs = Set<String>()
-            var deletedIDs = Set<String>()
+            var touchedIDs = Set<String>()
             for change in changes {
+                try Task.checkCancellation()
                 let details = try change.changeDetails(for: .asset)
-                changedIDs.formUnion(details.insertedLocalIdentifiers)
-                changedIDs.formUnion(details.updatedLocalIdentifiers)
-                deletedIDs.formUnion(details.deletedLocalIdentifiers)
+                touchedIDs.formUnion(details.insertedLocalIdentifiers)
+                touchedIDs.formUnion(details.updatedLocalIdentifiers)
+                touchedIDs.formUnion(details.deletedLocalIdentifiers)
             }
-            changedIDs.subtract(deletedIDs)
-            photoLibraryLogger.info("Photo change history fetched: changed=\(changedIDs.count, privacy: .public) deleted=\(deletedIDs.count, privacy: .public)")
-            database.removePhotos(ids: Array(deletedIDs))
 
-            let result = PHAsset.fetchAssets(withLocalIdentifiers: Array(changedIDs), options: nil)
+            let result = PHAsset.fetchAssets(withLocalIdentifiers: Array(touchedIDs), options: nil)
+            var liveImageIDs = Set<String>()
+            var assetsToIndex = [PHAsset]()
+            assetsToIndex.reserveCapacity(result.count)
             for index in 0..<result.count {
-                if Task.isCancelled { return false }
-                await indexAsset(result.object(at: index))
-                indexedCount = index + 1
-                pendingCount = max(result.count - indexedCount, 0)
-                photoLibraryLogger.debug("Photo change sync progress: indexed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
+                let asset = result.object(at: index)
+                guard asset.mediaType == .image else { continue }
+                liveImageIDs.insert(asset.localIdentifier)
+                guard shouldIndex(asset: asset, existing: existingByID[asset.localIdentifier]) else {
+                    continue
+                }
+                assetsToIndex.append(asset)
             }
-            indexedCount = database.loadPhotoIndexSummaries().count
+
+            let deletedIDs = touchedIDs.subtracting(liveImageIDs)
+            indexedCount = 0
+            pendingCount = assetsToIndex.count
+            photoLibraryLogger.info("Photo change history fetched: touched=\(touchedIDs.count, privacy: .public) processing=\(assetsToIndex.count, privacy: .public) removing=\(deletedIDs.count, privacy: .public)")
+
+            var upserts = [PhotoIndexModel]()
+            upserts.reserveCapacity(assetsToIndex.count)
+            for asset in assetsToIndex {
+                try Task.checkCancellation()
+                upserts.append(try await indexModel(for: asset))
+                indexedCount += 1
+                pendingCount = max(assetsToIndex.count - indexedCount, 0)
+                photoLibraryLogger.debug("Photo change sync progress: processed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
+            }
+
+            try Task.checkCancellation()
+            let tokenData = try encodedChangeToken(currentToken)
+            try database.applyPhotoIndexChanges(
+                upserts: upserts,
+                removing: Array(deletedIDs),
+                changeTokenData: tokenData
+            )
+            UserDefaults.standard.removeObject(forKey: changeTokenDefaultsKey)
+            embeddingCache.invalidate()
             pendingCount = 0
-            saveChangeToken(currentToken)
             return true
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             photoLibraryLogger.error("Photo change history reconciliation failed: \(String(describing: error), privacy: .private)")
             return false
         }
     }
 
-    private func loadChangeToken() -> PHPersistentChangeToken? {
-        guard let data = UserDefaults.standard.data(forKey: changeTokenDefaultsKey) else { return nil }
-        return try? NSKeyedUnarchiver.unarchivedObject(ofClass: PHPersistentChangeToken.self, from: data)
+    private func applyFullReconciliation(
+        currentToken: PHPersistentChangeToken,
+        existing: [IndexedPhoto],
+        maintenanceIDs: Set<String>
+    ) async throws {
+        try Task.checkCancellation()
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        let assets = PHAsset.fetchAssets(with: .image, options: options)
+        let existingByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+        var allowedIDs = Set<String>()
+        var assetsToIndex = [PHAsset]()
+        allowedIDs.reserveCapacity(assets.count)
+        assetsToIndex.reserveCapacity(min(assets.count, 256))
+
+        for index in 0..<assets.count {
+            try Task.checkCancellation()
+            let asset = assets.object(at: index)
+            allowedIDs.insert(asset.localIdentifier)
+            if maintenanceIDs.contains(asset.localIdentifier)
+                || shouldIndex(asset: asset, existing: existingByID[asset.localIdentifier]) {
+                assetsToIndex.append(asset)
+            }
+        }
+
+        let deletedIDs = existing.map(\.id).filter { !allowedIDs.contains($0) }
+        photoLibraryLogger.info("Photo sync using full reconciliation: assets=\(assets.count, privacy: .public) processing=\(assetsToIndex.count, privacy: .public) removing=\(deletedIDs.count, privacy: .public)")
+        try database.removePhotos(ids: deletedIDs)
+        indexedCount = 0
+        pendingCount = assetsToIndex.count
+
+        for asset in assetsToIndex {
+            try Task.checkCancellation()
+            let model = try await indexModel(for: asset)
+            try database.save(photo: model)
+            indexedCount += 1
+            pendingCount = max(assetsToIndex.count - indexedCount, 0)
+            if indexedCount.isMultiple(of: 8) || pendingCount == 0 {
+                photoLibraryLogger.debug("Photo sync progress: processed=\(self.indexedCount, privacy: .public) pending=\(self.pendingCount, privacy: .public)")
+            }
+        }
+
+        try Task.checkCancellation()
+        try saveChangeToken(currentToken)
+        embeddingCache.invalidate()
+        pendingCount = 0
+        photoLibraryLogger.info("Full photo reconciliation complete: scanned=\(assets.count, privacy: .public) processed=\(self.indexedCount, privacy: .public)")
     }
 
-    private func saveChangeToken(_ token: PHPersistentChangeToken) {
-        guard let data = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true) else { return }
-        UserDefaults.standard.set(data, forKey: changeTokenDefaultsKey)
+    private func shouldIndex(asset: PHAsset, existing: IndexedPhoto?) -> Bool {
+        guard let existing else { return true }
+        return existing.modificationDate != asset.modificationDate
+            || existing.processingVersion != IndexedPhoto.processingVersion
+            || existing.sourceState != .available
     }
 
-    // Nonisolated async work runs on the cooperative executor rather than the
-    // service's main actor. Only progress publication stays main-actor bound.
-    private func indexAsset(_ asset: PHAsset) async {
+    private func loadChangeToken() throws -> PHPersistentChangeToken? {
+        if let databaseData = try database.loadPhotoChangeTokenData() {
+            return decodedChangeToken(from: databaseData)
+        }
+        if UserDefaults.standard.data(forKey: changeTokenDefaultsKey) != nil {
+            photoLibraryLogger.info("Legacy photo change token found; performing one full reconciliation before establishing the transactional checkpoint")
+        }
+        return nil
+    }
+
+    private func decodedChangeToken(from data: Data) -> PHPersistentChangeToken? {
+        do {
+            return try NSKeyedUnarchiver.unarchivedObject(
+                ofClass: PHPersistentChangeToken.self,
+                from: data
+            )
+        } catch {
+            photoLibraryLogger.warning("Stored photo change token could not be decoded; a full reconciliation is required")
+            return nil
+        }
+    }
+
+    private func encodedChangeToken(_ token: PHPersistentChangeToken) throws -> Data {
+        try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
+    }
+
+    private func saveChangeToken(_ token: PHPersistentChangeToken) throws {
+        try database.savePhotoChangeTokenData(encodedChangeToken(token))
+        UserDefaults.standard.removeObject(forKey: changeTokenDefaultsKey)
+    }
+
+    private func indexModel(for asset: PHAsset) async throws -> PhotoIndexModel {
+        try Task.checkCancellation()
         guard let image = await requestImage(asset: asset, targetSize: CGSize(width: 1024, height: 1024), contentMode: .aspectFit, networkAllowed: true) else {
+            try Task.checkCancellation()
             photoLibraryLogger.warning("Photo asset deferred: source image is not locally available")
-            embeddingCache.invalidate()
-            database.save(photo: IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, sourceState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel)
-            return
+            return IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, sourceState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel
         }
         var categories = [PhotoCategory]()
         var embedding: [Float]?
+        var sourceState = PhotoProcessingState.available
 
         do {
+            try Task.checkCancellation()
             categories = (try await ml.performClassifierInference(image) ?? [])
                 .filter { $0.probability >= 0.20 }
                 .map { PhotoCategory(id: $0.label.lowercased(), name: $0.label, probability: $0.probability, count: 0) }
             embedding = try await ml.imageEmbedding(for: image)
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
+            sourceState = .failed
             photoLibraryLogger.error("Photo ML processing failed: \(String(describing: error), privacy: .private)")
         }
 
-        embeddingCache.invalidate()
-        database.save(photo: IndexedPhoto(
+        return IndexedPhoto(
             id: asset.localIdentifier,
             creationDate: asset.creationDate,
             modificationDate: asset.modificationDate,
-            sourceState: .available,
+            sourceState: sourceState,
             embedding: embedding,
             categories: categories,
             processingVersion: IndexedPhoto.processingVersion
-        ).databaseModel)
+        ).databaseModel
     }
 
     private static func summary(_ photo: IndexedPhoto) -> PhotoRecordSummary {

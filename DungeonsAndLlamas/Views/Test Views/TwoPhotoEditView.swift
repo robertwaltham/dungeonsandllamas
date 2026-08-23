@@ -25,10 +25,6 @@ struct TwoPhotoEditView: View {
 
             ScrollView {
                 VStack(spacing: 16) {
-                    Text("Choose two photos and describe how they should be combined.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
 
                     TextField("Prompt", text: $viewModel.prompt, axis: .vertical)
                         .focused($promptFocused)
@@ -61,7 +57,7 @@ struct TwoPhotoEditView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .navigationTitle("Flux2 Two-Photo Edit")
+        .navigationTitle("Image Combiner")
         .sheet(item: $activeSlot) { slot in
             PhotoPickerView(
                 title: "Choose \(slot.title)",
@@ -91,39 +87,43 @@ struct TwoPhotoEditView: View {
     }
 
     private func inputCard(for slot: TwoPhotoEditViewModel.ImageSlot) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(slot.title)
-                .font(.headline)
+        Button {
+            activeSlot = slot
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(slot.title)
+                    .font(.headline)
 
-            Group {
-                if let image = viewModel.image(for: slot) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 180, maxHeight: 360)
-                        .background(.black.opacity(0.08))
-                } else {
-                    ContentUnavailableView("No photo selected", systemImage: "photo", description: Text("Choose an image from your photo library."))
-                        .frame(maxWidth: .infinity, minHeight: 180)
+                Group {
+                    if let image = viewModel.image(for: slot) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 180, maxHeight: 360)
+                            .background(.black.opacity(0.08))
+                    } else {
+                        ContentUnavailableView("No photo selected", systemImage: "photo", description: Text("Choose an image from your photo library."))
+                            .frame(maxWidth: .infinity, minHeight: 180)
+                    }
                 }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(alignment: .center) {
-                if viewModel.isPreparing(slot: slot) {
-                    ProgressView("Preparing…")
-                        .padding()
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(alignment: .center) {
+                    if viewModel.isPreparing(slot: slot) {
+                        ProgressView("Preparing…")
+                            .padding()
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    }
                 }
-            }
 
-            Button(viewModel.image(for: slot) == nil ? "Pick Image" : "Replace Image") {
-                activeSlot = slot
+                Label(viewModel.image(for: slot) == nil ? "Pick Image" : "Replace Image", systemImage: "photo.on.rectangle")
+                    .font(.subheadline.weight(.medium))
             }
-            .buttonStyle(.bordered)
-            .disabled(viewModel.loading || viewModel.isPreparing(slot: slot))
-            .accessibilityLabel("Pick \(slot.title)")
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .disabled(viewModel.loading || viewModel.isPreparing(slot: slot))
+        .accessibilityLabel("\(viewModel.image(for: slot) == nil ? "Pick" : "Replace") \(slot.title)")
         .frame(maxWidth: .infinity)
     }
 
@@ -267,7 +267,7 @@ private final class TwoPhotoEditViewModel {
             start: .now,
             prompt: prompt,
             promptId: promptID,
-            negativePrompt: "Flux2 Klein 2 image edit",
+            negativePrompt: nil,
             model: "ComfyUI Flux2 Klein 4B",
             sampler: "euler",
             steps: 4,

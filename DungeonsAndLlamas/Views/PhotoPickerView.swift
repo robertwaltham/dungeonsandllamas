@@ -55,6 +55,7 @@ struct PhotoPickerView: View {
             }
         }
         .task {
+            await Task.yield()
             await model.load()
         }
         .task(id: model.querySignature) {
@@ -119,7 +120,7 @@ struct PhotoPickerView: View {
             Button(model.isIndexing ? "Pause" : "Start") {
                 Task {
                     if model.isIndexing {
-                        model.pauseIndexing()
+                        await model.pauseIndexing()
                     } else {
                         await model.startIndexing()
                     }
@@ -198,7 +199,7 @@ private final class PhotoPickerModel {
     var queryText = ""
     var selectedCategories = Set<String>()
     var representation: PhotoRepresentation = .source
-    var isLoading = false
+    var isLoading = true
     var isIndexing = false
     var pendingCount = 0
     var accessDenied = false
@@ -228,9 +229,11 @@ private final class PhotoPickerModel {
         await service.requestAccessIfNeeded()
         accessDenied = !service.canAccess
         isLimited = service.status == .limited
-        guard service.canAccess else { return }
+        guard service.canAccess else {
+            isLoading = false
+            return
+        }
         await refresh()
-        categories = await service.categories()
         isIndexing = service.isIndexing
         pendingCount = service.pendingCount
         hasLoaded = true
@@ -257,9 +260,9 @@ private final class PhotoPickerModel {
         }
     }
 
-    func pauseIndexing() {
+    func pauseIndexing() async {
         indexingMonitorTask?.cancel()
-        service.stopIndexing()
+        await service.stopIndexing()
         isIndexing = false
         pendingCount = service.pendingCount
     }
@@ -275,7 +278,6 @@ private final class PhotoPickerModel {
             guard !Task.isCancelled else { return }
             isIndexing = service.isIndexing
             pendingCount = service.pendingCount
-            categories = await service.categories()
             await refresh()
         }
     }

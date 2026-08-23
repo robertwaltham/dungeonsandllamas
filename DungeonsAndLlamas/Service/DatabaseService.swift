@@ -57,6 +57,7 @@ class DatabaseService {
             try ImageHistoryModel.createTable(db: db)
             try LoraHistoryModel.createTable(db: db)
             try PhotoIndexModel.createTable(db: db)
+            try PhotoSyncStateModel.createTable(db: db)
             try ImageHistoryModel.createIndexes(db: db)
             try LoraHistoryModel.createIndexes(db: db)
             try PhotoIndexModel.createIndexes(db: db)
@@ -107,6 +108,11 @@ class DatabaseService {
             try LoraHistoryModel.createIndexes(db: db)
             try PhotoIndexModel.createIndexes(db: db)
             db.userVersion = 6
+        }
+
+        if currentVersion < 7 {
+            try PhotoSyncStateModel.createTable(db: db)
+            db.userVersion = 7
         }
     }
 
@@ -261,20 +267,96 @@ extension DatabaseService {
         }
     }
 
-    func save(photo: PhotoIndexModel) {
+    func save(photo: PhotoIndexModel) throws {
         do {
             try photo.save(db: db)
         } catch {
             databaseLogger.error("Photo index save failed: \(String(describing: error), privacy: .private)")
+            throw error
         }
     }
 
-    func removePhotos(ids: [String]) {
+    func removePhotos(ids: [String]) throws {
         do {
             try PhotoIndexModel.remove(db: db, ids: ids)
         } catch {
             databaseLogger.error("Photo index removal failed: \(String(describing: error), privacy: .private)")
+            throw error
         }
+    }
+
+    func photoIDsNeedingProcessing(processingVersion: Int) throws -> Set<String> {
+        do {
+            return try PhotoIndexModel.idsNeedingProcessing(db: db, processingVersion: processingVersion)
+        } catch {
+            databaseLogger.error("Photo maintenance lookup failed: \(String(describing: error), privacy: .private)")
+            throw error
+        }
+    }
+
+    func loadPhotoChangeTokenData() throws -> Data? {
+        do {
+            return try PhotoSyncStateModel.loadChangeTokenData(db: db)
+        } catch {
+            databaseLogger.error("Photo change token load failed: \(String(describing: error), privacy: .private)")
+            throw error
+        }
+    }
+
+    func savePhotoChangeTokenData(_ data: Data) throws {
+        do {
+            try PhotoSyncStateModel.saveChangeTokenData(data, db: db)
+        } catch {
+            databaseLogger.error("Photo change token save failed: \(String(describing: error), privacy: .private)")
+            throw error
+        }
+    }
+
+    func applyPhotoIndexChanges(upserts: [PhotoIndexModel], removing ids: [String], changeTokenData: Data) throws {
+        do {
+            try db.transaction {
+                try PhotoIndexModel.remove(db: db, ids: ids)
+                for photo in upserts {
+                    try photo.save(db: db)
+                }
+                try PhotoSyncStateModel.saveChangeTokenData(changeTokenData, db: db)
+            }
+        } catch {
+            databaseLogger.error("Photo change transaction failed: \(String(describing: error), privacy: .private)")
+            throw error
+        }
+    }
+}
+
+private struct PhotoSyncStateModel {
+    private static let changeTokenKey = "persistent_change_token"
+    private static var keyExp: SQLite.Expression<String> {
+        SQLite.Expression<String>("key")
+    }
+
+    private static var valueExp: SQLite.Expression<Data> {
+        SQLite.Expression<Data>("value")
+    }
+
+    private static func table() -> Table {
+        Table("photo_sync_state")
+    }
+
+    fileprivate static func createTable(db: Connection) throws {
+        try db.run(table().create(ifNotExists: true) { table in
+            table.column(keyExp, primaryKey: true)
+            table.column(valueExp)
+        })
+    }
+
+    fileprivate static func loadChangeTokenData(db: Connection) throws -> Data? {
+        try db.prepare(table().filter(keyExp == changeTokenKey).limit(1))
+            .map { $0[valueExp] }
+            .first
+    }
+
+    fileprivate static func saveChangeTokenData(_ data: Data, db: Connection) throws {
+        try db.run(table().insert(or: .replace, keyExp <- changeTokenKey, valueExp <- data))
     }
 }
 
@@ -374,11 +456,22 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
 
     fileprivate static func remove(db: Connection, ids: [String]) throws {
         guard !ids.isEmpty else { return }
-        let predicate = ids.dropFirst().reduce(idExp == ids[0]) { expression, id in
-            expression || idExp == id
+        let batchSize = 250
+        for start in stride(from: 0, to: ids.count, by: batchSize) {
+            let end = min(start + batchSize, ids.count)
+            let batch = Array(ids[start..<end])
+            let predicate = batch.dropFirst().reduce(idExp == batch[0]) { expression, id in
+                expression || idExp == id
+            }
+            try db.run(table().filter(predicate).delete())
         }
-        let query = table().filter(predicate)
-        try db.run(query.delete())
+    }
+
+    fileprivate static func idsNeedingProcessing(db: Connection, processingVersion: Int) throws -> Set<String> {
+        let predicate = processingVersionExp != processingVersion
+            || sourceStateExp != PhotoProcessingState.available.rawValue
+            || embeddingExp == nil
+        return Set(try db.prepare(table().select(idExp).filter(predicate)).map { $0[idExp] })
     }
 
     private static func encodedEmbedding(_ embedding: [Float]?) -> Data? {
