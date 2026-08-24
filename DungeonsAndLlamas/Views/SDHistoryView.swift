@@ -7,6 +7,47 @@
 
 import SwiftUI
 
+private struct HistoryThumbnailCell: View {
+    let path: String?
+    let thumbnailStore: HistoryThumbnailStore
+    let action: () -> Void
+
+    @State private var image: UIImage?
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(.secondary.opacity(0.12))
+
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Image(systemName: "photo")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .aspectRatio(1, contentMode: .fit)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .task(id: path) {
+            image = nil
+            guard let path, !path.isEmpty else {
+                return
+            }
+            let thumbnail = await thumbnailStore.thumbnail(path: path, maxPixelSize: 256)
+            guard !Task.isCancelled else {
+                return
+            }
+            image = thumbnail
+        }
+    }
+}
+
 struct SDHistoryView: View {
     let flowState: ContentFlowState
     let generationService: GenerationService
@@ -21,6 +62,14 @@ struct SDHistoryView: View {
 
     private var isCompact: Bool {
         horizontalSizeClass == .compact
+    }
+
+    private func paginationTriggerID(in history: [ImageHistoryModel]) -> String? {
+        guard searchResults == nil, generationService.hasMoreHistory, !history.isEmpty else {
+            return nil
+        }
+        let index = max(0, history.count - 10)
+        return history[index].id
     }
 
     @ViewBuilder
@@ -126,22 +175,25 @@ struct SDHistoryView: View {
 
                 ScrollView {
 
-                    let columns: [GridItem] = (0..<columns).map {_ in return GridItem(.flexible())}
-                    LazyVGrid(columns: columns) {
-                        ForEach(displayedHistory) { history in
-
-                            Image(uiImage: generationService.fileService.loadImage(path: history.outputFilePath ?? "", maxPixelSize: 256))
-                                .resizable()
-                                .scaledToFit()
-                                .onTapGesture {
-                                    flowState.sheet(.sdHistoryDetail(history: history))
+                    let gridColumns: [GridItem] = (0..<columns).map { _ in GridItem(.flexible()) }
+                    let history = displayedHistory
+                    let paginationTriggerID = paginationTriggerID(in: history)
+                    LazyVGrid(columns: gridColumns) {
+                        ForEach(history) { history in
+                            HistoryThumbnailCell(
+                                path: history.outputFilePath,
+                                thumbnailStore: generationService.historyThumbnailStore
+                            ) {
+                                flowState.sheet(.sdHistoryDetail(history: history))
+                            }
+                            .background {
+                                if history.id == paginationTriggerID {
+                                    Color.clear
+                                        .task {
+                                            await generationService.loadMoreHistory()
+                                        }
                                 }
-                                .onAppear {
-                                    if searchResults == nil && history.id == generationService.imageHistory.last?.id {
-                                        generationService.loadMoreHistory()
-                                    }
-                                }
-
+                            }
                         }
                     }
                 }

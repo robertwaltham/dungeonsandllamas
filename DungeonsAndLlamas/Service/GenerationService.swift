@@ -22,6 +22,7 @@ class GenerationService { // swiftlint:disable:this type_body_length
     let mlService: MLService
 
     var fileService = FileService()
+    let historyThumbnailStore = HistoryThumbnailStore()
     var db: DatabaseService
     var photos: PhotoLibraryService
 
@@ -127,6 +128,7 @@ class GenerationService { // swiftlint:disable:this type_body_length
     var lastHistory: ImageHistoryModel?
     private static let historyPageSize = 60
     private(set) var hasMoreHistory = false
+    private(set) var isLoadingMoreHistory = false
 
     enum HistorySyncPhase: Equatable, Sendable {
         case fetching
@@ -159,10 +161,20 @@ class GenerationService { // swiftlint:disable:this type_body_length
         lastHistory = imageHistory.first
     }
 
-    func loadMoreHistory() {
-        guard hasMoreHistory else { return }
-        let page = db.loadHistoryPage(limit: Self.historyPageSize, offset: imageHistory.count)
-        imageHistory.append(contentsOf: page)
+    func loadMoreHistory() async {
+        guard hasMoreHistory, !isLoadingMoreHistory else { return }
+        isLoadingMoreHistory = true
+        defer {
+            isLoadingMoreHistory = false
+        }
+
+        let offset = imageHistory.count
+        guard let page = await db.loadHistoryPageAsync(limit: Self.historyPageSize, offset: offset) else {
+            return
+        }
+
+        let existingIDs = Set(imageHistory.map(\.id))
+        imageHistory.append(contentsOf: page.filter { !existingIDs.contains($0.id) })
         hasMoreHistory = page.count == Self.historyPageSize
     }
 
@@ -565,20 +577,6 @@ class GenerationService { // swiftlint:disable:this type_body_length
                 }
 
                 db.updateEmbeddings(history: history)
-                if let index = imageHistory.firstIndex(where: { $0.id == history.id }) {
-                    var displayHistory = history
-                    displayHistory.promptEmbedding = nil
-                    displayHistory.inputEmbedding = nil
-                    displayHistory.outputEmbedding = nil
-                    imageHistory[index] = displayHistory
-                }
-                if lastHistory?.id == history.id {
-                    var displayHistory = history
-                    displayHistory.promptEmbedding = nil
-                    displayHistory.inputEmbedding = nil
-                    displayHistory.outputEmbedding = nil
-                    lastHistory = displayHistory
-                }
             }
             offset += batch.count
         }

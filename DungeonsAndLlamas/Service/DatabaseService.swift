@@ -13,8 +13,55 @@ import Foundation
 import UIKit
 import PencilKit
 
+private enum DatabaseLocation: Sendable {
+    case persistent(path: String)
+    case sharedMemory(name: String)
+
+    func connection(readonly: Bool) throws -> Connection {
+        switch self {
+        case .persistent(let path):
+            return try Connection(path, readonly: readonly)
+        case .sharedMemory(let name):
+            return try Connection(
+                .uri(name, parameters: [.mode(.memory), .cache(.shared)]),
+                readonly: false
+            )
+        }
+    }
+}
+
+private actor HistoryPageReader {
+    private let location: DatabaseLocation
+    private var connection: Connection?
+
+    init(location: DatabaseLocation) {
+        self.location = location
+    }
+
+    func loadPage(limit: Int, offset: Int) -> [ImageHistoryModel]? {
+        do {
+            let connection = try openConnection()
+            return try ImageHistoryModel.loadPage(db: connection, limit: limit, offset: offset)
+        } catch {
+            databaseLogger.error("Async history page load failed: \(String(describing: error), privacy: .private)")
+            return nil
+        }
+    }
+
+    private func openConnection() throws -> Connection {
+        if let connection {
+            return connection
+        }
+        let connection = try location.connection(readonly: true)
+        connection.busyTimeout = 1
+        self.connection = connection
+        return connection
+    }
+}
+
 class DatabaseService {
     private var db: Connection!
+    private var historyPageReader: HistoryPageReader!
 
     func setupForTesting(fileService: FileService) {
         connectForTesting()
@@ -36,17 +83,21 @@ class DatabaseService {
         let path = NSSearchPathForDirectoriesInDomains(
             .documentDirectory, .userDomainMask, true
         ).first!
+        let location = DatabaseLocation.persistent(path: "\(path)/db.sqlite3")
 
         do {
-            db = try Connection("\(path)/db.sqlite3")
+            db = try location.connection(readonly: false)
+            historyPageReader = HistoryPageReader(location: location)
         } catch {
             fatalError(error.localizedDescription)
         }
     }
 
     fileprivate func connectForTesting() {
+        let location = DatabaseLocation.sharedMemory(name: "dungeons-and-llamas-preview-\(UUID().uuidString)")
         do {
-            db = try Connection() // in memory
+            db = try location.connection(readonly: false)
+            historyPageReader = HistoryPageReader(location: location)
         } catch {
             fatalError(error.localizedDescription)
         }
@@ -164,6 +215,11 @@ extension DatabaseService {
             databaseLogger.error("History page load failed: \(String(describing: error), privacy: .private)")
             return []
         }
+    }
+
+    @MainActor
+    func loadHistoryPageAsync(limit: Int, offset: Int = 0) async -> [ImageHistoryModel]? {
+        await historyPageReader.loadPage(limit: limit, offset: offset)
     }
 
     func loadHistoryEmbeddingBatch(limit: Int, offset: Int = 0) -> [ImageHistoryModel] {
@@ -502,7 +558,7 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
     }
 }
 
-struct LoraHistoryModel: Codable, Identifiable, Hashable {
+struct LoraHistoryModel: Codable, Identifiable, Hashable, Sendable {
     @SqlProperty
     var id: String
     @SqlProperty
@@ -569,7 +625,7 @@ struct LoraHistoryModel: Codable, Identifiable, Hashable {
 
 }
 
-struct ImageHistoryModel: Codable, Identifiable, Hashable {
+struct ImageHistoryModel: Codable, Identifiable, Hashable, Sendable {
 
     @SqlProperty
     var id: String
