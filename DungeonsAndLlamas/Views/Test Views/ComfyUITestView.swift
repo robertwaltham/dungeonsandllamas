@@ -41,7 +41,7 @@ struct ComfyUITestView: View {
                 }
             }
         }
-        .navigationTitle("ComfyUI Test")
+        .navigationTitle("Image Painting")
     }
 
     private var regularLayout: some View {

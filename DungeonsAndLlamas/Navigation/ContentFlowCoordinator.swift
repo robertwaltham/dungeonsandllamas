@@ -90,7 +90,7 @@ extension ContentFlowCoordinator {
                     .navigationTitle("Drawing")
             case .drawingFrom(let history):
                 ComfyUITestView(generationService: generationService, history: history)
-                    .navigationTitle("ComfyUI Test")
+                    .navigationTitle("Image Painting")
             case .accelerometer:
                 AccelerometerTestView(flowState: flowState)
             case .apiTest:
