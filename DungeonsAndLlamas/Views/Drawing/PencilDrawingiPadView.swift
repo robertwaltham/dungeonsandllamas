@@ -26,7 +26,7 @@ struct PencilDrawingiPadView: View {
         self.flowState = flowState
         self.generationService = generationService
     }
-    
+
     @MainActor
     init(flowState: ContentFlowState, generationService: GenerationService, history: ImageHistoryModel) {
         let viewModel = PencilViewModel(generationService: generationService)
@@ -35,7 +35,7 @@ struct PencilDrawingiPadView: View {
         self.flowState = flowState
         self.generationService = generationService
     }
-    
+
     var body: some View {
         ZStack {
             GradientView(type: .greyscale)
@@ -43,13 +43,13 @@ struct PencilDrawingiPadView: View {
 
                 PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip, contentSize: $generationService.imageSize)
                     .frame(width: 512, height: 512)
-                    .onChange(of: viewModel.drawing) { oldValue, newValue in
+                    .onChange(of: viewModel.drawing) { _, _ in
                         guard !viewModel.loading, generateOnChange else {
                             return
                         }
                         viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: 512)
                     }
-                
+
                 TextField("Prompt", text: $viewModel.prompt)
                     .focused($keyboardShown)
                     .textInputAutocapitalization(.never)
@@ -58,16 +58,16 @@ struct PencilDrawingiPadView: View {
                     .padding()
                     .background(.white)
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 10, height: 10)))
-                    .onChange(of: keyboardShown) { oldValue, newValue in
+                    .onChange(of: keyboardShown) { _, _ in
                         withAnimation {
                             showPrompts.toggle()
                         }
                     }
-                
+
                 if showPrompts {
                     Picker("Prompt", selection: $historyPrompt) {
                         Text("History").tag("History")
-                        ForEach(generationService.promptsFromHistory(), id:\.self) { text in
+                        ForEach(generationService.promptsFromHistory(), id: \.self) { text in
                             Text(text.prefix(60).description)
                         }
                     }
@@ -76,13 +76,13 @@ struct PencilDrawingiPadView: View {
                     .frame(width: 482)
                     .padding()
                     .background(.white)
-                    .onChange(of: historyPrompt) { oldValue, newValue in
+                    .onChange(of: historyPrompt) { _, newValue in
                         if newValue != "History" {
                             viewModel.prompt = newValue
                         }
                     }
                 }
-                
+
                 ZStack {
                     if let image = viewModel.output {
                         Image(uiImage: image)
@@ -95,7 +95,7 @@ struct PencilDrawingiPadView: View {
                             .foregroundColor(.white)
                             .frame(width: 512, height: 512)
                     }
-                    
+
                     if viewModel.loading {
                         VStack {
                             Spacer()
@@ -106,19 +106,19 @@ struct PencilDrawingiPadView: View {
                     }
                 }.frame(height: 512)
 
-            }                   
+            }
 
             HStack {
                 Spacer()
                 VStack {
-                                
+
                     Button {
                         guard !viewModel.loading else {
                             return
                         }
                         viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: 512)
                     } label: {
-                        
+
                         HStack {
                             Label("Generate", systemImage: "play.rectangle")
                         }
@@ -126,8 +126,7 @@ struct PencilDrawingiPadView: View {
 
                     }
                     .padding()
-                    
-                    
+
                     Button {
                         guard !viewModel.loading else {
                             return
@@ -135,7 +134,7 @@ struct PencilDrawingiPadView: View {
                         viewModel.newSeed()
                         viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: 512)
                     } label: {
-                        
+
                         HStack {
                             Label("Seed", systemImage: "dice")
                         }
@@ -146,7 +145,7 @@ struct PencilDrawingiPadView: View {
                     Button {
                         viewModel.showTooltip.toggle()
                     } label: {
-                        
+
                         HStack {
                             Label("Tool", systemImage: "paintbrush.pointed")
                         }
@@ -158,7 +157,7 @@ struct PencilDrawingiPadView: View {
                     Button {
                         showLoras = true
                     } label: {
-                        
+
                         HStack {
                             Label("Loras", systemImage: "photo.on.rectangle.angled")
                         }
@@ -172,9 +171,9 @@ struct PencilDrawingiPadView: View {
                     .padding()
                     .popover(isPresented: $showLoras) {
                         Grid(horizontalSpacing: 10, verticalSpacing: 20) {
-                            
+
                             ForEach($viewModel.loras) { $lora in
-                                
+
                                 GridRow {
                                     Text(lora.name).frame(minWidth: 200)
                                     Slider(value: $lora.weight, in: 0.0...2.0)
@@ -186,17 +185,17 @@ struct PencilDrawingiPadView: View {
                         .frame(minWidth: 500)
                         .padding()
                     }
-                               
+
                     Button {
                         viewModel.showTooltip = false
                         flowState.coverItem = .sdHistory
                     } label: {
-                        
+
                         HStack {
                             Label("History", systemImage: "books.vertical.fill")
                         }
                         .foregroundColor(.green)
-                        
+
 //                        HStack {
 //                            Text("\(viewModel.sequence)")
 //                        }
@@ -204,12 +203,12 @@ struct PencilDrawingiPadView: View {
 
                     }
                     .padding()
-                    
+
                     if let output = viewModel.output {
-                        let photo = Photo(image:Image(uiImage:output), caption: viewModel.prompt, description: viewModel.prompt)
-                        
+                        let photo = Photo(image: Image(uiImage: output), caption: viewModel.prompt, description: viewModel.prompt)
+
                         ShareLink(item: photo,
-                                  message: Text(viewModel.prompt) ,
+                                  message: Text(viewModel.prompt),
                                   preview: SharePreview(viewModel.prompt,
                                   image: photo))
                         .padding()
@@ -218,7 +217,7 @@ struct PencilDrawingiPadView: View {
                         .padding()
                         .foregroundColor(.blue)
                     }
-                    
+
 //                    if let drawing = viewModel.drawing {
 //                        let drawingFile = Drawing(data: drawing.dataRepresentation(), caption: viewModel.prompt, description: viewModel.prompt)
 //                        let image = drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0)
@@ -230,13 +229,12 @@ struct PencilDrawingiPadView: View {
 //                                                        image: photo))
 //                    }
 
-                    
                     if !viewModel.saved {
                         let label = HStack {
                             Label("Save", systemImage: "photo.badge.arrow.down.fill")
                         }
                         .foregroundColor(.purple)
-                        
+
                         if let output = viewModel.output {
                             Button {
                                 UIImageWriteToSavedPhotosAlbum(output, nil, nil, nil)
@@ -258,11 +256,11 @@ struct PencilDrawingiPadView: View {
                             .padding()
                             .foregroundColor(.purple)
                     }
-                    
+
                     Button {
                         bracket()
                     } label: {
-                        
+
                         HStack {
                             Label("Bracket", systemImage: "list.bullet.clipboard")
                         }
@@ -271,12 +269,11 @@ struct PencilDrawingiPadView: View {
                     }
                     .disabled(viewModel.loading)
                     .padding()
-                    
-                    
+
                     Button {
                         inpaint()
                     } label: {
-                        
+
                         HStack {
                             Label("Inpaint", systemImage: "paintbrush.pointed")
                         }
@@ -285,12 +282,11 @@ struct PencilDrawingiPadView: View {
                     }
                     .disabled(viewModel.loading)
                     .padding()
-                    
-                    
+
                     Button {
                         viewModel.clear()
                     } label: {
-                        
+
                         HStack {
                             Label("Clear", systemImage: "clear")
                         }
@@ -299,20 +295,20 @@ struct PencilDrawingiPadView: View {
                     }
                     .disabled(viewModel.loading)
                     .padding()
-                    
+
                 }
                 .background(Color(white: 0.9))
                 .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
             }
             .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
-            
+
             HStack {
                 Spacer()
                 VStack {
                     Spacer()
                     VStack {
                         Picker("Sampler", selection: $viewModel.generationService.selectedSampler) {
-                            ForEach(viewModel.generationService.sdSamplers, id:\.self) { sampler in
+                            ForEach(viewModel.generationService.sdSamplers, id: \.self) { sampler in
                                 Text(sampler.name).id(sampler)
                             }
                         }
@@ -321,28 +317,28 @@ struct PencilDrawingiPadView: View {
             }
         }
     }
-    
+
     func bracket() {
         guard !viewModel.loading else {
             return
         }
-        
+
         guard let history = generationService.lastHistory else {
             return
         }
-        
+
         flowState.nextLink(.bracket(history: history))
     }
-    
+
     func inpaint() {
         guard !viewModel.loading else {
             return
         }
-        
+
         guard let history = generationService.lastHistory else {
             return
         }
-        
+
         flowState.nextLink(.inpaint(history: history))
     }
 }

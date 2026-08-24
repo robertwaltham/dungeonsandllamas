@@ -15,7 +15,7 @@ struct ItemGeneratorView: View {
     @State var viewModel = ItemGeneratorViewModel()
 
     var body: some View {
-        
+
         VStack {
             HStack {
                 Picker("Weapon Type", selection: $viewModel.weaponType) {
@@ -25,7 +25,7 @@ struct ItemGeneratorView: View {
                 }.onChange(of: viewModel.weaponType) {
                     viewModel.updatePrompt()
                 }
-                
+
                 Picker("Quality Type", selection: $viewModel.quality) {
                     ForEach(Quality.allCases, id: \.self) { quality in
                         Text(quality.rawValue)
@@ -33,24 +33,24 @@ struct ItemGeneratorView: View {
                 }.onChange(of: viewModel.quality) {
                     viewModel.updatePrompt()
                 }
-                
+
                 Button("Generate") {
                     viewModel.generateImages()
                 }.buttonStyle(.bordered)
-                
+
                 Spacer()
                 if viewModel.loading {
                     ProgressView().padding(EdgeInsets(top: 5, leading: 5, bottom: 5, trailing: 10))
                 }
             }
-            
+
             VStack {
                 TextField("Prompt", text: $viewModel.prompt, prompt: Text("Generated Prompt"))
                     .frame(minHeight: 100)
                     .padding()
                     .background(Color(white: 0.9))
             }
-            
+
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(viewModel.images, id: \.self) { image in
@@ -62,9 +62,9 @@ struct ItemGeneratorView: View {
             }
             .frame(minHeight: 512)
             .background(Color(white: 0.9))
-            
+
             VStack {
-                TextField("Description", text: $viewModel.itemDescription, prompt: Text("Item Description"), axis:.vertical)
+                TextField("Description", text: $viewModel.itemDescription, prompt: Text("Item Description"), axis: .vertical)
                     .frame(minHeight: 100)
                     .padding()
                     .background(Color(white: 0.9))
@@ -84,15 +84,15 @@ class ItemGeneratorViewModel {
     let llmClient = LargeLangageModelClient() // todo update to use generation service
     let sdClient = StableDiffusionClient()
     var loading = false
-    
+
     // SwiftUI will create the state object in a non-isolated context
     nonisolated init() {}
-    
+
     func updatePrompt() {
         prompt = "((\(weaponType.rawValue))), ((\(quality.rawValue) quality)), fantasy"
     }
-    
-    func generateImages()  {
+
+    func generateImages() {
         images = []
         guard prompt.count > 0, !loading else {
             return
@@ -105,7 +105,7 @@ class ItemGeneratorViewModel {
                 let options = StableDiffusionClient.GenerationOptions(prompt: prompt, size: size, steps: 20, batchSize: 1)
 
                 let strings = try await sdClient.generateBase64EncodedImages(options)
-                
+
                 for string in strings {
                     if let data = Data(base64Encoded: string), let image = UIImage(data: data), Int(image.size.width) <= size {
                         images.append(image)
@@ -118,7 +118,7 @@ class ItemGeneratorViewModel {
             }
         }
     }
-    
+
     func describe(image: UIImage) {
         guard !loading else {
             return
@@ -130,16 +130,30 @@ class ItemGeneratorViewModel {
         }
         Task.init {
             do {
-                for try await obj in await llmClient.asyncStreamGenerate(prompt: "Describe the item in this image in 50 words or less", base64Image: imageData, model: LargeLangageModelClient.Model(name: "todo", modifiedAt: "", size: 0, digest: "", details: LargeLangageModelClient.ModelDetails(format: "", family: "", parameterSize: "", quantizationLevel: ""))){
-                    if !obj.done {
-                        itemDescription += obj.response
-                    }
+                let model = LargeLangageModelClient.Model(
+                    name: "todo",
+                    modifiedAt: "",
+                    size: 0,
+                    digest: "",
+                    details: LargeLangageModelClient.ModelDetails(
+                        format: "",
+                        family: "",
+                        parameterSize: "",
+                        quantizationLevel: ""
+                    )
+                )
+                for try await obj in await llmClient.asyncStreamGenerate(
+                    prompt: "Describe the item in this image in 50 words or less",
+                    base64Image: imageData,
+                    model: model
+                ) where !obj.done {
+                    itemDescription += obj.response
                 }
             } catch {
                 itemGeneratorLogger.error("Item generation request failed: \(String(describing: error), privacy: .private)")
             }
             loading = false
-        } 
+        }
     }
 }
 
@@ -169,6 +183,7 @@ enum Quality: String, CaseIterable {
     case decent = "Decent"
     case wellMade = "Well Made"
     case highQualty = "High"
+    // swiftlint:disable:next inclusive_language
     case masterwork = "Masterwork"
     case legendary = "Legendary"
 }

@@ -5,10 +5,10 @@
 //  Created by Robert Waltham on 2025-04-02.
 //
 //
-//import SwiftUI
-//import MijickCamera
+// import SwiftUI
+// import MijickCamera
 //
-//struct CameraTestView: View {
+// struct CameraTestView: View {
 //    
 //    var body: some View {
 //        MCamera()
@@ -20,9 +20,9 @@
 //        
 //            .startSession()
 //    }
-//}
+// }
 //
-//#Preview {
+// #Preview {
 //    CameraTestView()
-//}
+// }
 //

@@ -12,7 +12,7 @@ import Observation
 struct ContentView: View {
     @Environment(GenerationService.self) private var generationService
     @State private var flowState = ContentFlowState()
-    
+
     var body: some View {
         ContentFlowCoordinator(flowState: flowState) {
             landing()
@@ -25,7 +25,7 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: generationService.historySyncPhase)
     }
-    
+
     @MainActor @ViewBuilder
     func landing() -> some View {
         if UIDevice.current.userInterfaceIdiom == .phone {

@@ -19,11 +19,11 @@ enum ContentLink: Hashable, Equatable, Identifiable {
     static func == (lhs: ContentLink, rhs: ContentLink) -> Bool {
         return lhs.hashValue == rhs.hashValue
     }
-    
+
     // TODO: handle non-hashable types better
     func hash(into hasher: inout Hasher) {
         switch self {
-            
+
         case .firstLink(text: let text):
             hasher.combine("firstLink" + text)
         case .secondLink(text: let text):
@@ -67,11 +67,11 @@ enum ContentLink: Hashable, Equatable, Identifiable {
             hasher.combine("depthEdit" + input.hashValue.description)
         }
     }
-    
+
     var id: Int {
         self.hashValue
     }
-    
+
     case firstLink(text: String)
     case secondLink(text: String)
     case accelerometer

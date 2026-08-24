@@ -22,19 +22,19 @@ struct SDHistoryView: View {
     private var isCompact: Bool {
         horizontalSizeClass == .compact
     }
-    
+
     @ViewBuilder
     @MainActor
     func info(history: ImageHistoryModel) -> some View {
         HStack {
-            
+
             Text(history.prompt)
             Image(uiImage: generationService.loadOutputImage(history: history))
                 .resizable()
                 .scaledToFit()
         }
     }
-    
+
     private var displayedHistory: [ImageHistoryModel] {
         let history = searchResults ?? generationService.imageHistory
         return history.filter { entry in
@@ -50,7 +50,7 @@ struct SDHistoryView: View {
             return result
         }
     }
-    
+
     private func runSearch() {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
@@ -58,7 +58,7 @@ struct SDHistoryView: View {
             searchError = nil
             return
         }
-        
+
         isSearching = true
         searchError = nil
         Task {
@@ -71,7 +71,7 @@ struct SDHistoryView: View {
             isSearching = false
         }
     }
-    
+
     private func clearSearch() {
         searchText = ""
         searchResults = nil
@@ -79,23 +79,23 @@ struct SDHistoryView: View {
     }
 
     var body: some View {
-        
+
         ZStack {
             GradientView(type: .greyscale)
 
             VStack {
-                
+
                 HStack {
-                    
+
                     if !isCompact {
                         Text("Cols")
                         Picker("End", selection: $columns) {
-                            ForEach(3..<10) { i in
-                                Text("\(i)").tag(i)
+                            ForEach(3..<10) { columnCount in
+                                Text("\(columnCount)").tag(columnCount)
                             }
                         }
                     }
-                    
+
                     TextField("Search", text: $searchText)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: isCompact ? 150 : 220)
@@ -104,32 +104,32 @@ struct SDHistoryView: View {
                         runSearch()
                     }
                     .disabled(isSearching)
-                    
+
                     Button("Clear", systemImage: "xmark.circle") {
                         clearSearch()
                     }
                     .disabled(searchResults == nil)
 
                     Spacer()
-                    
+
                     if flowState.coverItem != nil {
                         Button("Close", systemImage: "x.circle") {
                             flowState.coverItem = nil
                         }
                     }
                 }
-                
+
                 if let searchError {
                     Text(searchError)
                         .foregroundStyle(.red)
                 }
-                
+
                 ScrollView {
-                    
+
                     let columns: [GridItem] = (0..<columns).map {_ in return GridItem(.flexible())}
                     LazyVGrid(columns: columns) {
                         ForEach(displayedHistory) { history in
-                            
+
                             Image(uiImage: generationService.fileService.loadImage(path: history.outputFilePath ?? "", maxPixelSize: 256))
                                 .resizable()
                                 .scaledToFit()
@@ -141,12 +141,11 @@ struct SDHistoryView: View {
                                         generationService.loadMoreHistory()
                                     }
                                 }
-                            
+
                         }
                     }
                 }
-                
-                
+
             }
             .padding()
         }
@@ -173,18 +172,18 @@ struct SDHistoryDetailView: View {
     private var presentedHistoryView: some View {
         let image = generationService.loadOutputImage(history: history)
         let output = Image(uiImage: image)
-        
+
         ZStack {
             GradientView(type: .greyscale)
 
             VStack {
-                
+
                 HStack {
                     let photo = Photo(image: output, caption: history.prompt, description: history.prompt)
-                    
-                    ShareLink(item: photo, message: Text(history.prompt) ,preview: SharePreview(history.prompt, image: photo))
+
+                    ShareLink(item: photo, message: Text(history.prompt), preview: SharePreview(history.prompt, image: photo))
                         .padding()
-                    
+
                     if saved != history.id.description {
                         Button {
                             UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
@@ -201,7 +200,7 @@ struct SDHistoryDetailView: View {
                         Text("Saved!")
                             .foregroundColor(.purple)
                     }
-                    
+
                     if let remixLink = remixLink(for: history) {
                         Button {
                             flowState.presentedItem = nil
@@ -215,7 +214,7 @@ struct SDHistoryDetailView: View {
                         .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 0))
                     }
                 }
-                
+
                 if let error = history.errorDescription {
                     Text(error)
                 }
@@ -224,10 +223,9 @@ struct SDHistoryDetailView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: outputImageSize, height: outputImageSize)
-                
+
                 Text(history.prompt)
 
-                
                 if history.depthFilePath != nil {
                     ZStack {
                         Image(uiImage: generationService.loadInputImage(history: history))
@@ -238,7 +236,7 @@ struct SDHistoryDetailView: View {
                         HStack {
                             VStack {
                                 Spacer()
-                                
+
                                 Image(uiImage: generationService.loadDepthImage(history: history))
                                     .resizable()
                                     .scaledToFit()
@@ -248,7 +246,7 @@ struct SDHistoryDetailView: View {
                             Spacer()
                         }
                     }
-                    
+
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: inputImageSize), spacing: 8)], spacing: 8) {
                         ForEach(Array(generationService.loadInputImages(history: history).enumerated()), id: \.offset) { index, inputImage in
@@ -292,7 +290,7 @@ struct SDHistoryDetailView: View {
     let flowState = ContentFlowState()
     let service = GenerationService()
     service.setupForTesting()
-    
+
     return ContentFlowCoordinator(flowState: flowState) {
         SDHistoryView(flowState: flowState, generationService: service)
     }

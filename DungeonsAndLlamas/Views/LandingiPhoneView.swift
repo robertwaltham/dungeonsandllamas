@@ -19,23 +19,23 @@ struct LandingiPhoneView: View {
         ZStack {
             GradientView(type: .greyscale)
             LazyVGrid(columns: [ GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]) {
-                ForEach(history, id:\.self) { img in
-                    
+                ForEach(history, id: \.self) { img in
+
                     LandingHistoryImage(image: img)
                 }
             }
             .onAppear {
-                history = generationService.imageHistory.filter{ entry in
+                history = generationService.imageHistory.filter { entry in
                     entry.errorDescription == nil
                 }
                 .shuffled()
                 .prefix(21)
-                .map{ entry in
+                .map { entry in
                     return generationService.fileService.loadImage(path: entry.outputFilePath ?? "", maxPixelSize: 256)
                 }
             }
-            .onReceive(timer) { input in
-                withAnimation(.linear(duration: 1.0)){
+            .onReceive(timer) { _ in
+                withAnimation(.linear(duration: 1.0)) {
                     if history.count > 1 {
                         let random = Int.random(in: 0..<history.count - 2)
                         let randomHistory = generationService.imageHistory.randomElement()!
@@ -46,18 +46,18 @@ struct LandingiPhoneView: View {
                     }
                 }
             }
-            
+
             VStack {
                 Spacer()
                 Text("Dungeons & Llamas")
                     .font(.largeTitle)
-                    .shadow(color:.gray, radius: 2.0)
+                    .shadow(color: .gray, radius: 2.0)
                 Text("A generative journey").font(.title)
-                    .shadow(color:.gray, radius: 2.0)
+                    .shadow(color: .gray, radius: 2.0)
 
                 Spacer().frame(maxHeight: 200)
-                
-                VStack (alignment: .center, spacing: 25) {
+
+                VStack(alignment: .center, spacing: 25) {
                     Button(action: {
                         flowState.nextLink(.comfyUITest(.one))
                     }, label: {
@@ -93,9 +93,9 @@ struct LandingiPhoneView: View {
                     })
                 }
                 .buttonStyle(.glass)
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     showingComfyUIStatus = true
                 }, label: {
@@ -112,7 +112,7 @@ struct LandingiPhoneView: View {
                         error: generationService.comfyUIStatus.error
                     )
                 }
-                
+
                 Spacer()
             }
         }

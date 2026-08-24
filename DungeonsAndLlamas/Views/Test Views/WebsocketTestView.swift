@@ -12,7 +12,7 @@ private let websocketLogger = LoggingService.shared.network
 
 struct WebsocketTestView: View {
     var viewModel = WebsocketTestViewModel()
-    
+
     var body: some View {
         VStack {
             HStack {
@@ -21,7 +21,7 @@ struct WebsocketTestView: View {
                 } label: {
                     Text("Connect")
                 }
-                
+
                 Button {
                     viewModel.send()
                 } label: {
@@ -48,7 +48,7 @@ class WebsocketTestViewModel {
     var socket: URLSessionWebSocketTask?
     var error: String?
     var message: String?
-    
+
     func connect() {
         websocketLogger.debug("Opening WebSocket connection")
         error = nil
@@ -57,28 +57,28 @@ class WebsocketTestViewModel {
             return
         }
         socket = URLSession.shared.webSocketTask(with: url)
-        
+
         guard let socket else {
             error = "no socket"
             return
         }
-        
+
         message = "connected"
-        
+
         socket.resume()
-        
+
         Task.init {
             do {
                 while self.error == nil {
                     let message = try await self.socket?.receive()
                     switch message {
-                        
+
                     case .none:
                         self.error = "no message"
                     case .some(let content):
                         switch content {
-                            
-                        case .data(_):
+
+                        case .data:
                             self.message = "data"
                         case .string(let string):
                             self.message = string
@@ -94,16 +94,16 @@ class WebsocketTestViewModel {
             }
         }
     }
-    
+
     func send() {
         guard let socket else {
             websocketLogger.warning("WebSocket send requested without an active socket")
             error = "no socket"
             return
         }
-        
+
         websocketLogger.debug("WebSocket message sent")
-        
+
         Task.init {
             do {
                 try await socket.send(.string("a cat in a fancy hat \(Float.random(in: 0..<1))"))
@@ -112,10 +112,9 @@ class WebsocketTestViewModel {
                 websocketLogger.error("WebSocket send failed: \(String(describing: error), privacy: .private)")
             }
         }
-        
+
     }
 }
-
 
 #Preview {
     WebsocketTestView()

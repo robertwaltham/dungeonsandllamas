@@ -23,7 +23,6 @@ struct ComfyUITestView: View {
         self._viewModel = State(initialValue: ComfyUITestViewModel(workflow: workflow, history: history, generationService: generationService))
     }
 
-
     private var isCompact: Bool {
         horizontalSizeClass == .compact
     }
@@ -96,7 +95,7 @@ struct ComfyUITestView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            
+
             TextField("Prompt", text: $viewModel.prompt, axis: .vertical)
                 .focused($isPromptFocused)
                 .textFieldStyle(.roundedBorder)
@@ -104,7 +103,7 @@ struct ComfyUITestView: View {
                 .onChange(of: isPromptFocused) { _, isFocused in
                     viewModel.showTooltip = !isFocused
                 }
-            
+
             HStack(alignment: .bottom, spacing: 12) {
 
                 Button("Generate") {
@@ -119,9 +118,8 @@ struct ComfyUITestView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(viewModel.loading)
-                
-                photoLibrarySelectionView()
 
+                photoLibrarySelectionView()
 
 //                Button("Random Seed") {
 //                    viewModel.randomizeSeed()
@@ -172,7 +170,7 @@ struct ComfyUITestView: View {
                     contentSize: $viewModel.canvasSize,
                     opaque: !viewModel.useTwoImageWorkflow
                 )
-                
+
                 if viewModel.loading {
                     ComfyGenerationProgressView(progress: viewModel.progress, title: "Generating…")
                         .frame(maxWidth: .infinity, minHeight: 120)
@@ -186,7 +184,7 @@ struct ComfyUITestView: View {
             .onChange(of: canvasSize) { _, newValue in
                 viewModel.updateCanvasSize(newValue)
             }
-            
+
         }
     }
 
@@ -343,7 +341,6 @@ private class ComfyUITestViewModel {
         }
     }
 
-
     func resetPromptId() {
         promptId = UUID().uuidString.lowercased()
     }
@@ -441,7 +438,7 @@ private class ComfyUITestViewModel {
             inputFilePaths.append(generationService.fileService.save(image: pickedPhotoInputImage.image))
         }
         let historyId = UUID().uuidString
-        var history = ImageHistoryModel(
+        let history = ImageHistoryModel(
             id: historyId,
             start: Date.now,
             prompt: prompt,
@@ -467,24 +464,55 @@ private class ComfyUITestViewModel {
         }
 
         Task {
-            do {
-                let drawingUpload = try await generationService.comfyUIClient.uploadImage(
-                    inputImage.data,
-                    filename: inputImage.filename,
+            await performGeneration(
+                using: generationService,
+                context: GenerationContext(
+                    inputImage: inputImage,
+                    pickedPhotoInputImage: pickedPhotoInputImage,
+                    selectedPhotoLibraryImage: selectedPhotoLibraryImage,
+                    prompt: prompt,
+                    seed: seed,
+                    clientId: clientId,
+                    promptId: promptId,
+                    useTwoImageWorkflow: useTwoImageWorkflow,
+                    history: history
+                )
+            )
+        }
+    }
+
+    private func performGeneration(
+        using generationService: GenerationService,
+        context: GenerationContext
+    ) async {
+        let inputImage = context.inputImage
+        let pickedPhotoInputImage = context.pickedPhotoInputImage
+        let selectedPhotoLibraryImage = context.selectedPhotoLibraryImage
+        let prompt = context.prompt
+        let seed = context.seed
+        let clientId = context.clientId
+        let promptId = context.promptId
+        let useTwoImageWorkflow = context.useTwoImageWorkflow
+        var history = context.history
+        do {
+            let drawingUpload = try await generationService.comfyUIClient.uploadImage(
+                inputImage.data,
+                filename: inputImage.filename,
+                type: .input,
+                overwrite: false
+            )
+            uploadedInputFilename = drawingUpload.name
+
+            let messageStream = try await generationService.comfyUIClient.messages(clientId: clientId)
+            if useTwoImageWorkflow, let pickedPhotoInputImage {
+                let pickedPhotoUpload = try await generationService.comfyUIClient.uploadImage(
+                    pickedPhotoInputImage.data,
+                    filename: pickedPhotoInputImage.filename,
                     type: .input,
                     overwrite: false
                 )
-                uploadedInputFilename = drawingUpload.name
-
-                let messageStream = try await generationService.comfyUIClient.messages(clientId: clientId)
-                if useTwoImageWorkflow, let pickedPhotoInputImage {
-                    let pickedPhotoUpload = try await generationService.comfyUIClient.uploadImage(
-                        pickedPhotoInputImage.data,
-                        filename: pickedPhotoInputImage.filename,
-                        type: .input,
-                        overwrite: false
-                    )
-                    _ = try await generationService.comfyUIClient.submitImageFlux2Klein2ImageEdit(
+                _ = try await generationService.comfyUIClient.submitImageFlux2Klein2ImageEdit(
+                    request: .init(
                         prompt: prompt,
                         seed: seed,
                         firstImageFilename: drawingUpload.name,
@@ -492,48 +520,50 @@ private class ComfyUITestViewModel {
                         clientId: clientId,
                         promptId: promptId
                     )
-                } else {
-                    _ = try await generationService.comfyUIClient.submitImageFlux2KleinImageEdit(
+                )
+            } else {
+                _ = try await generationService.comfyUIClient.submitImageFlux2KleinImageEdit(
+                    request: .init(
                         prompt: prompt,
                         seed: seed,
                         imageFilename: drawingUpload.name,
                         clientId: clientId,
                         promptId: promptId
                     )
-                }
-                try await waitForImageEditCompletion(promptId: promptId, messages: messageStream)
+                )
+            }
+            try await waitForImageEditCompletion(promptId: promptId, messages: messageStream)
 
-                let outputs = try await generationService.comfyUIClient.imageOutputPaths(promptId: promptId)
-                let paths = outputs.keys.sorted().flatMap { outputs[$0] ?? [] }
-                imagePaths = paths
+            let outputs = try await generationService.comfyUIClient.imageOutputPaths(promptId: promptId)
+            let paths = outputs.keys.sorted().flatMap { outputs[$0] ?? [] }
+            imagePaths = paths
 
-                if let firstPath = paths.first, let loadedImage = UIImage(contentsOfFile: firstPath) {
-                    image = loadedImage
-                    generatedImageCount += 1
-                    history.outputFilePath = generationService.fileService.save(image: loadedImage)
-                    history.outputEmbedding = try? await generationService.mlService.imageEmbedding(for: loadedImage)
-                    history.end = Date.now
-                } else {
-                    error = "No image output returned."
-                    history.errorDescription = "No image output returned."
-                    history.end = Date.now
-                }
-            } catch {
-                self.error = error.localizedDescription
-                history.errorDescription = error.localizedDescription
+            if let firstPath = paths.first, let loadedImage = UIImage(contentsOfFile: firstPath) {
+                image = loadedImage
+                generatedImageCount += 1
+                history.outputFilePath = generationService.fileService.save(image: loadedImage)
+                history.outputEmbedding = try? await generationService.mlService.imageEmbedding(for: loadedImage)
+                history.end = Date.now
+            } else {
+                error = "No image output returned."
+                history.errorDescription = "No image output returned."
                 history.end = Date.now
             }
-
-            history.promptEmbedding = try? await generationService.mlService.textEmbedding(for: prompt)
-            let embeddingInputImage = useTwoImageWorkflow ? selectedPhotoLibraryImage?.image ?? inputImage.image : inputImage.image
-            history.inputEmbedding = try? await generationService.mlService.imageEmbedding(for: embeddingInputImage)
-            generationService.db.save(history: history)
-            generationService.addHistory(history)
-            generationService.lastHistory = history
-            randomizeSeed()
-            progress = nil
-            loading = false
+        } catch {
+            self.error = error.localizedDescription
+            history.errorDescription = error.localizedDescription
+            history.end = Date.now
         }
+
+        history.promptEmbedding = try? await generationService.mlService.textEmbedding(for: prompt)
+        let embeddingInputImage = useTwoImageWorkflow ? selectedPhotoLibraryImage?.image ?? inputImage.image : inputImage.image
+        history.inputEmbedding = try? await generationService.mlService.imageEmbedding(for: embeddingInputImage)
+        generationService.db.save(history: history)
+        generationService.addHistory(history)
+        generationService.lastHistory = history
+        randomizeSeed()
+        progress = nil
+        loading = false
     }
 
     private func waitForImageEditCompletion(promptId: String, messages: AsyncThrowingStream<ComfyUIClient.WebSocketMessage, Error>) async throws {
@@ -603,6 +633,18 @@ private class ComfyUITestViewModel {
         let data: Data
         let filename: String
         let path: String
+    }
+
+    private struct GenerationContext {
+        let inputImage: InputImage
+        let pickedPhotoInputImage: InputImage?
+        let selectedPhotoLibraryImage: PhotoLibraryService.PhotoLibraryImage?
+        let prompt: String
+        let seed: Int64
+        let clientId: String
+        let promptId: String
+        let useTwoImageWorkflow: Bool
+        let history: ImageHistoryModel
     }
 }
 

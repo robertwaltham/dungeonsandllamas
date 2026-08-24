@@ -15,13 +15,13 @@ struct DepthGenerationView: View {
     var generationService: GenerationService
     @State var viewModel: DepthGenerationViewModel
     @State var showLoras = false
-    
+
     init(flowState: ContentFlowState, generationService: GenerationService, localIdentifier: String) {
         self.flowState = flowState
         self.generationService = generationService
         self.viewModel = DepthGenerationViewModel(generationService: generationService, localIdentifier: localIdentifier)
     }
-    
+
     var body: some View {
         ZStack {
             GradientView(type: .greyscale)
@@ -29,10 +29,10 @@ struct DepthGenerationView: View {
                 VStack {
                     ZStack {
                         Image(uiImage: image.image)
-                        
+
                         VStack {
                             HStack {
-                                
+
                                 VStack(alignment: .leading) {
                                     ForEach(viewModel.classifications) { prediction in
                                         Text("\(prediction.label) \(prediction.probability.formatted(.number.precision(.fractionLength(0...2))))")
@@ -44,15 +44,14 @@ struct DepthGenerationView: View {
                                             }
                                     }
                                 }.padding()
-                                
+
                                 Spacer()
-                                
+
                                 depthImageView()
                             }
                             Spacer()
                         }
 
-                        
                         VStack {
                             Spacer()
                             TextEditor(text: $viewModel.prompt)
@@ -65,11 +64,11 @@ struct DepthGenerationView: View {
                         }
                     }
                     .frame(width: 512, height: 512)
-                    
+
                     Spacer()
-                    
+
                     HStack {
-                        
+
                         if viewModel.editedImage != nil {
                             Button {
                                 viewModel.editedImage = nil
@@ -82,11 +81,10 @@ struct DepthGenerationView: View {
                                 .frame(width: 150)
                         }
 
-                        
                         Button {
                             showLoras = true
                         } label: {
-                            
+
                             HStack {
                                 Label("Loras", systemImage: "photo.on.rectangle.angled")
                             }
@@ -101,28 +99,28 @@ struct DepthGenerationView: View {
                         .popover(isPresented: $showLoras) {
                             loraOverlay()
                         }
-                        
+
                         Picker("mode", selection: $viewModel.mode) {
                             ForEach(StableDiffusionClient.ControlNetOptions.ControlMode.allCases) { mode in
                                 Text(mode.rawValue).tag(mode)
                             }
                         }
                         .frame(width: 270)
-                        
+
                         Button {
                             viewModel.editDepth(flowState: flowState)
                         } label: {
                             Label("Edit", systemImage: "pencil")
                         }
                         .foregroundStyle(.yellow)
-                        
+
                         Button {
                             guard !viewModel.loading else {
                                 return
                             }
                             viewModel.depth(serice: generationService, output: $viewModel.result, progress: $viewModel.progress, loading: $viewModel.loading)
                         } label: {
-                            
+
                             HStack {
                                 Label("Generate", systemImage: "play.rectangle")
                             }
@@ -134,9 +132,9 @@ struct DepthGenerationView: View {
                     .padding()
                     .background(Color(white: 1.0, opacity: 0.5))
                     .clipShape(RoundedRectangle(cornerRadius: 5.0))
-                    
+
                     Spacer()
-                    
+
                     ZStack {
                         if let result = viewModel.result {
                             Image(uiImage: result)
@@ -144,7 +142,7 @@ struct DepthGenerationView: View {
                             Rectangle()
                                 .foregroundStyle(.gray)
                         }
-                        
+
                         if viewModel.loading {
                             VStack {
                                 ProgressView(value: viewModel.progress?.progress ?? 0)
@@ -169,13 +167,13 @@ struct DepthGenerationView: View {
             }
         }
     }
-    
+
     @ViewBuilder
     func loraOverlay() -> some View {
         Grid(horizontalSpacing: 10, verticalSpacing: 20) {
-            
+
             ForEach($viewModel.loras) { $lora in
-                
+
                 GridRow {
                     Text(lora.name).frame(minWidth: 200)
                     Slider(value: $lora.weight, in: 0.0...2.0)
@@ -187,7 +185,7 @@ struct DepthGenerationView: View {
         .frame(minWidth: 500)
         .padding()
     }
-    
+
 //    @ViewBuilder
     func depthImageView() -> some View {
         let image: UIImage
@@ -198,7 +196,7 @@ struct DepthGenerationView: View {
         } else {
             image = UIImage(named: "lighthouse")! // should never happen
         }
-        
+
         return Image(uiImage: image)
             .resizable()
             .scaledToFill()
@@ -210,10 +208,10 @@ struct DepthGenerationView: View {
 
 @Observable
 class DepthGenerationViewModel: @unchecked Sendable {
-    
+
     var session = NSUUID().uuidString
     var sequence = 0
-    
+
     @MainActor
     init(generationService: GenerationService, localIdentifier: String) {
         self.loras = generationService.sdLoras.map { lora in
@@ -232,12 +230,12 @@ class DepthGenerationViewModel: @unchecked Sendable {
         }
     }
     let localIdentifier: String
-        
+
     var loras: [GenerationService.LoraInvocation]
     var enabledLoras: [GenerationService.LoraInvocation] {
         loras.filter { $0.weight > 0}
     }
-    
+
     var image: PhotoLibraryService.PhotoLibraryImage?
     var loading = false
     var progress: StableDiffusionClient.Progress?
@@ -247,17 +245,17 @@ class DepthGenerationViewModel: @unchecked Sendable {
     var classifications = [MLService.PredictionResult]()
     var depthDrawing: PKDrawing?
     var editedImage: UIImage?
-    
+
     func loadImage(service: GenerationService) {
         guard image == nil else {
             return
         }
-        
+
         Task {
             self.image = await service.photos.getDepth(identifier: self.localIdentifier)
         }
     }
-    
+
     func classify(service: GenerationService) {
         guard let image else {
             return
@@ -268,22 +266,22 @@ class DepthGenerationViewModel: @unchecked Sendable {
             })
         }
     }
-    
+
     func addPrompt(_ text: String) {
         guard !prompt.hasSuffix(text) else {
             return
         }
-        
+
         prompt.append(" ")
         prompt.append(text)
     }
-    
+
     func editDepth(flowState: ContentFlowState) {
-        
+
         guard !loading else {
             return
         }
-        
+
         let input: UIImage
         if let image = image?.estimatedDepth {
             input = image
@@ -291,28 +289,28 @@ class DepthGenerationViewModel: @unchecked Sendable {
         } else {
             return
         }
-        
+
         let output = Binding(get: {
             self.editedImage!
         }, set: { newValue in
             self.editedImage = newValue
         })
-        
+
         let drawing = Binding {
             self.depthDrawing
         } set: { newValue in
             self.depthDrawing = newValue
         }
-        
+
         flowState.nextLink(.depthEditor(input: input, output: output, drawing: drawing))
     }
-    
+
     @MainActor
     func depth(serice: GenerationService,
                output: Binding<UIImage?>,
                progress: Binding<StableDiffusionClient.Progress?>,
                loading: Binding<Bool>) {
-        
+
         guard let image = self.image else {
             return
         }
@@ -327,23 +325,25 @@ class DepthGenerationViewModel: @unchecked Sendable {
         }
         result = nil
         sequence += 1
-        serice.depth(prompt: prompt,
-                     loras: enabledLoras,
-                     seed: Int.random(in: 0...1000),
-                     input: image.image,
-                     depth: depth,
-                     mode: mode,
-                     session: session,
-                     sequence: sequence,
-                     output: output,
-                     progress: progress,
-                     loading: loading)
+        serice.depth(
+            request: .init(
+                prompt: prompt,
+                loras: enabledLoras,
+                seed: Int.random(in: 0...1000),
+                input: image.image,
+                depth: depth,
+                mode: mode,
+                session: session,
+                sequence: sequence
+            ),
+            bindings: .init(output: output, progress: progress, loading: loading)
+        )
     }
 
 }
 
 #Preview {
-    
+
     let flowState = ContentFlowState()
     let service = GenerationService()
     service.getModels()
@@ -354,12 +354,10 @@ class DepthGenerationViewModel: @unchecked Sendable {
     view.viewModel.classifications = [
         MLService.PredictionResult(label: "Cat", probability: 0.6),
         MLService.PredictionResult(label: "Ham", probability: 0.4),
-        MLService.PredictionResult(label: "Green Eggs", probability: 0.2),
+        MLService.PredictionResult(label: "Green Eggs", probability: 0.2)
     ]
     return ContentFlowCoordinator(flowState: flowState) {
         view
     }
     .environment(service)
 }
-
-

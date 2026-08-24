@@ -8,7 +8,7 @@
 import Foundation
 
 import SwiftUI
-    
+
 struct Photo: Identifiable {
     var id = UUID()
     var image: Image

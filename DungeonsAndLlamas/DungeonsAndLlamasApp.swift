@@ -12,7 +12,7 @@ import CoreAI
 @main
 struct DungeonsAndLlamasApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -24,7 +24,7 @@ struct DungeonsAndLlamasApp: App {
 class AppDelegate: NSObject, UIApplicationDelegate {
     let generationService = GenerationService()
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         generationService.db.setup()
         generationService.photos.prepareCategoryCache()
         generationService.checkStatusIfNeeded()
@@ -36,7 +36,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         print(AIModel.deviceArchitectureName)
         return true
     }
-    
+
     func applicationWillEnterForeground(_ application: UIApplication) {
         generationService.checkStatusIfNeeded()
     }

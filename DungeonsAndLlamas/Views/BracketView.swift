@@ -18,12 +18,12 @@ struct BracketView: View {
     @State var columns = 3
 
     let imageSize: CGFloat = 200
-    
+
     init(flowState: ContentFlowState, generationService: GenerationService, history: ImageHistoryModel) {
         self.flowState = flowState
         self.viewModel = PencilViewModel(generationService: generationService)
         self.generationService = generationService
-        
+
         self.viewModel.load(history: history)
     }
 
@@ -46,14 +46,14 @@ struct BracketView: View {
                                     .foregroundColor(.white)
                                     .frame(width: imageSize, height: imageSize)
                             }
-                            
+
                             VStack {
                                 Text("Input")
                                 Spacer()
                             }
-                            
+
                         }.frame(maxHeight: imageSize)
-                        
+
                         ZStack {
                             if let output = viewModel.output {
                                 Image(uiImage: output)
@@ -71,7 +71,6 @@ struct BracketView: View {
                                 Spacer()
                             }
                         }.frame(maxHeight: imageSize)
-                        
 
                     }
                     if viewModel.loading {
@@ -89,7 +88,7 @@ struct BracketView: View {
                 VStack {
 
                     HStack {
-                        
+
                         let nameBinding = Binding {
                             viewModel.firstBracketLora.name
                         } set: { value in
@@ -98,14 +97,14 @@ struct BracketView: View {
                                 lora.name == value
                             })?.activation // TODO: fix this stupid garbage
                         }
-                        
+
                         Picker("First Lora", selection: nameBinding) {
                             Text("First Lora").tag("n/a")
-                            ForEach(viewModel.loras, id:\.self) { lora in
+                            ForEach(viewModel.loras, id: \.self) { lora in
                                 Text(lora.name).tag(lora.name)
                             }
                         }
-                        
+
                         let minBinding = Binding {
                             viewModel.firstBracketLora.bracketMin
                         } set: { value in
@@ -119,7 +118,7 @@ struct BracketView: View {
                                 Text(formatted(weight)).tag(weight)
                             }
                         }
-                        
+
                         let maxBinding = Binding {
                             viewModel.firstBracketLora.bracketMax
                         } set: { value in
@@ -133,7 +132,7 @@ struct BracketView: View {
                                 Text(formatted(weight)).tag(weight)
                             }
                         }
-                        
+
                         let stepBinding = Binding {
                             viewModel.firstBracketLora.bracketSteps
                         } set: { value in
@@ -148,9 +147,9 @@ struct BracketView: View {
                         }
                     }
                     .disabled(viewModel.loading)
-                    
+
                     HStack {
-                        
+
                         let nameBinding = Binding {
                             viewModel.secondBracketLora.name
                         } set: { value in
@@ -159,14 +158,14 @@ struct BracketView: View {
                                 lora.name == value
                             })?.activation // TODO: fix this stupid garbage
                         }
-                        
+
                         Picker("Second Lora", selection: nameBinding) {
                             Text("Second Lora").tag("n/a")
-                            ForEach(viewModel.loras, id:\.self) { lora in
+                            ForEach(viewModel.loras, id: \.self) { lora in
                                 Text(lora.name).tag(lora.name)
                             }
                         }
-                        
+
                         let minBinding = Binding {
                             viewModel.secondBracketLora.bracketMin
                         } set: { value in
@@ -180,7 +179,7 @@ struct BracketView: View {
                                 Text(formatted(weight)).tag(weight)
                             }
                         }
-                        
+
                         let maxBinding = Binding {
                             viewModel.secondBracketLora.bracketMax
                         } set: { value in
@@ -194,7 +193,7 @@ struct BracketView: View {
                                 Text(formatted(weight)).tag(weight)
                             }
                         }
-                        
+
                         let stepBinding = Binding {
                             viewModel.secondBracketLora.bracketSteps
                         } set: { value in
@@ -209,9 +208,9 @@ struct BracketView: View {
                         }
                     }
                     .disabled(viewModel.loading)
-                    
+
                     HStack {
-                        
+
                         let nameBinding = Binding {
                             viewModel.thirdBracketLora.name
                         } set: { value in
@@ -220,14 +219,14 @@ struct BracketView: View {
                                 lora.name == value
                             })?.activation // TODO: fix this stupid garbage
                         }
-                        
+
                         Picker("Third Lora", selection: nameBinding) {
                             Text("Third Lora").tag("n/a")
-                            ForEach(viewModel.loras, id:\.self) { lora in
+                            ForEach(viewModel.loras, id: \.self) { lora in
                                 Text(lora.name).tag(lora.name)
                             }
                         }
-                        
+
                         let minBinding = Binding {
                             viewModel.thirdBracketLora.bracketMin
                         } set: { value in
@@ -241,7 +240,7 @@ struct BracketView: View {
                                 Text(formatted(weight)).tag(weight)
                             }
                         }
-                        
+
                         let maxBinding = Binding {
                             viewModel.thirdBracketLora.bracketMax
                         } set: { value in
@@ -255,7 +254,7 @@ struct BracketView: View {
                                 Text(formatted(weight)).tag(weight)
                             }
                         }
-                        
+
                         let stepBinding = Binding {
                             viewModel.thirdBracketLora.bracketSteps
                         } set: { value in
@@ -273,7 +272,7 @@ struct BracketView: View {
                     .disabled(viewModel.loading)
                 }
                 HStack {
-                    
+
                     VStack {
                         if !cancel {
                             Button("Cancel") {
@@ -296,20 +295,19 @@ struct BracketView: View {
                         }
 
                     }.frame(minWidth: 225)
-                    
+
                     Text(viewModel.prompt)
-                    
+
                     Text("Cols")
                     Picker("End", selection: $columns) {
-                        ForEach(3..<10) { i in
-                            Text("\(i)").tag(i)
+                        ForEach(3..<10) { columnCount in
+                            Text("\(columnCount)").tag(columnCount)
                         }
                     }
                 }
                 Spacer()
-                
 
-                if viewModel.bracketResult.count > 0  {
+                if viewModel.bracketResult.count > 0 {
                     let columns: [GridItem] = (0..<columns).map {_ in return GridItem(.flexible())}
                     LazyVGrid(columns: columns) {
                         ForEach(viewModel.bracketResult, id: \.self) { bracket in
@@ -317,31 +315,30 @@ struct BracketView: View {
                                 Image(uiImage: bracket.result)
                                     .resizable()
                                     .scaledToFit()
-                                
+
                                 VStack {
-                                    
+
                                     if viewModel.savedResults.contains(bracket.id) {
                                         Text("Saved!")
                                             .foregroundColor(.yellow)
                                     } else {
                                         Button {
                                             viewModel.save(bracket: bracket)
-                                            
+
                                         } label: {
                                             Label("Save", systemImage: "square.and.arrow.down")
                                         }
                                         .foregroundColor(.yellow)
                                     }
 
-                                    
                                     Spacer()
-                                    
+
                                     if let third = bracket.thirdLora {
                                         Text("\(formatted(bracket.firstLora.weight)) |  \(formatted(bracket.secondLora.weight)) | \(formatted(third.weight))")
                                     } else {
                                         Text("\(formatted(bracket.firstLora.weight)) |  \(formatted(bracket.secondLora.weight))")
                                     }
-                                    
+
                                 }
                             }
                             .shadow(radius: 2)
@@ -352,7 +349,7 @@ struct BracketView: View {
             }
         }
     }
-    
+
     private func formatted(_ input: Double) -> String {
         return input.formatted(.number.precision(.fractionLength(0...2)))
     }
@@ -381,6 +378,3 @@ struct BracketView: View {
     }
     .environment(service)
 }
-
-
-

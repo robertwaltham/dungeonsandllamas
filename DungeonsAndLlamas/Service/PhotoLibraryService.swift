@@ -261,7 +261,10 @@ final class PhotoLibraryService: NSObject {
         }.sorted { $0.count > $1.count }
         categoryCacheIsPrepared = true
         let duration = clock.now - start
-        photoLibraryLogger.debug("Photo category cache rebuilt after \(reason, privacy: .public): categories=\(self.categoryCache.count, privacy: .public) photos=\(records.count, privacy: .public) duration=\(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
+        let elapsedDescription = duration.formatted(.units(allowed: [.seconds, .milliseconds]))
+        let summary = "Photo category cache rebuilt after \(reason): categories=\(categoryCache.count) " +
+            "photos=\(records.count) duration=\(elapsedDescription)"
+        photoLibraryLogger.debug("\(summary, privacy: .public)")
     }
 
     func page(query: PhotoQuery, cursor: PhotoPageCursor? = nil) async throws -> PhotoPage {
@@ -595,10 +598,23 @@ final class PhotoLibraryService: NSObject {
 
     private func indexModel(for asset: PHAsset) async throws -> PhotoIndexModel {
         try Task.checkCancellation()
-        guard let image = await requestImage(asset: asset, targetSize: CGSize(width: 1024, height: 1024), contentMode: .aspectFit, networkAllowed: true) else {
+        guard let image = await requestImage(
+            asset: asset,
+            targetSize: CGSize(width: 1024, height: 1024),
+            contentMode: .aspectFit,
+            networkAllowed: true
+        ) else {
             try Task.checkCancellation()
             photoLibraryLogger.warning("Photo asset deferred: source image is not locally available")
-            return IndexedPhoto(id: asset.localIdentifier, creationDate: asset.creationDate, modificationDate: asset.modificationDate, sourceState: .deferredForDownload, embedding: nil, categories: [], processingVersion: IndexedPhoto.processingVersion).databaseModel
+            return IndexedPhoto(
+                id: asset.localIdentifier,
+                creationDate: asset.creationDate,
+                modificationDate: asset.modificationDate,
+                sourceState: .deferredForDownload,
+                embedding: nil,
+                categories: [],
+                processingVersion: IndexedPhoto.processingVersion
+            ).databaseModel
         }
         var categories = [PhotoCategory]()
         var embedding: [Float]?
@@ -655,8 +671,8 @@ final class PhotoLibraryService: NSObject {
     struct PhotoLibraryImage: Identifiable, Equatable, Hashable {
         var id: String
         var image: UIImage
-        var estimatedDepth: UIImage? = nil
-        var canny: UIImage? = nil
+        var estimatedDepth: UIImage?
+        var canny: UIImage?
     }
 
     func getImages(limit: Int = 10, offset: Int = 0, size: CGSize = CGSize(width: 512, height: 512)) -> AsyncStream<PhotoLibraryImage> {

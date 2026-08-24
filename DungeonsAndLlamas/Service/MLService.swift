@@ -14,7 +14,7 @@ private let mlLogger = LoggingService.shared.ml
 
 // adapted from https://github.com/huggingface/coreml-examples/tree/main/depth-anything-example
 actor MLService {
-    
+
     struct PredictionResult: Hashable, Identifiable {
         var id: String {
             label
@@ -22,7 +22,7 @@ actor MLService {
         let label: String
         let probability: Double
     }
-    
+
     enum EmbeddingError: Error {
         case modelNotLoaded
         case functionNotFound(String)
@@ -31,7 +31,7 @@ actor MLService {
         case invalidImage
         case invalidEmbeddingDimensions(Int, Int)
     }
-    
+
     let context = CIContext()
     let tokenizer = CLIPTokenizer()
     static let targetDepthSize = CGSize(width: 518, height: 392)
@@ -47,12 +47,11 @@ actor MLService {
     var clipModel: AIModel?
     var clipTextFunction: InferenceFunction?
     var clipImageFunction: InferenceFunction?
-    
+
     /// A pixel buffer used as input to the model.
     let inputDepthPixelBuffer: CVPixelBuffer
     let inputClassifierPixelBuffer: CVPixelBuffer
 
-    
     init() {
         // Create a reusable buffer to avoid allocating memory for every model invocation
         var buffer: CVPixelBuffer!
@@ -68,7 +67,7 @@ actor MLService {
             fatalError("Failed to create pixel buffer")
         }
         inputDepthPixelBuffer = buffer
-        
+
         status = CVPixelBufferCreate(
             kCFAllocatorDefault,
             Int(MLService.targetClassifierSize.width),
@@ -81,7 +80,7 @@ actor MLService {
             fatalError("Failed to create pixel buffer")
         }
         inputClassifierPixelBuffer = buffer
-        
+
     }
 
     /// Explicit warm-up hook. Normal callers load only the model they need.
@@ -116,7 +115,7 @@ actor MLService {
         }
         let clipModel = try await AIModel(contentsOf: url)
         self.clipModel = clipModel
-        
+
         guard let textFunction = try clipModel.loadFunction(named: "encode_text") else {
             throw EmbeddingError.functionNotFound("encode_text")
         }
@@ -126,46 +125,45 @@ actor MLService {
         clipTextFunction = textFunction
         clipImageFunction = imageFunction
     }
-    
+
     func performDepthInference(_ image: UIImage) async throws -> UIImage? {
-        
+
         try loadDepthModelIfNeeded()
         guard let depthModel else { return nil }
-        
+
         let clock = ContinuousClock()
         let start = clock.now
-        
+
         guard let pixelBuffer = image.convertToBuffer() else {
             return nil
         }
         let originalSize = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
-        
-        
+
         var cIImage = CIImage(cvPixelBuffer: pixelBuffer)
         cIImage = cIImage.resized(to: MLService.targetDepthSize)
         context.render(cIImage, to: inputDepthPixelBuffer)
         let result = try depthModel.prediction(image: inputDepthPixelBuffer)
         let outputImage = CIImage(cvPixelBuffer: result.depth).resized(to: originalSize)
-       
+
         let temporaryContext = CIContext()
-        guard let videoImage = temporaryContext.createCGImage(outputImage, from: CGRectMake(0, 0, CGFloat(CVPixelBufferGetWidth(pixelBuffer)), CGFloat(CVPixelBufferGetHeight(pixelBuffer)))) else {
+        guard let videoImage = temporaryContext.createCGImage(outputImage, from: CGRect(x: 0, y: 0, width: CGFloat(CVPixelBufferGetWidth(pixelBuffer)), height: CGFloat(CVPixelBufferGetHeight(pixelBuffer)))) else {
             return nil
         }
 
         let duration = clock.now - start
         mlLogger.debug("Depth inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
-        
+
         return UIImage(cgImage: videoImage)
     }
-    
+
     func performClassifierInference(_ image: UIImage) async throws -> [PredictionResult]? {
-        
+
         try loadClassifierModelIfNeeded()
         guard let classifierModel else { return nil }
-        
+
         let clock = ContinuousClock()
         let start = clock.now
-        
+
         guard let pixelBuffer = image.convertToBuffer() else {
             return nil
         }
@@ -176,44 +174,44 @@ actor MLService {
         let classifications = result.classLabel_probs.sorted { $0.value > $1.value }.map { (label, prob) in
             PredictionResult(label: label, probability: prob)
         }
-        
+
         let duration = clock.now - start
         mlLogger.debug("Classification inference took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
-        
+
         return classifications
     }
-    
+
     func textEmbedding(for text: String) async throws -> [Float] {
         try await loadClipModelIfNeeded()
         guard let clipTextFunction else {
             throw EmbeddingError.modelNotLoaded
         }
-        
+
         let clock = ContinuousClock()
         let start = clock.now
         defer {
             let duration = clock.now - start
             mlLogger.debug("Text embedding took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
         }
-        
+
         let tokens = tokenizer.encode_full(text: text).map(Int32.init)
         let input = NDArray(scalars: tokens, shape: [1, tokenizer.contextLength])
         return try await embedding(function: clipTextFunction, inputName: "text", outputName: "text_features", input: input)
     }
-    
+
     func imageEmbedding(for image: UIImage) async throws -> [Float] {
         try await loadClipModelIfNeeded()
         guard let clipImageFunction else {
             throw EmbeddingError.modelNotLoaded
         }
-        
+
         let clock = ContinuousClock()
         let start = clock.now
         defer {
             let duration = clock.now - start
             mlLogger.debug("Image embedding took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public)")
         }
-        
+
         let input = try clipImageArray(from: image)
         return try await embedding(function: clipImageFunction, inputName: "image", outputName: "image_features", input: input)
     }
@@ -241,24 +239,24 @@ actor MLService {
         let magnitude = sqrt(average.reduce(Float.zero) { $0 + $1 * $1 })
         return magnitude == 0 ? average : average.map { $0 / magnitude }
     }
-    
+
     func similarity(text: String, image: UIImage) async throws -> Float {
         let textEmbedding = try await textEmbedding(for: text)
         let imageEmbedding = try await imageEmbedding(for: image)
         return try Self.cosineSimilarity(textEmbedding, imageEmbedding)
     }
-    
+
     static func cosineSimilarity(_ embedding1: [Float], _ embedding2: [Float]) throws -> Float {
         guard embedding1.count == embedding2.count else {
             throw EmbeddingError.invalidEmbeddingDimensions(embedding1.count, embedding2.count)
         }
-        
+
         let dotProduct = zip(embedding1, embedding2).reduce(Float.zero) { $0 + $1.0 * $1.1 }
         let magnitude1 = sqrt(embedding1.reduce(Float.zero) { $0 + $1 * $1 })
         let magnitude2 = sqrt(embedding2.reduce(Float.zero) { $0 + $1 * $1 })
         return dotProduct / (magnitude1 * magnitude2)
     }
-    
+
     private func embedding(function: InferenceFunction, inputName: String, outputName: String, input: NDArray) async throws -> [Float] {
         var outputs = try await function.run(inputs: [inputName: input])
         guard let outputValue = outputs.remove(outputName) else {
@@ -270,37 +268,37 @@ actor MLService {
         guard outputArray.scalarType == .float32 else {
             throw EmbeddingError.outputTypeMismatch(outputName)
         }
-        
+
         return floats(from: outputArray)
     }
-    
+
     private func clipImageArray(from image: UIImage) throws -> NDArray {
         guard let pixelBuffer = image.convertToBuffer() else {
             throw EmbeddingError.invalidImage
         }
-        
+
         let resizedImage = CIImage(cvPixelBuffer: pixelBuffer).resized(to: Self.targetClipImageSize)
         guard let rgbaPixelBuffer = context.render(resizedImage, pixelFormat: kCVPixelFormatType_32BGRA) else {
             throw EmbeddingError.invalidImage
         }
-        
+
         CVPixelBufferLockBaseAddress(rgbaPixelBuffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(rgbaPixelBuffer, .readOnly) }
-        
+
         guard let baseAddress = CVPixelBufferGetBaseAddress(rgbaPixelBuffer) else {
             throw EmbeddingError.invalidImage
         }
-        
+
         let width = Int(Self.targetClipImageSize.width)
         let height = Int(Self.targetClipImageSize.height)
         let bytesPerRow = CVPixelBufferGetBytesPerRow(rgbaPixelBuffer)
         let bytes = baseAddress.assumingMemoryBound(to: UInt8.self)
         var values = Array(repeating: Float.zero, count: 3 * width * height)
-        
-        for y in 0..<height {
-            for x in 0..<width {
-                let sourceOffset = y * bytesPerRow + x * 4
-                let pixelIndex = y * width + x
+
+        for row in 0..<height {
+            for column in 0..<width {
+                let sourceOffset = row * bytesPerRow + column * 4
+                let pixelIndex = row * width + column
                 let red = Float(bytes[sourceOffset + 2]) / 255.0
                 let green = Float(bytes[sourceOffset + 1]) / 255.0
                 let blue = Float(bytes[sourceOffset]) / 255.0
@@ -309,23 +307,23 @@ actor MLService {
                 values[2 * width * height + pixelIndex] = (blue - Self.clipImageMean[2]) / Self.clipImageStandardDeviation[2]
             }
         }
-        
+
         return NDArray(scalars: values, shape: [1, 3, height, width])
     }
-    
+
     private func floats(from array: NDArray) -> [Float] {
         let view = array.view(as: Float.self)
         let count = array.shape.reduce(1, *)
         var values = [Float]()
         values.reserveCapacity(count)
-        
+
         if let elements = view.contiguousElements {
             for index in 0..<count {
                 values.append(elements[index])
             }
             return values
         }
-        
+
         view.withUnsafePointer { pointer, shape, strides in
             for linearIndex in 0..<count {
                 var remainder = linearIndex
@@ -338,67 +336,73 @@ actor MLService {
                 values.append(pointer[offset])
             }
         }
-        
+
         return values
     }
-    
+
     // https://stackoverflow.com/a/44475334
     func buffer(from image: UIImage) -> CVPixelBuffer? {
         let attrs = [kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue, kCVPixelBufferCGBitmapContextCompatibilityKey: kCFBooleanTrue] as CFDictionary
-        var pixelBuffer : CVPixelBuffer?
+        var pixelBuffer: CVPixelBuffer?
         let status = CVPixelBufferCreate(kCFAllocatorDefault, Int(image.size.width), Int(image.size.height), kCVPixelFormatType_32ARGB, attrs, &pixelBuffer)
-        guard (status == kCVReturnSuccess) else {
+        guard status == kCVReturnSuccess else {
             return nil
         }
-        
+
         CVPixelBufferLockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
         let pixelData = CVPixelBufferGetBaseAddress(pixelBuffer!)
-        
+
         let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
-        let context = CGContext(data: pixelData, width: Int(image.size.width), height: Int(image.size.height), bitsPerComponent: image.cgImage?.bitsPerComponent ?? 8, bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer!), space: rgbColorSpace, bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue)
-        
+        let context = CGContext(
+            data: pixelData,
+            width: Int(image.size.width),
+            height: Int(image.size.height),
+            bitsPerComponent: image.cgImage?.bitsPerComponent ?? 8,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer!),
+            space: rgbColorSpace,
+            bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue
+        )
+
         context?.translateBy(x: 0, y: image.size.height)
         context?.scaleBy(x: 1.0, y: -1.0)
-        
+
         UIGraphicsPushContext(context!)
         image.draw(in: CGRect(x: 0, y: 0, width: image.size.width, height: image.size.height))
         UIGraphicsPopContext()
         CVPixelBufferUnlockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
-        
+
         return pixelBuffer
     }
-    
+
 }
 
-
-
 extension UIImage {
-        
+
     func convertToBuffer() -> CVPixelBuffer? {
-        
+
         let attributes = [
             kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue,
             kCVPixelBufferCGBitmapContextCompatibilityKey: kCFBooleanTrue
         ] as CFDictionary
-        
+
         var pixelBuffer: CVPixelBuffer?
-        
+
         let status = CVPixelBufferCreate(
             kCFAllocatorDefault, Int(self.size.width),
             Int(self.size.height),
             kCVPixelFormatType_32ARGB,
             attributes,
             &pixelBuffer)
-        
-        guard (status == kCVReturnSuccess) else {
+
+        guard status == kCVReturnSuccess else {
             return nil
         }
-        
+
         CVPixelBufferLockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
-        
+
         let pixelData = CVPixelBufferGetBaseAddress(pixelBuffer!)
         let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
-        
+
         let context = CGContext(
             data: pixelData,
             width: Int(self.size.width),
@@ -407,30 +411,30 @@ extension UIImage {
             bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer!),
             space: rgbColorSpace,
             bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue)
-        
+
         context?.translateBy(x: 0, y: self.size.height)
         context?.scaleBy(x: 1.0, y: -1.0)
-        
+
         UIGraphicsPushContext(context!)
         self.draw(in: CGRect(x: 0, y: 0, width: self.size.width, height: self.size.height))
         UIGraphicsPopContext()
-        
+
         CVPixelBufferUnlockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
-        
+
         return pixelBuffer
     }
-    
+
     // https://programmer.group/ios-picture-rotation-method.html
     func rotateImage(withAngle angle: Double) -> UIImage? {
         if angle.truncatingRemainder(dividingBy: 360) == 0 { return self }
-        
+
         let imageRect = CGRect(origin: .zero, size: self.size)
         let radian = CGFloat(angle / 180 * Double.pi)
         let rotatedTransform = CGAffineTransform.identity.rotated(by: radian)
         var rotatedRect = imageRect.applying(rotatedTransform)
         rotatedRect.origin.x = 0
         rotatedRect.origin.y = 0
-        
+
         UIGraphicsBeginImageContext(rotatedRect.size)
         guard let context = UIGraphicsGetCurrentContext() else { return nil }
         context.translateBy(x: rotatedRect.width / 2, y: rotatedRect.height / 2)
@@ -442,7 +446,6 @@ extension UIImage {
         return rotatedImage
     }
 }
-
 
 extension CIImage {
     /// Returns a resized image.
@@ -475,8 +478,8 @@ extension CIContext {
         render(image, to: output)
         return output
     }
-    
-    /// Writes the image as a PNG.
+
+    // Writes the image as a PNG.
     //    func writePNG(_ image: CIImage, to url: URL) {
     //        let outputCGImage = createCGImage(image, from: image.extent)!
     //        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {

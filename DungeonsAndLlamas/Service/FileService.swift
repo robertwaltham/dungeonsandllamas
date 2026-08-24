@@ -13,59 +13,56 @@ import ImageIO
 private let storageLogger = LoggingService.shared.storage
 
 class FileService {
-    
+
     var decoder: JSONDecoder {
-        let d = JSONDecoder()
-        d.keyDecodingStrategy = .convertFromSnakeCase
-        d.dateDecodingStrategy = .iso8601
-        return d
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
-    
+
     var encoder: JSONEncoder {
-        let e = JSONEncoder()
-        e.keyEncodingStrategy = .convertToSnakeCase
-        e.dateEncodingStrategy = .iso8601
-        return e
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
     }
-    
-    
+
     init() {
         let urls = [imageDirectory(), sdHistoryDirectory(), llmHistoryDirectory(), pencilDrawingDirectory(), imageCacheDirectory()]
         let manager = FileManager.default
 
-        for url in urls {
-            if !manager.fileExists(atPath: url.absoluteString) {
-                do {
-                    try manager.createDirectory(at: url, withIntermediateDirectories: true)
-                } catch {
-                    storageLogger.error("Directory creation failed: \(error.localizedDescription, privacy: .private)")
-                }
+        for url in urls where !manager.fileExists(atPath: url.absoluteString) {
+            do {
+                try manager.createDirectory(at: url, withIntermediateDirectories: true)
+            } catch {
+                storageLogger.error("Directory creation failed: \(error.localizedDescription, privacy: .private)")
             }
         }
     }
-    
+
     private func imageDirectory() -> URL {
         return URL.documentsDirectory.appendingPathComponent("savedImages")
     }
-    
+
     private func sdHistoryDirectory() -> URL {
         return URL.documentsDirectory.appendingPathComponent("sdHistory")
     }
-    
+
     private func pencilDrawingDirectory() -> URL {
         return URL.documentsDirectory.appendingPathComponent("pencil")
     }
-    
+
     private func llmHistoryDirectory() -> URL {
         return URL.documentsDirectory.appendingPathComponent("llmHistory")
     }
-    
+
     private func imageCacheDirectory() -> URL {
         return URL.documentsDirectory.appendingPathComponent("imageCache")
     }
-    
-    //MARK: - Images
-    
+
+    // MARK: - Images
+
     func save(image: UIImage) -> String {
         let filename = NSUUID().uuidString + ".png"
         let fileURL = imageDirectory().appending(component: filename)
@@ -118,7 +115,7 @@ class FileService {
         }
         return CGImageSourceGetCount(source) > 0
     }
-    
+
     func loadImage(path: String) -> UIImage {
         let url = imageDirectory().appending(path: path)
         return UIImage(contentsOfFile: url.path) ?? UIImage(named: "lighthouse")!
@@ -137,7 +134,7 @@ class FileService {
         }
         return UIImage(named: "lighthouse")!
     }
-    
+
     func save(drawing: PKDrawing) -> String {
         let filename = NSUUID().uuidString + ".drawing"
         let fileURL = pencilDrawingDirectory().appending(component: filename)
@@ -150,18 +147,18 @@ class FileService {
 
         return filename
     }
-    
+
     func load(path: String) -> PKDrawing {
         do {
             let data = try Data(contentsOf: pencilDrawingDirectory().appending(path: path))
             return try PKDrawing(data: data)
-            
+
         } catch {
             storageLogger.error("Drawing load failed: \(error.localizedDescription, privacy: .private)")
         }
         return PKDrawing()
     }
-    
+
     // expected identifier is a localIdentifier from a PHAsset which contains / characters
     func cache(image: UIImage, identifier: String) {
         let filename = identifier.replacingOccurrences(of: "/", with: "_") + ".png"
@@ -176,7 +173,7 @@ class FileService {
             storageLogger.error("Could not encode cached image as PNG")
         }
     }
-    
+
     func loadCachedImage(identifier: String) -> UIImage? {
         let filename = identifier.replacingOccurrences(of: "/", with: "_") + ".png"
         let filepath = imageCacheDirectory().appending(path: filename)

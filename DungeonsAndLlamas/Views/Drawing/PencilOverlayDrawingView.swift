@@ -14,12 +14,12 @@ struct PencilOverlayDrawingView: View {
     let flowState: ContentFlowState
     @Bindable var generationService: GenerationService
     @State var showPopover = false
-    
+
     var body: some View {
-        
+
         ZStack {
             GradientView(type: .greyscale)
-            
+
             VStack {
                 ZStack {
                     if let input = viewModel.output {
@@ -27,16 +27,16 @@ struct PencilOverlayDrawingView: View {
                     } else {
                         Rectangle().background(.white)
                     }
-                    
+
                     PencilCanvasView(drawing: $viewModel.drawing,
                                      showTooltip: $viewModel.showTooltip,
                                      contentSize: $generationService.imageSize,
                                      opaque: false,
                                      tool: PKInkingTool(.pen, color: .white, width: 1000))
-                
+
                 }
                 .frame(width: 512, height: 512)
-                .onChange(of: viewModel.drawing) { oldValue, newValue in
+                .onChange(of: viewModel.drawing) { _, _ in
                     guard !viewModel.loading else {
                         return
                     }
@@ -45,11 +45,10 @@ struct PencilOverlayDrawingView: View {
                                       loading: $viewModel.loading,
                                       drawingScale: 512)
                 }
-                
+
                 HStack {
                     TextEditor(text: $viewModel.prompt)
-                    
-                    
+
 //                    if let drawing = viewModel.drawing {
 //                        let drawingFile = Drawing(data: drawing.dataRepresentation(), caption: viewModel.prompt, description: viewModel.prompt)
 //                        let image = drawing.image(from: CGRect(x: 0, y: 0, width: 512, height: 512), scale: 1.0)
@@ -60,14 +59,14 @@ struct PencilOverlayDrawingView: View {
 //                                  preview: SharePreview(viewModel.prompt,
 //                                                        image: photo))
 //                    }
-                    
+
                     Button {
                         showPopover = true
                     } label: {
                         Label("Params", systemImage: "gearshape")
                     }
                     .popover(isPresented: $showPopover) {
-                        
+
                         /*
                          var scheduleBias = 1.0 // 1-8 step 0.1
                          var preservationStrength = 0.5 // 1-8 step 0.05
@@ -77,7 +76,7 @@ struct PencilOverlayDrawingView: View {
                          var differenceContrast = 2 // 0-8 step 0.25
                          */
                         VStack {
-                            
+
                             HStack {
                                 Text("Schedule Bias")
                                 Spacer()
@@ -86,7 +85,7 @@ struct PencilOverlayDrawingView: View {
                                 Text(formatted(viewModel.inpaintOptions.scheduleBias))
                                     .frame(minWidth: 50)
                             }
-                            
+
                             HStack {
                                 Text("Preservation Strength")
                                 Spacer()
@@ -95,8 +94,7 @@ struct PencilOverlayDrawingView: View {
                                 Text(formatted(viewModel.inpaintOptions.preservationStrength))
                                     .frame(minWidth: 50)
                             }
-                            
-                            
+
                             HStack {
                                 Text("Transition Contrast Boost")
                                 Spacer()
@@ -105,8 +103,7 @@ struct PencilOverlayDrawingView: View {
                                 Text(formatted(viewModel.inpaintOptions.transitionContrastBoost))
                                     .frame(minWidth: 50)
                             }
-                            
-                            
+
                             HStack {
                                 Text("Mask Influence")
                                 Spacer()
@@ -115,7 +112,7 @@ struct PencilOverlayDrawingView: View {
                                 Text(formatted(viewModel.inpaintOptions.maskInfluence))
                                     .frame(minWidth: 50)
                             }
-                            
+
                             HStack {
                                 Text("Difference Threshold")
                                 Spacer()
@@ -124,7 +121,7 @@ struct PencilOverlayDrawingView: View {
                                 Text(formatted(viewModel.inpaintOptions.differenceThreshold))
                                     .frame(minWidth: 50)
                             }
-                            
+
                             HStack {
                                 Text("Difference Contrast")
                                 Spacer()
@@ -133,7 +130,7 @@ struct PencilOverlayDrawingView: View {
                                 Text(formatted(viewModel.inpaintOptions.differenceContrast))
                                     .frame(minWidth: 50)
                             }
-                            
+
                         }
                         .onDisappear {
                             guard !viewModel.loading else {
@@ -147,19 +144,17 @@ struct PencilOverlayDrawingView: View {
                         .frame(minWidth: 512)
                         .padding()
 
-
                     }
                 }
                 .frame(maxWidth: 512)
-                
-                
+
                 ZStack {
                     if let input = viewModel.inpaintOutput {
                         Image(uiImage: input)
                     } else {
                         Rectangle().foregroundStyle(.white)
                     }
-                    
+
                     if viewModel.loading {
                         VStack {
                             Spacer()
@@ -173,41 +168,41 @@ struct PencilOverlayDrawingView: View {
             }
         }
     }
-    
+
     init(flowState: ContentFlowState, generationService: GenerationService, history: ImageHistoryModel) {
         self.viewModel = PencilViewModel(generationService: generationService)
         self.flowState = flowState
         self.generationService = generationService
-        
+
         self.viewModel.load(history: history)
         self.viewModel.drawing = nil // we don't want the old drawing
         self.viewModel.prompt = "A cat with a fancy hat"
     }
-    
+
     private func formatted(_ input: Double) -> String {
         return input.formatted(.number.precision(.fractionLength(1...2)))
     }
-    
+
 }
 
 #Preview {
-    
+
     let flowState = ContentFlowState()
     let service = GenerationService()
     service.setupForTesting()
     Task {
         service.getModels()
     }
-    
-    let drawingUrl = Bundle.main.url(forResource: "inpaint", withExtension: "drawing")!
-    let drawingData = try! Data(contentsOf: drawingUrl)
-    let drawing = try! PKDrawing(data: drawingData)
-    
+
+    let drawing = Bundle.main.url(forResource: "inpaint", withExtension: "drawing")
+        .flatMap { try? Data(contentsOf: $0) }
+        .flatMap { try? PKDrawing(data: $0) } ?? PKDrawing()
+
     let view = PencilOverlayDrawingView(flowState: flowState,
                                         generationService: service,
                                         history: service.imageHistory.first!)
     view.viewModel.drawing = drawing
-    
+
     return ContentFlowCoordinator(flowState: flowState) {
         view
     }

@@ -15,23 +15,23 @@ import PencilKit
 
 class DatabaseService {
     private var db: Connection!
-    
+
     func setupForTesting(fileService: FileService) {
         connectForTesting()
         createTables()
-        
+
         do {
             try ImageHistoryModel.generateHistoryForTesting(db: db, fileService: fileService)
         } catch {
             databaseLogger.error("Test history generation failed: \(String(describing: error), privacy: .private)")
         }
     }
-    
+
     func setup() {
         connect()
         createTables()
     }
-    
+
     fileprivate func connect() {
         let path = NSSearchPathForDirectoriesInDomains(
             .documentDirectory, .userDomainMask, true
@@ -43,7 +43,7 @@ class DatabaseService {
             fatalError(error.localizedDescription)
         }
     }
-    
+
     fileprivate func connectForTesting() {
         do {
             db = try Connection() // in memory
@@ -51,7 +51,7 @@ class DatabaseService {
             fatalError(error.localizedDescription)
         }
     }
-    
+
     fileprivate func createTables() {
         do {
             try ImageHistoryModel.createTable(db: db)
@@ -66,24 +66,24 @@ class DatabaseService {
             fatalError(error.localizedDescription)
         }
     }
-    
+
     fileprivate func migrateDatabase() throws {
         let currentVersion = db.userVersion ?? 0
-        
+
         if currentVersion < 1 {
             if try !ImageHistoryModel.columnExists(db: db, name: "output_embedding") {
                 try db.run(ImageHistoryModel.table().addColumn(ImageHistoryModel.outputEmbeddingExp))
             }
             db.userVersion = 1
         }
-        
+
         if currentVersion < 2 {
             if try !ImageHistoryModel.columnExists(db: db, name: "input_embedding") {
                 try db.run(ImageHistoryModel.table().addColumn(ImageHistoryModel.inputEmbeddingExp))
             }
             db.userVersion = 2
         }
-        
+
         if currentVersion < 3 {
             if try !ImageHistoryModel.columnExists(db: db, name: "prompt_embedding") {
                 try db.run(ImageHistoryModel.table().addColumn(ImageHistoryModel.promptEmbeddingExp))
@@ -206,7 +206,7 @@ extension DatabaseService {
             return nil
         }
     }
-    
+
     func save(history: ImageHistoryModel) {
         do {
             try history.save(db: db)
@@ -214,7 +214,7 @@ extension DatabaseService {
             databaseLogger.error("History save failed: \(String(describing: error), privacy: .private)")
         }
     }
-    
+
     func updateEmbeddings(history: ImageHistoryModel) {
         do {
             try history.updateEmbeddings(db: db)
@@ -389,14 +389,14 @@ struct PhotoIndexModel: Codable, Identifiable, Hashable, Sendable {
     }
 
     fileprivate static func createTable(db: Connection) throws {
-        try db.run(table().create(ifNotExists: true) { t in
-            t.column(idExp, primaryKey: true)
-            t.column(creationDateExp)
-            t.column(modificationDateExp)
-            t.column(sourceStateExp)
-            t.column(embeddingExp)
-            t.column(categoriesExp)
-            t.column(processingVersionExp)
+        try db.run(table().create(ifNotExists: true) { tableDefinition in
+            tableDefinition.column(idExp, primaryKey: true)
+            tableDefinition.column(creationDateExp)
+            tableDefinition.column(modificationDateExp)
+            tableDefinition.column(sourceStateExp)
+            tableDefinition.column(embeddingExp)
+            tableDefinition.column(categoriesExp)
+            tableDefinition.column(processingVersionExp)
         })
     }
 
@@ -511,18 +511,18 @@ struct LoraHistoryModel: Codable, Identifiable, Hashable {
     var weight: Double
     @SqlProperty
     var historyModelId: String
-    
+
     fileprivate static func table() -> Table {
         return Table("lora_history")
     }
-    
+
     fileprivate static func createTable(db: Connection) throws {
         try db.run(
-            table().create(ifNotExists: true) { t in
-                t.column(idExp, primaryKey: true)
-                t.column(nameExp)
-                t.column(weightExp)
-                t.column(historyModelIdExp)
+            table().create(ifNotExists: true) { tableDefinition in
+                tableDefinition.column(idExp, primaryKey: true)
+                tableDefinition.column(nameExp)
+                tableDefinition.column(weightExp)
+                tableDefinition.column(historyModelIdExp)
             }
         )
     }
@@ -530,7 +530,7 @@ struct LoraHistoryModel: Codable, Identifiable, Hashable {
     fileprivate static func createIndexes(db: Connection) throws {
         try db.run(table().createIndex(historyModelIdExp, ifNotExists: true))
     }
-    
+
     fileprivate func save(db: Connection) throws { // TODO: what about mutability
         try db.run(
             LoraHistoryModel.table().insert(
@@ -541,7 +541,7 @@ struct LoraHistoryModel: Codable, Identifiable, Hashable {
             )
         )
     }
-    
+
     fileprivate static func load(db: Connection, parentId: String) throws -> [LoraHistoryModel] {
         var result = [LoraHistoryModel]()
         for entry in try db.prepare(table().filter(historyModelIdExp == parentId)) {
@@ -569,9 +569,8 @@ struct LoraHistoryModel: Codable, Identifiable, Hashable {
 
 }
 
-
 struct ImageHistoryModel: Codable, Identifiable, Hashable {
-    
+
     @SqlProperty
     var id: String
     @SqlProperty
@@ -581,7 +580,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
     @SqlProperty
     var prompt: String
     @SqlProperty
-    var promptId: String? = nil
+    var promptId: String?
     var promptEmbedding: [Float]?
     fileprivate static var promptEmbeddingExp: SQLite.Expression<Data?> {
         Expression<Data?>("prompt_embedding")
@@ -623,9 +622,9 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
     var session: String
     @SqlProperty
     var sequence: Int
-    
+
     var loras: [LoraHistoryModel]
-    
+
     fileprivate func save(db: Connection) throws { // TODO: what about mutability
         try db.run(ImageHistoryModel.table().insert(
             ImageHistoryModel.idExp <- id,
@@ -650,12 +649,12 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             ImageHistoryModel.sessionExp <- session,
             ImageHistoryModel.sequenceExp <- sequence,
         ))
-        
+
         for lora in loras {
             try lora.save(db: db)
         }
     }
-    
+
     fileprivate func updateEmbeddings(db: Connection) throws {
         try db.run(ImageHistoryModel.table().filter(ImageHistoryModel.idExp == id).update(
             ImageHistoryModel.promptEmbeddingExp <- ImageHistoryModel.encodedEmbedding(promptEmbedding),
@@ -670,11 +669,11 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             ImageHistoryModel.outputFilePathExp <- outputFilePath
         ))
     }
-    
+
     fileprivate static func load(db: Connection) throws -> [ImageHistoryModel] {
         var result = [ImageHistoryModel]()
         for entry in try db.prepare(table()) {
-            
+
             let loras = try LoraHistoryModel.load(db: db, parentId: entry[idExp])
             result.append(ImageHistoryModel(id: entry[idExp],
                                             start: entry[startExp],
@@ -800,30 +799,30 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         }
         return best.map { ($0.key, $0.value) }.sorted { $0.score > $1.score }
     }
-    
+
     fileprivate static func createTable(db: Connection) throws {
         try db.run(
-            table().create(ifNotExists: true) { t in
-                t.column(idExp, primaryKey: true)
-                t.column(startExp)
-                t.column(endExp)
-                t.column(promptExp)
-                t.column(promptEmbeddingExp)
-                t.column(negativePromptExp)
-                t.column(modelExp)
-                t.column(samplerExp)
-                t.column(stepsExp)
-                t.column(sizeExp)
-                t.column(seedExp)
-                t.column(inputFilePathsExp)
-                t.column(inputEmbeddingExp)
-                t.column(outputFilePathExp)
-                t.column(outputEmbeddingExp)
-                t.column(drawingFilePathExp)
-                t.column(depthFilePathExp)
-                t.column(errorDescriptionExp)
-                t.column(sessionExp)
-                t.column(sequenceExp)
+            table().create(ifNotExists: true) { tableDefinition in
+                tableDefinition.column(idExp, primaryKey: true)
+                tableDefinition.column(startExp)
+                tableDefinition.column(endExp)
+                tableDefinition.column(promptExp)
+                tableDefinition.column(promptEmbeddingExp)
+                tableDefinition.column(negativePromptExp)
+                tableDefinition.column(modelExp)
+                tableDefinition.column(samplerExp)
+                tableDefinition.column(stepsExp)
+                tableDefinition.column(sizeExp)
+                tableDefinition.column(seedExp)
+                tableDefinition.column(inputFilePathsExp)
+                tableDefinition.column(inputEmbeddingExp)
+                tableDefinition.column(outputFilePathExp)
+                tableDefinition.column(outputEmbeddingExp)
+                tableDefinition.column(drawingFilePathExp)
+                tableDefinition.column(depthFilePathExp)
+                tableDefinition.column(errorDescriptionExp)
+                tableDefinition.column(sessionExp)
+                tableDefinition.column(sequenceExp)
             }
         )
     }
@@ -831,7 +830,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
     fileprivate static func createIndexes(db: Connection) throws {
         try db.run(table().createIndex(startExp, ifNotExists: true))
     }
-    
+
     fileprivate static func table() -> Table {
         return Table("image_history")
     }
@@ -851,7 +850,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         }
         return paths
     }
-    
+
     fileprivate static func encodedEmbedding(_ embedding: [Float]?) -> Data? {
         guard let embedding else {
             return nil
@@ -860,7 +859,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             Data(buffer: buffer)
         }
     }
-    
+
     fileprivate static func decodedEmbedding(_ data: Data?) -> [Float]? {
         guard let data else {
             return nil
@@ -873,7 +872,7 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
             Array(buffer.bindMemory(to: Float.self))
         }
     }
-    
+
     fileprivate static func columnExists(db: Connection, name: String) throws -> Bool {
         try db.schema.columnDefinitions(table: "image_history").contains { column in
             column.name == name
@@ -896,27 +895,26 @@ struct ImageHistoryModel: Codable, Identifiable, Hashable {
         entry.outputFilePath = fileService.save(image: UIImage(named: "trees")!)
         entry.depthFilePath = fileService.save(image: UIImage(named: "depth_preview")!)
         let drawingUrl = Bundle.main.url(forResource: "fancycat", withExtension: "drawing")!
-        let drawingData = try! Data(contentsOf: drawingUrl)
-        let drawing = try! PKDrawing(data: drawingData)
+        let drawingData = try Data(contentsOf: drawingUrl)
+        let drawing = try PKDrawing(data: drawingData)
         entry.drawingFilePath = fileService.save(drawing: drawing)
-        
-        
-        for i in 0..<30 {
+
+        for historyIndex in 0..<30 {
             var entry = entry
 
-            entry.start = Date.now.addingTimeInterval(TimeInterval(i))
-            entry.end = Date.now.addingTimeInterval(TimeInterval(i + 5))
-            entry.sequence = i % 5
-            if i % 5 == 0 {
+            entry.start = Date.now.addingTimeInterval(TimeInterval(historyIndex))
+            entry.end = Date.now.addingTimeInterval(TimeInterval(historyIndex + 5))
+            entry.sequence = historyIndex % 5
+            if historyIndex % 5 == 0 {
                 entry.session = NSUUID().uuidString
             }
-            
-            if i % 4 == 0 {
+
+            if historyIndex % 4 == 0 {
                 entry.drawingFilePath = nil
             } else {
                 entry.depthFilePath = nil
             }
-            if i % 2 == 0 {
+            if historyIndex % 2 == 0 {
                 entry.loras = [
                     LoraHistoryModel(id: NSUUID().uuidString, name: "Add Details", weight: Double.random(in: 0.0...1.0), historyModelId: entry.id)
                 ]

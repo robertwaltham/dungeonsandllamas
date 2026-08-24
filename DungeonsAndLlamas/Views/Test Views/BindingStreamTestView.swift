@@ -15,7 +15,7 @@ struct BindingStreamTestView: View {
     let generationService: GenerationService
 
     var body: some View {
-        
+
         VStack {
             HStack {
                 TextField("Prompt", text: $viewModel.prompt)
@@ -24,7 +24,7 @@ struct BindingStreamTestView: View {
                     .background(Color(white: 0.8))
                     .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
                 .padding()
-                
+
                 HStack {
                     if !viewModel.loading {
                         Button("Generate") {
@@ -40,7 +40,7 @@ struct BindingStreamTestView: View {
             }.frame(minHeight: 200)
 
             Text(viewModel.result)
-            .onChange(of: viewModel.result) { oldValue, newValue in
+            .onChange(of: viewModel.result) { _, newValue in
                 bindingStreamLogger.debug("Binding stream value changed: \(newValue, privacy: .private)")
             }
             .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
@@ -48,7 +48,7 @@ struct BindingStreamTestView: View {
             .background(Color(white: 0.8))
             .clipShape(RoundedRectangle(cornerSize: CGSize(width: 20, height: 20)))
             .padding()
-            
+
             VStack {
                 ForEach(generationService.LLMHistory) { history in
                     HStack {
@@ -57,9 +57,9 @@ struct BindingStreamTestView: View {
                     }
                 }
             }
-            
+
             Spacer()
-            
+
         }.onAppear {
             generationService.getModels()
         }

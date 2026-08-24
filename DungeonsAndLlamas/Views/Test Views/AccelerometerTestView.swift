@@ -11,11 +11,11 @@ import CoreMotion
 struct AccelerometerTestView: View {
     @State var viewModel = AccelerometerViewModel()
     let flowState: ContentFlowState
-    
+
     var body: some View {
         VStack {
             Text("Hello, World!")
-          
+
             Rectangle()
                 .foregroundStyle(Color(white: 0.9))
                 .frame(maxWidth: 300, maxHeight: 300)
@@ -24,7 +24,7 @@ struct AccelerometerTestView: View {
             Button("Cover") {
                 flowState.cover(.firstLink(text: "cover"))
             }.buttonStyle(.bordered)
-            
+
             Button("next") {
                 flowState.nextLink(.accelerometer)
             }.buttonStyle(.bordered)
@@ -41,7 +41,7 @@ class AccelerometerViewModel {
     init() {
         manager = CMMotionManager()
         manager?.deviceMotionUpdateInterval = 0.1
-        manager?.startDeviceMotionUpdates(to: .main) { [weak self] (motion, error) in
+        manager?.startDeviceMotionUpdates(to: .main) { [weak self] (motion, _) in
             if let motion = motion {
                 self?.pitch = motion.attitude.pitch
                 self?.roll = motion.attitude.roll

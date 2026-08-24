@@ -10,14 +10,14 @@ import SwiftUI
 struct ModelSettingsView: View {
     let flowState: ContentFlowState
     @Bindable var generationService: GenerationService
-    
+
     var body: some View {
-        ScrollView() {
+        ScrollView {
 
             Text("Stable Diffusion")
                 .font(.largeTitle)
                 .padding(EdgeInsets(top: 0, leading: 0, bottom: 20, trailing: 0))
-            
+
             Text("Models")
                 .font(.title)
 
@@ -26,7 +26,7 @@ struct ModelSettingsView: View {
                     Text(model.title)
                 }
             }
-            
+
             HStack {
                 let modelDisabled = generationService.modelTask != nil
 
@@ -37,16 +37,16 @@ struct ModelSettingsView: View {
                     }
                 }
                 .disabled(modelDisabled)
-                .onChange(of: generationService.selectedSDModel) { oldValue, newValue in
+                .onChange(of: generationService.selectedSDModel) { _, _ in
                     generationService.setSelectedModel()
                 }
             }
-            
+
             Text("LoRA").font(.title)
                 .padding(EdgeInsets(top: 20, leading: 0, bottom: 0, trailing: 0))
             Text("Low-Rank Adaptation of Large Language Models").font(.subheadline)
                 .padding(EdgeInsets(top: 0, leading: 0, bottom: 10, trailing: 0))
- 
+
             VStack(alignment: .leading) {
                 ForEach(generationService.sdLoras) { lora in
                     HStack {
@@ -59,7 +59,7 @@ struct ModelSettingsView: View {
                         }
                     }
                     .frame(maxWidth: 700)
-                    
+
                 }
             }
 
@@ -83,7 +83,6 @@ struct ModelSettingsView: View {
                 }
             }
 
-            
             Text("Options").font(.title)
                 .padding(EdgeInsets(top: 20, leading: 0, bottom: 10, trailing: 0))
 
@@ -94,7 +93,7 @@ struct ModelSettingsView: View {
                     Text("1024 x 1024").tag(1024)
                 }
             }
-            
+
             HStack {
                 Text("Generation Steps")
                 Picker("Steps", selection: $generationService.steps) {
@@ -103,32 +102,32 @@ struct ModelSettingsView: View {
                     }
                 }
             }
-            
+
             Text("Control Net").font(.title)
-            
+
             HStack {
                 VStack {
                     Text("Models")
-                    ForEach(generationService.controlNetModels, id:\.self) { model in
+                    ForEach(generationService.controlNetModels, id: \.self) { model in
                         Text(model)
                     }
                 }
-                
+
                 VStack {
                     Text("Modules")
-                    
-                    ForEach(generationService.controlNetModules, id:\.self) { module in
+
+                    ForEach(generationService.controlNetModules, id: \.self) { module in
                         Text(module)
                     }
                 }
             }
-            
+
             Spacer()
 
             Text("Large Language Model")
                 .font(.largeTitle)
                 .padding(EdgeInsets(top: 0, leading: 0, bottom: 30, trailing: 0))
-            
+
             Text("Models").font(.title)
                 .padding(EdgeInsets(top: 0, leading: 0, bottom: 10, trailing: 0))
 
@@ -141,7 +140,7 @@ struct ModelSettingsView: View {
 
                 }
             }
-            
+
 //
 //            Button("Reload Model Info") {
 //                generationService.getModels()
@@ -158,7 +157,7 @@ struct ModelSettingsView: View {
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
-    
+
 //    service.getModels()
     return ContentFlowCoordinator(flowState: flowState) {
         ModelSettingsView(flowState: flowState, generationService: service)

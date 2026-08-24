@@ -292,12 +292,14 @@ private final class TwoPhotoEditViewModel {
                 let secondUpload = try await generationService.comfyUIClient.uploadImage(secondImage.prepared.data, filename: secondImage.prepared.filename, type: .input, overwrite: false)
                 let messages = try await generationService.comfyUIClient.messages(clientId: clientID)
                 _ = try await generationService.comfyUIClient.submitImageFlux2Klein2ImageEdit(
-                    prompt: prompt,
-                    seed: seed,
-                    firstImageFilename: firstUpload.name,
-                    secondImageFilename: secondUpload.name,
-                    clientId: clientID,
-                    promptId: promptID
+                    request: .init(
+                        prompt: prompt,
+                        seed: seed,
+                        firstImageFilename: firstUpload.name,
+                        secondImageFilename: secondUpload.name,
+                        clientId: clientID,
+                        promptId: promptID
+                    )
                 )
 
                 for try await message in messages {

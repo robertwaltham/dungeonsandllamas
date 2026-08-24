@@ -1,0 +1,33 @@
+included:
+  - DungeonsAndLlamas
+
+excluded:
+  - DungeonsAndLlamas/API/Secrets.swift
+  - DungeonsAndLlamas/Models
+  - DungeonsAndLlamas/Service/Tokenizer
+  - SQLPropertyMacros
+  - DungeonsAndLlamas.xcodeproj
+
+disabled_rules:
+  - cyclomatic_complexity
+  - todo
+
+reporter: xcode
+
+line_length: 240
+file_length: 2000
+function_body_length: 100
+type_body_length: 1000
+nesting:
+  type_level: 3
+large_tuple: 5
+
+identifier_name:
+  excluded:
+    - db
+    - fs
+    - id
+    - ml
+    - os
+    - ui
+    - vm

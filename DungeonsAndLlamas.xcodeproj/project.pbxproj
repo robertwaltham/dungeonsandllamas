@@ -131,6 +131,7 @@
 				D16CAE412BB3724000ECA710 /* Sources */,
 				D16CAE422BB3724000ECA710 /* Frameworks */,
 				D16CAE432BB3724000ECA710 /* Resources */,
+				D1A8F1023100000100A11CE0 /* SwiftLint */,
 			);
 			buildRules = (
 			);
@@ -174,6 +175,7 @@
 			packageReferences = (
 				D1F839D02DA07C580028E034 /* XCRemoteSwiftPackageReference "SQLite" */,
 				D121A5492DC19517000CE87D /* XCRemoteSwiftPackageReference "AnyCodable" */,
+				D1A8F1013100000100A11CE0 /* XCRemoteSwiftPackageReference "SwiftLintPlugins" */,
 				D1BA8A822FF1EF73001D5466 /* XCLocalSwiftPackageReference "SQLPropertyMacros" */,
 			);
 			productRefGroup = D16CAE462BB3724000ECA710 /* Products */;
@@ -198,6 +200,33 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D1A8F1023100000100A11CE0 /* SwiftLint */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.swiftlint.yml",
+				"$(SRCROOT)/DungeonsAndLlamas",
+				"$(BUILD_DIR)/../../SourcePackages/artifacts/swiftlintplugins/SwiftLintBinary/SwiftLintBinary.artifactbundle/macos/swiftlint",
+			);
+			name = SwiftLint;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/SwiftLintCache",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "SWIFT_PACKAGE_DIR=\"${SWIFT_PACKAGE_DIR:-${BUILD_DIR%Build/*}SourcePackages}\"\nSWIFTLINT_CMD=\"$SWIFT_PACKAGE_DIR/artifacts/swiftlintplugins/SwiftLintBinary/SwiftLintBinary.artifactbundle/macos/swiftlint\"\n\nif test -x \"$SWIFTLINT_CMD\"\nthen\n    \"$SWIFTLINT_CMD\" lint --config \"$SRCROOT/.swiftlint.yml\" --cache-path \"$DERIVED_FILE_DIR/SwiftLintCache\"\nelse\n    echo \"error: SwiftLint binary not found at $SWIFTLINT_CMD\"\n    exit 1\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		D16CAE412BB3724000ECA710 /* Sources */ = {
@@ -345,6 +374,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"DungeonsAndLlamas/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DungeonsAndLlamas/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
@@ -380,6 +410,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"DungeonsAndLlamas/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DungeonsAndLlamas/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
@@ -443,6 +474,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 0.6.7;
+			};
+		};
+		D1A8F1013100000100A11CE0 /* XCRemoteSwiftPackageReference "SwiftLintPlugins" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SimplyDanny/SwiftLintPlugins";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.65.0;
 			};
 		};
 		D1F839D02DA07C580028E034 /* XCRemoteSwiftPackageReference "SQLite" */ = {

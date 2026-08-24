@@ -12,7 +12,7 @@ import AnyCodable
 private let networkLogger = LoggingService.shared.network
 
 actor StableDiffusionClient {
-    
+
     private enum Endpoint: String {
         case test = "/sd/sdapi/v1/memory"
         case generateSDtxt2img = "/sd/sdapi/v1/txt2img"
@@ -27,12 +27,12 @@ actor StableDiffusionClient {
         case controlNetModels = "/sd/controlnet/model_list"
         case controlNetModules = "/sd/controlnet/module_list"
     }
-    
+
     private enum Method: String {
         case get = "GET"
         case post = "POST"
     }
-    
+
     struct GenerationOptions: Encodable, @unchecked Sendable { // TODO: fix AnyCodable making this unsendable
         var prompt: String
         var negativePrompt: String
@@ -45,7 +45,7 @@ actor StableDiffusionClient {
         var initImages: [String]?
         var mask: String?
         let alwaysonScripts: [String: [String: [AnyCodable]]]?
-        
+
         init(prompt: String,
              negativePrompt: String = "",
              size: Int = 512,
@@ -56,7 +56,7 @@ actor StableDiffusionClient {
              mask: String? = nil,
              inPaintingOptions: SoftInpaintingOptions? = nil,
              controlNetOptions: ControlNetOptions? = nil) {
-            
+
             self.prompt = prompt
             self.negativePrompt = negativePrompt
             self.width = size
@@ -66,7 +66,7 @@ actor StableDiffusionClient {
             self.samplerName = sampler.name
             self.initImages = initImages
             self.mask = mask
-            
+
             if let inPaintingOptions { // TODO: make these not mutually exclusive
                 self.alwaysonScripts = [
                     "soft inpainting": [
@@ -88,7 +88,7 @@ actor StableDiffusionClient {
             }
         }
     }
-    
+
     /*
      {
          "Soft inpainting": True,
@@ -108,8 +108,8 @@ actor StableDiffusionClient {
         var maskInfluence = 0.0 // 0-1 step 0.05
         var differenceThreshold = 0.5 // 0-8 step 0.25
         var differenceContrast = 2.0 // 0-8 step 0.25
-        
-        private enum CodingKeys : String, CodingKey {
+
+        private enum CodingKeys: String, CodingKey {
             case softInpainting = "Soft inpainting"
             case scheduleBias = "Schedule bias"
             case preservationStrength = "Preservation strength"
@@ -119,7 +119,7 @@ actor StableDiffusionClient {
             case differenceContrast = "Difference contrast"
         }
     }
-    
+
     // https://github.com/Mikubill/sd-webui-controlnet/wiki/API#controlnetunitrequest-json-object
     struct ControlNetOptions: Codable {
         var enabled = true
@@ -136,12 +136,12 @@ actor StableDiffusionClient {
         var guidanceEnd = 1.0
         var controlMode: ControlMode = .controlNet
         var pixelPerfect = false
-        
+
         enum ControlMode: String, Codable, CaseIterable, Identifiable {
             var id: String {
                 rawValue
             }
-            
+
             case balanced = "Balanced"
             case prompt = "My prompt is more important"
             case controlNet = "ControlNet is more important"
@@ -158,7 +158,7 @@ actor StableDiffusionClient {
         var etaRelative: Double
         var state: State
         var currentImage: String?
-        
+
         struct State: Codable {
             var interrupted: Bool
             var job: String
@@ -169,7 +169,7 @@ actor StableDiffusionClient {
             var samplingSteps: Int
             var skipped: Bool
             var stoppingGeneration: Bool
-            
+
             static func initial() -> Progress.State {
                 return State(interrupted: false, job: "", jobCount: 0, jobNo: 0, jobTimestamp: "", samplingStep: 0, samplingSteps: 0, skipped: false, stoppingGeneration: false)
             }
@@ -180,7 +180,7 @@ actor StableDiffusionClient {
         var id: String {
             sha256 ?? modelName
         }
-        
+
         var title: String
         var modelName: String
         var hash: String?
@@ -192,10 +192,10 @@ actor StableDiffusionClient {
         var id: String {
             name
         }
-        
+
         var name: String
         var alias: String
-        
+
         struct Metadata: Codable, Hashable {
             var ssSdModelName: String?
             var ssBaseModelVersion: String?
@@ -204,8 +204,8 @@ actor StableDiffusionClient {
             var ssTagFrequency: [String: [String: Int]]?
             var modelSpecTitle: String?
             var modelSpecArchitecture: String?
-            
-            private enum CodingKeys : String, CodingKey {
+
+            private enum CodingKeys: String, CodingKey {
                 case ssSdModelName
                 case ssBaseModelVersion
                 case ssResolution
@@ -215,12 +215,12 @@ actor StableDiffusionClient {
                 case ssTagFrequency
             }
         }
-        
+
         var metadata: Metadata
-        
+
         var activation: String? {
             switch name {
-                
+
 //                add-detail-xl
 //                add_detail
 //            case "aidma-Image Upgrader-SD1.5-V0.1":
@@ -243,14 +243,14 @@ actor StableDiffusionClient {
             case "WatercolorSD1V2":
                 return "watercolor"
 //                xl_more_art-full_v1
-                
+
             case "lora": // for testing
                 return "activation"
-                
+
             default:
                     return nil
             }
-            
+
         }
     }
 
@@ -262,75 +262,77 @@ actor StableDiffusionClient {
         var aliases: [String]
         var options: [String: String]
     }
-    
-    static let defaultSampler = Sampler(name: "DPM++ 2M", aliases: ["k_dpmpp_2m"], options: ["scheduler":"karras"])
-    
+
+    static let defaultSampler = Sampler(name: "DPM++ 2M", aliases: ["k_dpmpp_2m"], options: ["scheduler": "karras"])
+
     // MARK: - Private Vars
-    
+
     private let session: URLSession
 
     private var decoder: JSONDecoder {
-        let d = JSONDecoder()
-        d.keyDecodingStrategy = .convertFromSnakeCase
-        d.dateDecodingStrategy = .iso8601
-        return d
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
-    
+
     private var encoder: JSONEncoder {
-        let e = JSONEncoder()
-        e.keyEncodingStrategy = .convertToSnakeCase
-        e.dateEncodingStrategy = .iso8601
-        return e
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
     }
-    
+
     private var customEncoder: JSONEncoder {
-        
+
         struct AnyKey: CodingKey {
             var stringValue: String
             var intValue: Int?
-            
+
             init?(stringValue: String) {
                 self.stringValue = AnyKey.camelCaseToSnakeCase(stringValue)
                 self.intValue = nil
             }
-            
+
             init?(intValue: Int) {
                 self.stringValue = String(intValue)
                 self.intValue = intValue
             }
-            
-            //https://www.codespeedy.com/convert-camel-case-to-snake-case-in-swift/
+
+            // https://www.codespeedy.com/convert-camel-case-to-snake-case-in-swift/
             // default camel->snake lowercases the whole string, and the API needs first char uppercase
             // see: https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/15138
             static func camelCaseToSnakeCase(_ input: String) -> String {
                 let pattern = "([a-z0-9])([A-Z])"
-                let regex = try! NSRegularExpression(pattern: pattern, options: [])
+                guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+                    return input
+                }
                 let range = NSRange(location: 0, length: input.utf16.count)
                 let result = regex.stringByReplacingMatches(in: input, options: [], range: range, withTemplate: "$1_$2")
                 return String(result.prefix(1)) + String(result.suffix(result.count - 1)).lowercased()
             }
         }
-        
-        let e = JSONEncoder()
-        e.keyEncodingStrategy = .custom { codingPath in
+
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .custom { codingPath in
             if codingPath.last?.intValue != nil {
                 return codingPath.last!
             } else {
                 return AnyKey(stringValue: codingPath.last!.stringValue)!
             }
         }
-        e.dateEncodingStrategy = .iso8601
-        return e
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
     }
-    
-    //MARK: - Init
-    
+
+    // MARK: - Init
+
     init () {
         session = URLSession(configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: nil)
     }
-    
-    //MARK: - Requests
-    
+
+    // MARK: - Requests
+
     private static func request(endpoint: Endpoint, method: Method, timeout: TimeInterval = 120.0) throws -> URLRequest {
         guard let url = URL(string: "\(Secrets.host)\(endpoint.rawValue)") else {
             throw APIError.badURL(endpoint.rawValue)
@@ -338,10 +340,10 @@ actor StableDiffusionClient {
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = method.rawValue
         request.addValue(Secrets.authorization, forHTTPHeaderField: "Authorization")
-        
+
         return request
     }
-    
+
     func testConnection() async throws -> Bool {
         let request = try StableDiffusionClient.request(endpoint: .test, method: .get)
         let (_, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
@@ -351,10 +353,10 @@ actor StableDiffusionClient {
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)")
         }
-        
+
         return httpResponse.statusCode == 200
     }
-    
+
     func scriptInfo() async throws {
         let request = try StableDiffusionClient.request(endpoint: .scriptInfo, method: .get)
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
@@ -364,21 +366,21 @@ actor StableDiffusionClient {
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)")
         }
-        
+
         networkLogger.debug("Stable Diffusion response: \(String(data: data, encoding: .utf8) ?? "no data", privacy: .private)")
     }
-    
+
     func generateBase64EncodedImages(_ options: GenerationOptions) async throws -> [String] {
         let endpoint: Endpoint = options.initImages != nil ? .generateSDimg2img : .generateSDtxt2img
         var request = try StableDiffusionClient.request(endpoint: endpoint, method: .post, timeout: 600)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try customEncoder.encode(options)
-        
+
 //        var printableOptions = options
 //        printableOptions.initImages = ["images"]
 //        printableOptions.mask = "mask"
 //        print(String(data: try customEncoder.encode(printableOptions), encoding: .utf8) ?? "")
-                
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -386,7 +388,7 @@ actor StableDiffusionClient {
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
-        
+
         let responseObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 //        var printableResponse = responseObject!
 //        printableResponse["images"] = ["image"]
@@ -394,14 +396,14 @@ actor StableDiffusionClient {
         guard let images = responseObject?["images"] as? [String] else {
             throw APIError.requestError("no images")
         }
-        
+
         return images
     }
-    
+
     func imageGenerationProgress() async throws -> Progress {
         var request = try StableDiffusionClient.request(endpoint: .progress, method: .get)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -409,14 +411,14 @@ actor StableDiffusionClient {
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
-        
+
         return try decoder.decode(Progress.self, from: data)
     }
-    
+
     func imageGenerationOptions() async throws -> ModelOptions {
         var request = try StableDiffusionClient.request(endpoint: .options, method: .get)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -426,11 +428,11 @@ actor StableDiffusionClient {
         }
         return try decoder.decode(ModelOptions.self, from: data)
     }
-    
+
     func imageGenerationModels() async throws -> [Model] {
         var request = try StableDiffusionClient.request(endpoint: .sdModels, method: .get)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -440,15 +442,15 @@ actor StableDiffusionClient {
         }
         return try decoder.decode([Model].self, from: data)
     }
-    
+
     func setImageGenerationModel(model: Model) async throws {
         var request = try StableDiffusionClient.request(endpoint: .options, method: .post)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         request.httpBody = try encoder.encode([
             "sd_model_checkpoint": model.title
         ])
-        
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -457,11 +459,11 @@ actor StableDiffusionClient {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
     }
-    
+
     func loras() async throws -> [Lora] {
         var request = try StableDiffusionClient.request(endpoint: .loras, method: .get)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -471,11 +473,11 @@ actor StableDiffusionClient {
         }
         return try decoder.decode([Lora].self, from: data)
     }
-    
+
     func samplers() async throws -> [Sampler] {
         var request = try StableDiffusionClient.request(endpoint: .samplers, method: .get)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -485,11 +487,11 @@ actor StableDiffusionClient {
         }
         return try decoder.decode([Sampler].self, from: data)
     }
-    
+
     func controlNetModels() async throws -> [String] {
         var request = try StableDiffusionClient.request(endpoint: .controlNetModels, method: .get)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -500,11 +502,11 @@ actor StableDiffusionClient {
         let payload = try decoder.decode([String: [String]].self, from: data)
         return payload["model_list"] ?? []
     }
-    
+
     func controlNetModules() async throws -> [String] {
         var request = try StableDiffusionClient.request(endpoint: .controlNetModules, method: .get)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -515,16 +517,16 @@ actor StableDiffusionClient {
         let payload = try decoder.decode([String: AnyCodable].self, from: data)
         return payload["module_list"]?.value as? [String] ?? []
     }
-    
+
     func interrogate(base64EncodedImage: String) async throws -> String {
-        
+
         var request = try StableDiffusionClient.request(endpoint: .interrogate, method: .post, timeout: 300)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode([
             "image": base64EncodedImage,
             "model": "clip"
         ])
-                
+
         let (data, response) = try await session.data(for: request, delegate: DelegateToSupressWarning())
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.requestError("no request")
@@ -532,45 +534,45 @@ actor StableDiffusionClient {
         guard httpResponse.statusCode == 200 else {
             throw APIError.requestError("status code: \(httpResponse.statusCode)\n\(String(data: data, encoding: .utf8) ?? "")")
         }
-        
+
         return try decoder.decode([String: String].self, from: data)["caption"] ?? "n/a"
     }
-    
+
     // MARK: - Local Testing
-    
+
     func upload(image: UIImage, filename: String) async throws -> String? {
         var multipart = MultipartRequest()
-        
+
         guard let imageData = image.pngData() else {
             return nil
         }
-        
+
         multipart.add(
             key: "file",
             fileName: filename,
             fileMimeType: "image/png",
             fileData: imageData
         )
-        
+
         guard let url = URL(string: "http://192.168.1.71:8000/uploadfile") else {
             return nil
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue(multipart.httpContentTypeHeadeValue, forHTTPHeaderField: "Content-Type")
         request.httpBody = multipart.httpBody
-        
+
         do {
           let (responseData, response) = try await  URLSession.shared.data(for: request)
           networkLogger.debug("Stable Diffusion options status: \((response as? HTTPURLResponse)?.statusCode ?? -1, privacy: .public)")
           return String(data: responseData, encoding: .utf8)!
         } catch {
-          print ("Error")
+          print("Error")
             return nil
         }
     }
-    
+
     func download(filename: String) async throws -> UIImage? {
         guard let url = URL(string: "http://192.168.1.71:8000/image/\(filename)") else {
             return nil
@@ -578,17 +580,18 @@ actor StableDiffusionClient {
         let request = URLRequest(url: url)
 
         let (responseData, response) = try await  URLSession.shared.data(for: request)
-        guard (response as! HTTPURLResponse).statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
             networkLogger.error("Stable Diffusion model response: \(String(data: responseData, encoding: .utf8) ?? "no data", privacy: .private)")
 
             return nil
         }
-        
+
         return UIImage(data: responseData)
     }
-    
+
     func depth(inputFileName: String, depthFileName: String, prompt: String, loraWeight: Float, seed: Int) async throws -> String? {
-        
+
         struct DepthParameters: Codable {
             let prompt: String
             let inputFileName: String
@@ -596,21 +599,22 @@ actor StableDiffusionClient {
             let loraWeight: Float
             let seed: Int
         }
-        
+
         guard let url = URL(string: "http://192.168.1.71:8000/depth") else {
             return nil
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let data = try encoder.encode(DepthParameters(prompt: prompt, inputFileName: inputFileName, depthFileName: depthFileName, loraWeight: loraWeight, seed: seed))
         networkLogger.debug("Stable Diffusion depth request: \(String(data: data, encoding: .utf8) ?? "no data", privacy: .private)")
         request.httpBody = data
-        
+
         let (responseData, response) = try await  URLSession.shared.data(for: request)
-        guard (response as! HTTPURLResponse).statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
             networkLogger.error("Stable Diffusion depth response: \(String(data: responseData, encoding: .utf8) ?? "no data", privacy: .private)")
 
             return nil

@@ -21,7 +21,7 @@ struct DepthListView: View {
         self.generationService = generationService
         self.viewModel = DepthListViewModel()
     }
-    
+
     var body: some View {
         ZStack {
             ScrollView {
@@ -49,7 +49,7 @@ struct DepthListView: View {
             }
         }
     }
-    
+
     @ViewBuilder
     func imageCell(result: DepthListViewModel.ImageContainer, size: CGFloat) -> some View {
         switch result {
@@ -79,7 +79,7 @@ struct DepthListView: View {
                     }
                 }
             }
-        
+
         default:
             Image(uiImage: UIImage(named: "lighthouse")!)
                 .resizable()
@@ -107,11 +107,11 @@ class DepthListViewModel: @unchecked Sendable {
 //    """
 //    var result: UIImage?
 //    var progress: StableDiffusionClient.Progress?
-    
+
     enum ImageContainer: Identifiable, Hashable {
         case none(String)
         case image(PhotoLibraryService.PhotoLibraryImage)
-        
+
         var id: String {
             switch self {
             case .none(let index):
@@ -121,22 +121,22 @@ class DepthListViewModel: @unchecked Sendable {
             }
         }
     }
-    
-    var images = (0..<imageCount).map { i in ImageContainer.none(i.description) }
+
+    var images = (0..<imageCount).map { index in ImageContainer.none(index.description) }
     func getImages(service: GenerationService) {
         depthListLogger.debug("Loading indexed depth-list images")
         loading = true
         Task.init {
-            var i = 0
+            var imageIndex = 0
             for await image in await service.photos.getImages(limit: DepthListViewModel.imageCount, size: CGSize(width: 256, height: 256)) {
 
-                images[i] = ImageContainer.image(image)
-                i += 1
+                images[imageIndex] = ImageContainer.image(image)
+                imageIndex += 1
             }
             loading = false
         }
     }
-    
+
 //    
 //    func upload(image: ImageResult, service: GenerationService) {
 //        guard let depth = image.depth, !loading else {
@@ -149,7 +149,13 @@ class DepthListViewModel: @unchecked Sendable {
 //                let depthFilename = NSUUID().uuidString + ".png"
 //                let _ = try await service.stableDiffusionClient.upload(image: image.image, filename: imgFilename)
 //                let _ = try await service.stableDiffusionClient.upload(image: depth, filename: depthFilename)
-//                guard let resultFileName = try await service.stableDiffusionClient.depth(inputFileName: imgFilename, depthFileName: depthFilename, prompt: prompt + " watercolor painting", loraWeight: 0.9, seed: Int.random(in: 0...1000)) else {
+//                guard let resultFileName = try await service.stableDiffusionClient.depth(
+//                    inputFileName: imgFilename,
+//                    depthFileName: depthFilename,
+//                    prompt: prompt + " watercolor painting",
+//                    loraWeight: 0.9,
+//                    seed: Int.random(in: 0...1000)
+//                ) else {
 //                    result = nil
 //                    return
 //                }

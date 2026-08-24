@@ -13,14 +13,14 @@ struct ContentFlowCoordinator<Content: View>: View {
     @Bindable private var flowState: ContentFlowState
     private let userInterfaceIdiom: UIUserInterfaceIdiom
     private let content: () -> Content
-    
+
     @MainActor
     init(flowState: ContentFlowState, content: @escaping () -> Content) {
         self.flowState = flowState
         self.content = content
         self.userInterfaceIdiom = UIDevice.current.userInterfaceIdiom
     }
-    
+
     var body: some View {
         NavigationStack(path: $flowState.path) {
             ZStack {
@@ -35,13 +35,13 @@ struct ContentFlowCoordinator<Content: View>: View {
 }
 
 extension ContentFlowCoordinator {
-    
+
     @MainActor @ViewBuilder private func destination(link: ContentLink) -> some View {
-        
+
         switch userInterfaceIdiom {
-            
+
         case .phone:
-            
+
             switch link {
             case .drawing:
                 PencilDrawingiPhoneView(flowState: flowState, generationService: generationService)
@@ -75,15 +75,15 @@ extension ContentFlowCoordinator {
                 StepView(flowState: flowState, generationService: generationService, history: history)
             case .inpaint(history: let history):
                 PencilOverlayDrawingView(flowState: flowState, generationService: generationService, history: history)
-           
+
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
                 }
             }
-            
+
         default:
-            
+
             switch link {
             case .drawing:
                 PencilDrawingiPadView(flowState: flowState, generationService: generationService)
@@ -126,28 +126,28 @@ extension ContentFlowCoordinator {
             case .depthEditor(input: let input, output: let output, drawing: let drawing):
                 let viewModel = DepthEditorViewModel(output: output, input: input, drawing: drawing)
                 DepthEditorView(flowState: flowState, generationService: generationService, viewModel: viewModel)
-            
+
             default:
                 VStack {
                     Text("Implement Me in ContentFlowCoordinator.swift").font(.largeTitle)
                 }
             }
         }
-        
+
     }
-    
+
     @MainActor @ViewBuilder private func linkDestination(link: ContentLink) -> some View {
         destination(link: link)
     }
-    
+
     @MainActor @ViewBuilder private func sheetContent(link: ContentLink) -> some View {
         destination(link: link)
     }
-    
+
     @MainActor @ViewBuilder private func coverContent(link: ContentLink) -> some View {
         destination(link: link)
     }
-    
+
     @MainActor @ViewBuilder private func popoverContent(link: ContentLink) -> some View {
         destination(link: link).padding()
     }
@@ -160,49 +160,49 @@ class ContentFlowState {
     var coverItem: ContentLink?
     var popoverItem: ContentLink?
     var popoverBounds: PopoverAttachmentAnchor = .rect(.rect(CGRect()))
-    
+
     func pop() {
         guard !path.isEmpty else {
             return
         }
-        
+
         path.removeLast()
     }
-    
+
     func closeCover() {
         coverItem = nil
     }
-    
+
     func closePopover() {
         popoverItem = nil
     }
-    
+
     func sheet(_ link: ContentLink) {
         guard coverItem == nil && presentedItem == nil else {
             return
         }
-        
+
         presentedItem = link
     }
-    
+
     func cover(_ link: ContentLink) {
         guard coverItem == nil && presentedItem == nil else {
             return
         }
-        
+
         coverItem = link
     }
-    
+
     func popover(_ link: ContentLink, bounds: PopoverAttachmentAnchor) {
         self.popoverBounds = bounds
         popoverItem = link
     }
-    
+
     func nextLink(_ link: ContentLink) {
         guard coverItem == nil && presentedItem == nil else {
             return
         }
-        
+
         path.append(link)
     }
 }

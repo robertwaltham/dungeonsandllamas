@@ -8,19 +8,19 @@
 import SwiftUI
 import Combine
 
-struct LandingView: View {    
+struct LandingView: View {
     let flowState: ContentFlowState
     let generationService: GenerationService
     @State var history = [UIImage]()
     @State private var showingComfyUIStatus = false
     let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
-    
+
     var body: some View {
         ZStack {
             GradientView(type: .greyscale)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]) {
-                ForEach(history, id:\.self) { img in
-                    
+                ForEach(history, id: \.self) { img in
+
                     LandingHistoryImage(image: img)
                 }
             }
@@ -30,11 +30,11 @@ struct LandingView: View {
                 }
                 .shuffled()
                 .prefix(20)
-                .map{ entry in
+                .map { entry in
                     return generationService.fileService.loadImage(path: entry.outputFilePath ?? "", maxPixelSize: 256)
                 }
             }
-            .onReceive(timer) { input in
+            .onReceive(timer) { _ in
                 withAnimation(.linear(duration: 1.0)) {
                     if history.count > 1 {
                         let random = Int.random(in: 0..<history.count - 2)
@@ -46,24 +46,24 @@ struct LandingView: View {
                     }
                 }
             }
-                
+
             VStack {
                 Spacer()
-                VStack{
+                VStack {
                     Text("Dungeons & Llamas")
                         .font(.largeTitle)
                         .fontWeight(.bold)
-                        .shadow(color:.gray, radius: 2.0)
-                    
+                        .shadow(color: .gray, radius: 2.0)
+
                     Text("A generative journey")
                         .font(.title)
-                        .shadow(color:.gray, radius: 2.0)
+                        .shadow(color: .gray, radius: 2.0)
 
                 }
-                
+
                 Spacer().frame(maxHeight: 200)
-                
-                VStack (alignment: .center, spacing: 25) {
+
+                VStack(alignment: .center, spacing: 25) {
                     Button(action: {
                         flowState.nextLink(.comfyUITest(.one))
                     }, label: {
@@ -101,7 +101,7 @@ struct LandingView: View {
                 .buttonStyle(.glass)
 
                 Spacer()
-                
+
                 Button(action: {
                     showingComfyUIStatus = true
                 }, label: {

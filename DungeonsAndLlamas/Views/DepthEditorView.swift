@@ -14,7 +14,7 @@ struct DepthEditorView: View {
     @Bindable var generationService: GenerationService
     @State var viewModel: DepthEditorViewModel
     @Environment(\.undoManager) private var undoManager
-    
+
     var body: some View {
         ZStack {
             GradientView(type: .greyscale)
@@ -29,7 +29,7 @@ struct DepthEditorView: View {
                 }
                 .frame(width: CGFloat(generationService.imageSize),
                        height: CGFloat(generationService.imageSize))
-                
+
                 VStack {
                     HStack {
                         Slider(value: $viewModel.toolWhite) {
@@ -39,11 +39,11 @@ struct DepthEditorView: View {
                         } maximumValueLabel: {
                             Text("Nearer")
                         }
-                        .onChange(of: viewModel.toolWhite, { oldValue, newValue in
+                        .onChange(of: viewModel.toolWhite, { _, _ in
                             viewModel.updateTool()
                         })
                         .padding()
-                        
+
                         Button {
                             undoManager?.undo()
                         } label: {
@@ -55,7 +55,7 @@ struct DepthEditorView: View {
 
                     }
                     .padding()
-                    
+
                     HStack {
                         Picker("style", selection: $viewModel.inkType) {
                             Text("Watercolor").tag(PKInkingTool.InkType.watercolor)
@@ -65,10 +65,10 @@ struct DepthEditorView: View {
                         }
                         .pickerStyle(.segmented)
                         .padding()
-                        .onChange(of: viewModel.inkType, { oldValue, newValue in
+                        .onChange(of: viewModel.inkType, { _, _ in
                             viewModel.updateTool()
                         })
-                        
+
                         Button {
                             viewModel.finalize(size: CGFloat(generationService.imageSize), flowState: flowState)
                         } label: {
@@ -83,7 +83,7 @@ struct DepthEditorView: View {
                 .background(Color(white: 1.0, opacity: 0.5))
                 .clipShape(RoundedRectangle(cornerSize: CGSize(width: 10, height: 10)))
                 .padding()
-                
+
             }
         }
     }
@@ -98,58 +98,56 @@ class DepthEditorViewModel {
     var toolWhite = 0.5
     var tool = PKInkingTool(.watercolor, color: UIColor(white: 0.5, alpha: 1.0))
     var inkType: PKInkingTool.InkType = .watercolor
-    
+
     func updateTool() {
         tool = PKInkingTool(inkType, color: UIColor(white: toolWhite, alpha: 1.0))
     }
-    
+
     init(output: Binding<UIImage>, input: UIImage, drawing: Binding<PKDrawing?>) {
         self.output = output
         self.drawing = drawing
         self.input = input
     }
-    
+
     func finalize(size: CGFloat, flowState: ContentFlowState) {
-        
+
         defer {
             flowState.pop()
         }
-        
+
         guard let drawing = drawing.wrappedValue else {
             return
         }
-        
+
         let size = CGSize(width: size, height: size)
         let areaSize = CGRect(x: 0, y: 0, width: size.width, height: size.height)
 
-        
         let drawingImage = drawing.image(from: areaSize, scale: 1.0)
-        
+
         UIGraphicsBeginImageContext(size)
         input.draw(in: areaSize)
         drawingImage.draw(in: areaSize, blendMode: .normal, alpha: 1.0)
-        guard let newImage:UIImage = UIGraphicsGetImageFromCurrentImageContext() else {
+        guard let newImage: UIImage = UIGraphicsGetImageFromCurrentImageContext() else {
             return
         }
         UIGraphicsEndImageContext()
-        
+
         output.wrappedValue = newImage
     }
 }
-
 
 #Preview {
     let flowState = ContentFlowState()
     let service = GenerationService()
     service.setupForTesting()
     var image = UIImage(named: "depth_preview")!
-    var drawing: PKDrawing? = nil
+    var drawing: PKDrawing?
     let drawiningBinding = Binding {
         drawing
     } set: { newDrawing in
         drawing = newDrawing
     }
-    
+
     let output = Binding {
         image
     } set: { newImage in
@@ -157,7 +155,7 @@ class DepthEditorViewModel {
     }
 
     let viewModel = DepthEditorViewModel(output: output, input: image, drawing: drawiningBinding)
-    
+
     return ContentFlowCoordinator(flowState: flowState) {
         DepthEditorView(flowState: flowState, generationService: service, viewModel: viewModel)
     }

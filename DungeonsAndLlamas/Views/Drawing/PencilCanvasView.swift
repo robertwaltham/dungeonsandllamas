@@ -10,13 +10,13 @@ import SwiftUI
 import PencilKit
 
 struct PencilCanvasView: UIViewRepresentable {
-    
+
     var drawing: Binding<PKDrawing?>
     var showTooltip: Binding<Bool>
     var contentSize: Binding<Int>
     var opaque = true
-    var tool: PKTool? = nil
-    
+    var tool: PKTool?
+
     init(drawing: Binding<PKDrawing?>, showTooltip: Binding<Bool>, contentSize: Binding<Int>, opaque: Bool = true,
          tool: PKTool? = nil) {
         self.drawing = drawing
@@ -25,7 +25,7 @@ struct PencilCanvasView: UIViewRepresentable {
         self.opaque = opaque
         self.tool = tool
     }
-    
+
     func makeUIView(context: Context) -> PKCanvasView {
         let view = PKCanvasView()
         view.drawingPolicy = .anyInput
@@ -39,7 +39,7 @@ struct PencilCanvasView: UIViewRepresentable {
         view.isOpaque = opaque
         view.backgroundColor = opaque ? .white : .clear
         view.contentSize = CGSize(width: contentSize.wrappedValue, height: contentSize.wrappedValue)
-        
+
         if let tool {
             view.tool = tool
         } else {
@@ -49,33 +49,32 @@ struct PencilCanvasView: UIViewRepresentable {
             context.coordinator.picker = picker
         }
 
-
         return view
     }
-    
+
     func updateUIView(_ uiView: PKCanvasView, context: Context) {
         if drawing.wrappedValue == nil {
             context.coordinator.skipUpdate = true
             uiView.drawing = PKDrawing()
         }
-                
+
         if showTooltip.wrappedValue {
             context.coordinator.scheduleToolPickerPresentation(for: uiView)
         } else {
             context.coordinator.cancelToolPickerPresentation()
             uiView.resignFirstResponder()
         }
-        
+
         let canvasSize = CGSize(width: contentSize.wrappedValue, height: contentSize.wrappedValue)
         if uiView.contentSize != canvasSize {
             uiView.contentSize = canvasSize
         }
-        
+
         if let tool {
             uiView.tool = tool
         }
     }
-    
+
     func makeCoordinator() -> PencilCanvasViewCoordinator {
         let coordinator = PencilCanvasViewCoordinator()
         coordinator.dataChanged = { image in
@@ -85,12 +84,11 @@ struct PencilCanvasView: UIViewRepresentable {
         }
         return coordinator
     }
-    
+
     typealias UIViewType = PKCanvasView
-    
 
     class PencilCanvasViewCoordinator: NSObject, PKCanvasViewDelegate, PKToolPickerObserver {
-        
+
         var dataChanged: ((PKDrawing) -> Void)?
         var picker: PKToolPicker?
         var skipUpdate = true
@@ -138,5 +136,5 @@ struct PencilCanvasView: UIViewRepresentable {
             dataChanged?(canvasView.drawing)
         }
     }
-    
+
 }

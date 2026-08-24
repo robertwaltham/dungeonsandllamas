@@ -124,6 +124,23 @@ actor ComfyUIClient {
         let nodeErrors: [String: AnyCodable]?
     }
 
+    struct SingleImageEditRequest: Sendable {
+        let prompt: String
+        let seed: Int64
+        let imageFilename: String
+        let clientId: String
+        let promptId: String
+    }
+
+    struct TwoImageEditRequest: Sendable {
+        let prompt: String
+        let seed: Int64
+        let firstImageFilename: String
+        let secondImageFilename: String
+        let clientId: String
+        let promptId: String
+    }
+
     struct ImageUploadResponse: Decodable {
         let name: String
         let subfolder: String
@@ -328,7 +345,7 @@ actor ComfyUIClient {
             }
             return Swift.min(Swift.max(Float(value / max), 0), 1)
         }
-        
+
         private func numericValue(_ value: Any?) -> Double? {
             switch value {
             case let value as NSNumber: return value.doubleValue
@@ -361,17 +378,17 @@ actor ComfyUIClient {
     private(set) var latestSystemStats: (connection: ConnectionInfo, status: SystemStatus)?
 
     private var decoder: JSONDecoder {
-        let d = JSONDecoder()
-        d.keyDecodingStrategy = .convertFromSnakeCase
-        d.dateDecodingStrategy = .iso8601
-        return d
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 
     private var encoder: JSONEncoder {
-        let e = JSONEncoder()
-        e.keyEncodingStrategy = .convertToSnakeCase
-        e.dateEncodingStrategy = .iso8601
-        return e
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
     }
 
     init() {
@@ -414,11 +431,13 @@ actor ComfyUIClient {
 
         do {
             _ = try await submitImageFlux2KleinImageEdit(
-                prompt: prompt,
-                seed: seed,
-                imageFilename: imageFilename,
-                clientId: clientId,
-                promptId: promptId
+                request: .init(
+                    prompt: prompt,
+                    seed: seed,
+                    imageFilename: imageFilename,
+                    clientId: clientId,
+                    promptId: promptId
+                )
             )
 
             for try await message in messageStream {
@@ -433,24 +452,42 @@ actor ComfyUIClient {
             return try await imageOutputPaths(promptId: promptId)
         } catch {
             let elapsed = promptStart.duration(to: .now)
-            comfyLogger.error("ComfyUI prompt failed after \(elapsed.formatted(.units(allowed: [.seconds, .milliseconds])), privacy: .public) promptId=\(promptId, privacy: .private(mask: .hash)) error=\(String(describing: error), privacy: .private)")
+            let elapsedDescription = elapsed.formatted(.units(allowed: [.seconds, .milliseconds]))
+            comfyLogger.error("ComfyUI prompt failed after \(elapsedDescription, privacy: .public) promptId=\(promptId, privacy: .private(mask: .hash))")
+            comfyLogger.error("ComfyUI prompt error=\(String(describing: error), privacy: .private)")
             throw error
         }
     }
 
-    func submitImageFlux2KleinImageEdit(prompt: String, seed: Int64, imageFilename: String, clientId: String, promptId: String) async throws -> PromptResponse {
-        let workflowPrompt = try ComfyUIClient.imageFlux2KleinImageEditWorkflow(prompt: prompt, seed: seed, imageFilename: imageFilename)
-        return try await submitPrompt(PromptSubmission(prompt: workflowPrompt, clientId: clientId.lowercased(), promptId: promptId.lowercased()))
+    func submitImageFlux2KleinImageEdit(request: SingleImageEditRequest) async throws -> PromptResponse {
+        let workflowPrompt = try ComfyUIClient.imageFlux2KleinImageEditWorkflow(
+            prompt: request.prompt,
+            seed: request.seed,
+            imageFilename: request.imageFilename
+        )
+        return try await submitPrompt(
+            PromptSubmission(
+                prompt: workflowPrompt,
+                clientId: request.clientId.lowercased(),
+                promptId: request.promptId.lowercased()
+            )
+        )
     }
 
-    func submitImageFlux2Klein2ImageEdit(prompt: String, seed: Int64, firstImageFilename: String, secondImageFilename: String, clientId: String, promptId: String) async throws -> PromptResponse {
+    func submitImageFlux2Klein2ImageEdit(request: TwoImageEditRequest) async throws -> PromptResponse {
         let workflowPrompt = try ComfyUIClient.imageFlux2Klein2ImageEditWorkflow(
-            prompt: prompt,
-            seed: seed,
-            firstImageFilename: firstImageFilename,
-            secondImageFilename: secondImageFilename
+            prompt: request.prompt,
+            seed: request.seed,
+            firstImageFilename: request.firstImageFilename,
+            secondImageFilename: request.secondImageFilename
         )
-        return try await submitPrompt(PromptSubmission(prompt: workflowPrompt, clientId: clientId.lowercased(), promptId: promptId.lowercased()))
+        return try await submitPrompt(
+            PromptSubmission(
+                prompt: workflowPrompt,
+                clientId: request.clientId.lowercased(),
+                promptId: request.promptId.lowercased()
+            )
+        )
     }
 
     func imageOutputPaths(promptId: String) async throws -> [String: [String]] {
@@ -588,7 +625,15 @@ actor ComfyUIClient {
     }
 
     func uploadImage(_ data: Data, filename: String, subfolder: String? = nil, type: ViewImageType? = nil, overwrite: Bool? = nil) async throws -> ImageUploadResponse {
-        try await upload(data, filename: filename, mimeType: "image/png", endpoint: .uploadImage, subfolder: subfolder, type: type, overwrite: overwrite)
+        let multipart = multipartUpload(
+            data,
+            filename: filename,
+            mimeType: "image/png",
+            subfolder: subfolder,
+            type: type,
+            overwrite: overwrite
+        )
+        return try await performMultipartUpload(multipart, endpoint: .uploadImage)
     }
 
     func uploadMask(_ data: Data, filename: String, originalReference: UploadedImage? = nil, subfolder: String? = nil, overwrite: Bool? = nil) async throws -> ImageUploadResponse {
@@ -718,11 +763,6 @@ actor ComfyUIClient {
         try ComfyUIClient.validate(response: response, data: data)
         let responseData = data.isEmpty ? Data("{}".utf8) : data
         return try decoder.decode(Response.self, from: responseData)
-    }
-
-    private func upload(_ data: Data, filename: String, mimeType: String, endpoint: Endpoint, subfolder: String?, type: ViewImageType? = nil, overwrite: Bool?) async throws -> ImageUploadResponse {
-        let multipart = multipartUpload(data, filename: filename, mimeType: mimeType, subfolder: subfolder, type: type, overwrite: overwrite)
-        return try await performMultipartUpload(multipart, endpoint: endpoint)
     }
 
     private func multipartUpload(_ data: Data, filename: String, mimeType: String, subfolder: String?, type: ViewImageType? = nil, overwrite: Bool?) -> MultipartRequest {

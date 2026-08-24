@@ -18,15 +18,15 @@ struct NavigationTestView: View {
                 Button("Sheet") {
                     viewModel.sheet(.firstLink(text: "sheet"))
                 }.buttonStyle(.bordered)
-                
+
                 Button("Cover") {
                     viewModel.cover(.firstLink(text: "cover"))
                 }.buttonStyle(.bordered)
-                
+
                 Button("Link") {
                     viewModel.nextLink(.firstLink(text: "link"))
                 }.buttonStyle(.bordered)
-                
+
                 GeometryReader { proxy in
                     Button("Popover") {
                         viewModel.popover(.firstLink(text: "popover"), bounds: .rect(.rect(proxy.frame(in: .global))))
@@ -36,20 +36,20 @@ struct NavigationTestView: View {
                 }
                 .frame(maxWidth: 100, maxHeight: 100)
             }
-            
+
             HStack {
                 Button("Accelerometer") {
                     viewModel.nextLink(.accelerometer)
                 }
                 .frame(width: 200, height: 200)
                 .buttonStyle(.bordered)
-                
+
                 Button("API Test") {
                     viewModel.nextLink(.apiTest)
                 }
                 .frame(width: 200, height: 200)
                 .buttonStyle(.bordered)
-                
+
                 Button("Item Generator") {
                     viewModel.nextLink(.itemGenerator)
                 }
@@ -57,7 +57,6 @@ struct NavigationTestView: View {
                 .buttonStyle(.bordered)
             }
 
-            
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

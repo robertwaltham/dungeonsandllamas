@@ -14,7 +14,7 @@ private let pencilLogger = LoggingService.shared.ui
 
 @Observable
 class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making the observation tracking sendable
-    
+
     @MainActor
     init(generationService: GenerationService) {
         self.generationService = generationService
@@ -34,33 +34,33 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         }
 
     }
-    
+
     var generationService: GenerationService
     var drawing: PKDrawing?
     var output: UIImage?
     var input: UIImage?
     var prompt: String
     var promptAdd: String? // TODO: Delete me
-    
+
     var session = NSUUID().uuidString
     var sequence = 0
-    
-    var negative = ""//"worst quality, normal quality, low quality, low res, blurry, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, duplicate, ugly, monochrome, horror, geometry, mutation, disgusting"
-    
+
+    var negative = ""
+
     var loading = false
     var progress: StableDiffusionClient.Progress?
     var showTooltip = true
-    
+
     var loras: [GenerationService.LoraInvocation]
     var enabledLoras: [GenerationService.LoraInvocation] {
         loras.filter { $0.weight > 0}
     }
     var seed = Int.random(in: 0...Int(Int16.max))
-    
+
     func newSeed() {
         seed = Int.random(in: 0...Int(Int16.max))
     }
-    
+
     var bracketResult: [GenerationService.Bracket] = []
     var firstBracketLora = GenerationService.LoraInvocation(name: "n/a", weight: 0, bracketSteps: 3, bracketMin: 0.0, bracketMax: 1.0)
     var secondBracketLora = GenerationService.LoraInvocation(name: "n/a", weight: 0, bracketSteps: 3, bracketMin: 0.0, bracketMax: 1.0)
@@ -69,14 +69,13 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
     var stepResult: [GenerationService.Step] = []
     var stepStart: Int = 20
     var stepEnd: Int = 23
-    
+
     var inpaintOutput: UIImage?
     var inpaintOptions: StableDiffusionClient.SoftInpaintingOptions = .init()
 
-    
     var saved: Bool = false
     var loadedHistory: ImageHistoryModel?
-    
+
     @MainActor func clear() {
         drawing = nil
         output = nil
@@ -84,15 +83,15 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         sequence = 0
         session = NSUUID().uuidString
     }
-    
+
     @MainActor
     func load(history: ImageHistoryModel) {
-        
+
         guard loadedHistory?.id != history.id else { // TODO: fix code crimes
             pencilLogger.debug("Pencil history already loaded")
             return
         }
-        
+
         drawing = generationService.loadDrawing(history: history)
         prompt = history.prompt
         output = generationService.loadOutputImage(history: history)
@@ -101,22 +100,22 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         sequence = history.sequence
 
         var loadedCount = 0
-        for i in 0..<loras.count {
-            loras[i].weight = history.loras.first { lora in lora.name == loras[i].name }?.weight ?? 0
-            
-            if loras[i].weight > 0 {
+        for loraIndex in 0..<loras.count {
+            loras[loraIndex].weight = history.loras.first { lora in lora.name == loras[loraIndex].name }?.weight ?? 0
+
+            if loras[loraIndex].weight > 0 {
                 if loadedCount == 0 {
-                    firstBracketLora.name = loras[i].name
-                    firstBracketLora.activation = loras[i].activation
-                    loadedCount += 1;
+                    firstBracketLora.name = loras[loraIndex].name
+                    firstBracketLora.activation = loras[loraIndex].activation
+                    loadedCount += 1
                 } else if loadedCount == 1 {
-                    secondBracketLora.name = loras[i].name
-                    secondBracketLora.activation = loras[i].activation
-                    loadedCount += 1;
+                    secondBracketLora.name = loras[loraIndex].name
+                    secondBracketLora.activation = loras[loraIndex].activation
+                    loadedCount += 1
                 } else if loadedCount == 2 {
-                    thirdBracketLora.name = loras[i].name
-                    thirdBracketLora.activation = loras[i].activation
-                    loadedCount += 1;
+                    thirdBracketLora.name = loras[loraIndex].name
+                    thirdBracketLora.activation = loras[loraIndex].activation
+                    loadedCount += 1
                 }
             }
         }
@@ -128,64 +127,68 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         generationService.imageSize = history.size
         loadedHistory = history
     }
-    
+
     @MainActor
     func generate(output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>, drawingScale: CGFloat) {
         if let drawing {
-            generationService.image(prompt: prompt,
-                                    promptAddon: promptAdd,
-                                    negativePrompt: negative,
-                                    loras: enabledLoras,
-                                    seed: seed,
-                                    session: session,
-                                    sequence: sequence,
-                                    drawing: drawing,
-                                    drawingScale: drawingScale,
-                                    output: output,
-                                    progress: progress,
-                                    loading: loading)
+            generationService.image(
+                request: .init(
+                    prompt: prompt,
+                    promptAddon: promptAdd,
+                    negativePrompt: negative,
+                    loras: enabledLoras,
+                    seed: seed,
+                    session: session,
+                    sequence: sequence,
+                    drawing: drawing,
+                    drawingScale: drawingScale
+                ),
+                bindings: .init(output: output, progress: progress, loading: loading)
+            )
             sequence += 1
             saved = false
         }
     }
-    
+
     @MainActor
     func inpaint(output: Binding<UIImage?>, progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>, drawingScale: CGFloat) {
         if let drawing, let input = self.output {
-            generationService.inpaint(prompt: prompt,
-                                      negativePrompt: negative,
-                                      loras: enabledLoras,
-                                      seed: seed,
-                                      session: session,
-                                      sequence: sequence,
-                                      maskDrawing: drawing,
-                                      input: input,
-                                      drawingScale: drawingScale,
-                                      inpaintOptions: inpaintOptions,
-                                      output: output,
-                                      progress: progress,
-                                      loading: loading)
+            generationService.inpaint(
+                request: .init(
+                    prompt: prompt,
+                    negativePrompt: negative,
+                    loras: enabledLoras,
+                    seed: seed,
+                    session: session,
+                    sequence: sequence,
+                    maskDrawing: drawing,
+                    input: input,
+                    drawingScale: drawingScale,
+                    inpaintOptions: inpaintOptions
+                ),
+                bindings: .init(output: output, progress: progress, loading: loading)
+            )
             sequence += 1
             saved = false
         }
     }
-    
+
     func bracketCount() -> Int {
         return firstBracketLora.bracketSteps * secondBracketLora.bracketSteps * (thirdBracketLora.bracketSteps > 0 ? thirdBracketLora.bracketSteps : 1)
     }
-    
+
     @MainActor
     func save(bracket: GenerationService.Bracket) {
         loadedHistory?.sequence += 1 // TODO: make database own sequences
-        
+
         guard let loadedHistory else {
             return
         }
-        
+
         guard !savedResults.contains(bracket.id) else {
             return
         }
-        
+
         var newHistory = loadedHistory
         newHistory.id = bracket.id
         newHistory.outputFilePath = generationService.fileService.save(image: bracket.result)
@@ -195,55 +198,55 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         if let thirdLora = bracket.thirdLora {
             newHistory.loras.append(LoraHistoryModel(id: NSUUID().uuidString, name: thirdLora.name, weight: thirdLora.weight, historyModelId: newHistory.id))
         }
-        
+
         generationService.db.save(history: newHistory)
         generationService.addHistory(newHistory)
         savedResults.append(bracket.id)
         pencilLogger.debug("Pencil result saved")
     }
-    
+
     @MainActor
     func save(stepResult: GenerationService.Step) {
         loadedHistory?.sequence += 1 // TODO: make database own sequences
-        
+
         guard let loadedHistory else {
             return
         }
-        
+
         guard !savedResults.contains(stepResult.id) else {
             return
         }
-        
+
         var newHistory = loadedHistory
         newHistory.id = stepResult.id
         newHistory.outputFilePath = generationService.fileService.save(image: stepResult.result)
         newHistory.steps = stepResult.steps
         newHistory.sampler = stepResult.sampler
-        for i in 0..<newHistory.loras.count {
-            newHistory.loras[i].id = NSUUID().uuidString
+        for loraIndex in 0..<newHistory.loras.count {
+            newHistory.loras[loraIndex].id = NSUUID().uuidString
         }
         generationService.db.save(history: newHistory)
         generationService.addHistory(newHistory)
         savedResults.append(stepResult.id)
         pencilLogger.debug("Pencil result saved")
     }
-    
+
     @MainActor
     func generateSteps(progress: Binding<StableDiffusionClient.Progress?>,
                        loading: Binding<Bool>,
                        cancel: Binding<Bool>,
                        iterateSamplers: Bool) {
-        
+
         guard let input else {
             pencilLogger.warning("Pencil generation requested without input")
             return
         }
-        
+
         guard let loadedHistory else {
             pencilLogger.warning("Pencil generation requested without history")
             return
         }
-        
+
 //        guard stepStart < stepEnd else {
 //            return
 //        }
@@ -251,7 +254,7 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         pencilLogger.debug("Pencil generation started")
         loading.wrappedValue = true
         cancel.wrappedValue = false
-        
+
         Task.detached {
             // TODO: inherit known values from options
             progress.wrappedValue = StableDiffusionClient.Progress(progress: 0, etaRelative: 0, state: StableDiffusionClient.Progress.State.initial())
@@ -265,18 +268,20 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
                 pencilLogger.error("Pencil generation failed: \(String(describing: error), privacy: .private)")
             }
         }
-        
+
         Task.init {
             do {
-                for try await obj in generationService.stepImage(input: input,
-                                                                 stepStart: stepStart,
-                                                                 stepEnd: stepEnd,
-                                                                 history: loadedHistory,
-                                                                 iterateSampers: iterateSamplers,
-                                                                 loading: loading,
-                                                                 progress: progress,
-                                                                 cancel: cancel) {
-                    
+                for try await obj in generationService.stepImage(
+                    request: .init(
+                        input: input,
+                        stepStart: stepStart,
+                        stepEnd: stepEnd,
+                        history: loadedHistory,
+                        iterateSamplers: iterateSamplers
+                    ),
+                    control: .init(loading: loading, cancel: cancel)
+                ) {
+
                     stepResult.append(obj)
                 }
             } catch {
@@ -286,9 +291,9 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
             cancel.wrappedValue = true
             pencilLogger.debug("Pencil generation finished")
         }
-        
+
     }
-    
+
     @MainActor
     func generateBrackets(progress: Binding<StableDiffusionClient.Progress?>, loading: Binding<Bool>, cancel: Binding<Bool>) {
         guard let input else {
@@ -300,12 +305,12 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
         guard secondBracketLora.bracketSteps > 0 && secondBracketLora.name != "n/a" else {
             return
         }
-        
+
         bracketResult = []
         pencilLogger.debug("Bracket generation started")
         loading.wrappedValue = true
         cancel.wrappedValue = false
-        
+
         Task.detached {
             // TODO: inherit known values from options
             progress.wrappedValue = StableDiffusionClient.Progress(progress: 0, etaRelative: 0, state: StableDiffusionClient.Progress.State.initial())
@@ -322,16 +327,18 @@ class PencilViewModel: @unchecked Sendable { // TODO: proper approach to making 
 
         Task.init {
             do {
-                for try await obj in generationService.bracketImage(input: input,
-                                                                    prompt: prompt,
-                                                                    negativePrompt: negative,
-                                                                    seed: seed,
-                                                                    firstLora: firstBracketLora,
-                                                                    secondLora: secondBracketLora,
-                                                                    thirdLora: thirdBracketLora,
-                                                                    loading: loading,
-                                                                    progress: progress,
-                                                                    cancel: cancel) {
+                for try await obj in generationService.bracketImage(
+                    request: .init(
+                        input: input,
+                        prompt: prompt,
+                        negativePrompt: negative,
+                        seed: seed,
+                        firstLora: firstBracketLora,
+                        secondLora: secondBracketLora,
+                        thirdLora: thirdBracketLora
+                    ),
+                    control: .init(loading: loading, cancel: cancel)
+                ) {
                     bracketResult.append(obj)
                 }
             } catch {

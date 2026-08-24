@@ -9,9 +9,8 @@ import SwiftUI
 import UIKit
 import Foundation
 
-
 struct StepView: View {
-    
+
     let flowState: ContentFlowState
     @State var viewModel: PencilViewModel
     let generationService: GenerationService
@@ -20,20 +19,20 @@ struct StepView: View {
     @State var columns = 3
 
     let imageSize: CGFloat = 200
-    
+
     init(flowState: ContentFlowState, generationService: GenerationService, history: ImageHistoryModel) {
         self.flowState = flowState
         self.viewModel = PencilViewModel(generationService: generationService)
         self.generationService = generationService
-        
+
         self.viewModel.load(history: history)
     }
-    
+
     var body: some View {
-        
+
         ZStack {
             GradientView(type: .greyscale)
-            
+
             ScrollView {
                 ZStack {
                     HStack {
@@ -50,14 +49,14 @@ struct StepView: View {
                                     .foregroundColor(.white)
                                     .frame(width: imageSize, height: imageSize)
                             }
-                            
+
                             VStack {
                                 Text("Input")
                                 Spacer()
                             }
-                            
+
                         }.frame(maxHeight: imageSize)
-                        
+
                         ZStack {
                             if let output = viewModel.output {
                                 Image(uiImage: output)
@@ -76,14 +75,14 @@ struct StepView: View {
                             }
                         }.frame(maxHeight: imageSize)
                     }
-                   
+
                     if viewModel.loading {
                         VStack {
                             Spacer()
                             HStack {
                                 ProgressView(value: viewModel.progress?.progress ?? 0)
                                 let stepCount = viewModel.stepEnd + 1 - viewModel.stepStart
-                                if (iterateSamplers) {
+                                if iterateSamplers {
                                     Text("\(viewModel.stepResult.count) / \(stepCount * generationService.sdSamplers.count)")
                                 } else {
                                     Text("\(viewModel.stepResult.count) / \(viewModel.stepEnd + 1 - viewModel.stepStart)")
@@ -95,13 +94,11 @@ struct StepView: View {
                         }
                     }
                 }
-                
-                
+
                 Text(viewModel.prompt)
 
-                
                 HStack {
-                    
+
                     VStack {
                         if !cancel {
                             Button("Cancel") {
@@ -115,7 +112,7 @@ struct StepView: View {
                                 guard !viewModel.loading else {
                                     return
                                 }
-                                
+
                                 viewModel.generateSteps(progress: $viewModel.progress,
                                                         loading: $viewModel.loading,
                                                         cancel: $cancel,
@@ -129,11 +126,11 @@ struct StepView: View {
                         }
 
                     }
-                    
+
                     Text("Start")
                     Picker("Start", selection: $viewModel.stepStart) {
-                        ForEach(1..<30) { i in
-                            Text("\(i)").tag(i)
+                        ForEach(1..<30) { step in
+                            Text("\(step)").tag(step)
                         }
                     }
                     .pickerStyle(.wheel)
@@ -141,8 +138,8 @@ struct StepView: View {
 
                     Text("End")
                     Picker("End", selection: $viewModel.stepEnd) {
-                        ForEach(1..<30) { i in
-                            Text("\(i)").tag(i)
+                        ForEach(1..<30) { step in
+                            Text("\(step)").tag(step)
                         }
                     }
                     .pickerStyle(.wheel)
@@ -151,18 +148,17 @@ struct StepView: View {
                     Toggle("Sampler", isOn: $iterateSamplers).padding()
                     .disabled(viewModel.loading)
 
-                    
                     Text("Cols")
                     Picker("End", selection: $columns) {
-                        ForEach(3..<7) { i in
-                            Text("\(i)").tag(i)
+                        ForEach(3..<7) { columnCount in
+                            Text("\(columnCount)").tag(columnCount)
                         }
                     }
-                    
+
                 }
                 .frame(maxHeight: 125)
-                
-                if viewModel.stepResult.count > 0  {
+
+                if viewModel.stepResult.count > 0 {
                     let columns: [GridItem] = (0..<columns).map {_ in return GridItem(.flexible())}
                     LazyVGrid(columns: columns) {
                         ForEach(viewModel.stepResult, id: \.self) { stepResult in
@@ -170,9 +166,9 @@ struct StepView: View {
                                 Image(uiImage: stepResult.result)
                                     .resizable()
                                     .scaledToFit()
-                                
+
                                 VStack {
-                                    
+
                                     if viewModel.savedResults.contains(stepResult.id) {
                                         Text("Saved!")
                                             .foregroundColor(.yellow)
@@ -185,14 +181,13 @@ struct StepView: View {
                                         .foregroundColor(.yellow)
                                     }
 
-                                    
                                     Spacer()
-                                    
-                                    if (iterateSamplers) {
+
+                                    if iterateSamplers {
                                         Text(stepResult.sampler)
                                     }
                                     Text("\(stepResult.steps) | \(stepResult.formattedTime)")
-                                    
+
                                 }
                             }
                             .shadow(radius: 2)
@@ -202,10 +197,9 @@ struct StepView: View {
                 }
             }
         }
-        
+
     }
 }
-
 
 #Preview {
     let flowState = ContentFlowState()
@@ -215,9 +209,15 @@ struct StepView: View {
         service.getModels()
     }
     let view = StepView(flowState: flowState, generationService: service, history: service.imageHistory.first!)
-    for i in 0..<27 {
+    for stepIndex in 0..<27 {
         view.viewModel.stepResult.append(
-            GenerationService.Step.init(steps: i, start: Date.now.addingTimeInterval(TimeInterval(i)), end: Date.now.addingTimeInterval(TimeInterval(Double(i) + Double.random(in: 0...5))), result: UIImage(named: "lighthouse")!, sampler: "sampler \(i)")
+            GenerationService.Step.init(
+                steps: stepIndex,
+                start: Date.now.addingTimeInterval(TimeInterval(stepIndex)),
+                end: Date.now.addingTimeInterval(TimeInterval(Double(stepIndex) + Double.random(in: 0...5))),
+                result: UIImage(named: "lighthouse")!,
+                sampler: "sampler \(stepIndex)"
+            )
         )
     }
     return ContentFlowCoordinator(flowState: flowState) {

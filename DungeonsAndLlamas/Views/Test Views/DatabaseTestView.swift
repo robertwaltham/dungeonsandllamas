@@ -10,9 +10,9 @@ import Observation
 
 struct DatabaseTestView: View {
     @State var viewModel: DatabaseTestViewModel
-    
+
     var body: some View {
-        
+
         VStack {
 
             ScrollView {
@@ -47,12 +47,12 @@ class DatabaseTestViewModel {
     let db: DatabaseService
     let fs: FileService
     var history: [ImageHistoryModel] = []
-    
+
     init(db: DatabaseService, fs: FileService) {
         self.db = db
         self.fs = fs
     }
-    
+
     func load() {
         history = db.loadHistory()
     }

@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-import SwiftUI
 import PencilKit
 
 struct PencilDrawingiPhoneView: View {
@@ -18,14 +17,14 @@ struct PencilDrawingiPhoneView: View {
     @State var showSettings = false
 
     let imageSize: CGFloat = 320
-    
+
     @MainActor
     init(flowState: ContentFlowState, generationService: GenerationService) {
         self.viewModel = PencilViewModel(generationService: generationService)
         self.flowState = flowState
         self.generationService = generationService
     }
-    
+
     @MainActor
     init(flowState: ContentFlowState, generationService: GenerationService, history: ImageHistoryModel) {
         let viewModel = PencilViewModel(generationService: generationService)
@@ -34,32 +33,32 @@ struct PencilDrawingiPhoneView: View {
         self.flowState = flowState
         self.generationService = generationService
     }
-    
+
     var body: some View {
         ZStack {
             GradientView(type: .greyscale).ignoresSafeArea()
             VStack {
                 HStack {
                     Spacer()
-                    
+
                     Button {
                         viewModel.showTooltip.toggle()
                     } label: {
-                        
+
                         HStack {
                             Label("Tool", systemImage: "paintbrush.pointed")
                         }
                         .foregroundColor(.green)
 
                     }
-                    
+
                     Spacer()
-                    
+
                     Button {
                         showLora = true
                         viewModel.showTooltip = false
                     } label: {
-                        
+
                         HStack {
                             Label("LoRa", systemImage: "waveform")
                         }
@@ -69,14 +68,14 @@ struct PencilDrawingiPhoneView: View {
                     .popover(isPresented: $showLora, content: {
                         loraOverlay()
                     })
-                    
+
                     Spacer()
-                    
+
                     Button {
                         showSettings = true
                         viewModel.showTooltip = false
                     } label: {
-                        
+
                         HStack {
                             Label("Prompt", systemImage: "character.textbox")
                         }
@@ -87,7 +86,7 @@ struct PencilDrawingiPhoneView: View {
                         promptOverlay()
                     })
                     Spacer()
-                    
+
                     Button {
                         viewModel.newSeed()
                         generate()
@@ -100,16 +99,16 @@ struct PencilDrawingiPhoneView: View {
                     Spacer()
 
                 }
-                
+
                 PencilCanvasView(drawing: $viewModel.drawing, showTooltip: $viewModel.showTooltip, contentSize: $generationService.imageSize)
                     .frame(width: imageSize, height: imageSize)
-                    .onChange(of: viewModel.drawing) { oldValue, newValue in
+                    .onChange(of: viewModel.drawing) { _, _ in
                         guard !viewModel.loading else {
                             return
                         }
                         viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: imageSize)
                     }
-                
+
                 ZStack {
                     if let image = viewModel.output {
                         Image(uiImage: image)
@@ -128,7 +127,7 @@ struct PencilDrawingiPhoneView: View {
                                 viewModel.showTooltip.toggle()
                             }
                     }
-                    
+
                     if viewModel.loading {
                         VStack {
                             ProgressView(value: viewModel.progress?.progress ?? 0)
@@ -137,7 +136,7 @@ struct PencilDrawingiPhoneView: View {
                         }
                     }
                 }.frame(height: imageSize)
-                
+
                 HStack {
                     Text(viewModel.prompt)
                         .padding()
@@ -147,12 +146,12 @@ struct PencilDrawingiPhoneView: View {
                 .clipShape(RoundedRectangle(cornerSize: CGSize(width: 10, height: 10)))
                 .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
                 .frame(width: imageSize + 20)
-                
+
                 Spacer()
             }
         }
     }
-    
+
     @ViewBuilder
     func promptOverlay() -> some View {
         VStack {
@@ -185,14 +184,14 @@ struct PencilDrawingiPhoneView: View {
             generate()
         }
     }
-    
+
     @ViewBuilder
     func loraOverlay() -> some View {
         VStack {
             Spacer().frame(maxHeight: 10)
             Text("Lora \(viewModel.enabledLoras.count)").font(.title2)
             ForEach($viewModel.loras) { $lora in
-                
+
                 HStack {
                     Text("\(lora.name)").frame(width: 220)
                     Slider(value: $lora.weight, in: 0.0...1.5)
@@ -205,29 +204,26 @@ struct PencilDrawingiPhoneView: View {
             generate()
         }
     }
-    
+
     func generate() {
         guard !viewModel.loading else {
             return
         }
         viewModel.generate(output: $viewModel.output, progress: $viewModel.progress, loading: $viewModel.loading, drawingScale: imageSize)
     }
-    
+
     func bracket() {
         guard !viewModel.loading else {
             return
         }
-        
+
         guard let history = generationService.lastHistory else {
             return
         }
-        
+
         flowState.nextLink(.bracket(history: history))
     }
 }
-
-
-
 
 #Preview {
     let flowState = ContentFlowState()

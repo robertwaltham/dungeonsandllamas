@@ -52,6 +52,18 @@ Prefer Sirius when connected, then another suitable physical device. Use a simul
 Keep physical-device DerivedData outside Documents because File Provider attributes can break code signing. The app project currently has no iOS test target. 
 Missing local secrets, models, device support, or remote services are prerequisites rather than code regressions.
 
+### SwiftLint
+
+SwiftLint runs automatically as the app target's final build phase, so `build_device` and `build_run_device` both lint the app using the repository's `.swiftlint.yml` configuration.
+
+To run SwiftLint without building, run the following command from the repository root after Xcode has resolved the Swift packages at least once:
+
+```sh
+/private/tmp/DungeonsAndLlamasDerivedData-Sirius/SourcePackages/artifacts/swiftlintplugins/SwiftLintBinary/SwiftLintBinary.artifactbundle/macos/swiftlint lint --config .swiftlint.yml --no-cache
+```
+
+If the binary is missing, run `build_device` first to resolve `SwiftLintPlugins`. When using a different DerivedData location, replace `/private/tmp/DungeonsAndLlamasDerivedData-Sirius` with that path. The project intentionally has no SwiftLint baseline; report all errors and do not run `--fix` unless the task explicitly requests source changes.
+
 ## Working rules
 
 1. Keep changes focused and preserve unrelated worktree changes.
