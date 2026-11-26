@@ -197,7 +197,8 @@ class CLIPTokenizer {
     }
 
     func encode_full(text: String) -> [Int] {
-        let tokens = encode(text: text)
+        // Reserve one slot each for the start and end tokens.
+        let tokens = encode(text: text).prefix(contextLength - 2)
 
         // Create the full input tokens as a multiarray of shape 1 x contextLength
         var fullTokens = Array(repeating: 0, count: contextLength)
